@@ -1,0 +1,90 @@
+<svg width="1344" height="768" viewBox="0 0 1344 768" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00897B"/>
+      <stop offset="50%" style="stop-color:#00695C"/>
+      <stop offset="100%" style="stop-color:#004D40"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#F5F5F5"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1344" height="768" fill="url(#bgGrad)"/>
+  
+  <!-- Decorative circles -->
+  <circle cx="1200" cy="150" r="200" fill="white" fill-opacity="0.05"/>
+  <circle cx="150" cy="600" r="150" fill="white" fill-opacity="0.05"/>
+  
+  <!-- Phone Frame -->
+  <rect x="500" y="80" width="344" height="608" rx="40" fill="#1A1A1A"/>
+  <rect x="510" y="100" width="324" height="568" rx="32" fill="url(#cardGrad)"/>
+  
+  <!-- Status Bar -->
+  <rect x="510" y="100" width="324" height="44" rx="32" ry="0" fill="#00897B"/>
+  <text x="672" y="128" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">GroSell</text>
+  
+  <!-- Product Card -->
+  <rect x="540" y="160" width="264" height="140" rx="12" fill="white" stroke="#E0E0E0"/>
+  <rect x="555" y="175" width="80" height="80" rx="8" fill="#E0F2F1"/>
+  <text x="650" y="200" font-family="Arial, sans-serif" font-size="13" fill="#1A1A1A" font-weight="bold">Premium Headphones</text>
+  <text x="650" y="220" font-family="Arial, sans-serif" font-size="11" fill="#757575">Wireless • Noise Cancelling</text>
+  <text x="650" y="250" font-family="Arial, sans-serif" font-size="16" fill="#00897B" font-weight="bold">R 1,299</text>
+  
+  <!-- BNPL Badge -->
+  <rect x="650" y="265" width="50" height="20" rx="10" fill="#4CAF50"/>
+  <text x="675" y="279" font-family="Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">2x BNPL</text>
+  
+  <!-- Payment Options -->
+  <text x="540" y="340" font-family="Arial, sans-serif" font-size="12" fill="#1A1A1A" font-weight="bold">Payment Options</text>
+  
+  <!-- BNPL Option -->
+  <rect x="540" y="355" width="264" height="48" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2"/>
+  <text x="555" y="375" font-family="Arial, sans-serif" font-size="12" fill="#1A1A1A" font-weight="bold">Buy Now, Pay Later</text>
+  <text x="555" y="392" font-family="Arial, sans-serif" font-size="10" fill="#4CAF50">2x interest-free • R 650/month</text>
+  <circle cx="785" cy="379" r="10" fill="#4CAF50"/>
+  <path d="M781 379 L785 383 L792 374" stroke="white" stroke-width="2" fill="none"/>
+  
+  <!-- Laybye Option -->
+  <rect x="540" y="410" width="264" height="48" rx="8" fill="white" stroke="#E0E0E0"/>
+  <text x="555" y="430" font-family="Arial, sans-serif" font-size="12" fill="#1A1A1A" font-weight="bold">Laybye</text>
+  <text x="555" y="447" font-family="Arial, sans-serif" font-size="10" fill="#757575">3 months • R 433/month</text>
+  <circle cx="785" cy="434" r="10" fill="#E0E0E0"/>
+  
+  <!-- WhatsApp Button -->
+  <rect x="540" y="480" width="264" height="48" rx="24" fill="#25D366"/>
+  <text x="672" y="510" font-family="Arial, sans-serif" font-size="14" fill="white" font-weight="bold" text-anchor="middle">Order via WhatsApp</text>
+  
+  <!-- Feature Icons on sides -->
+  <!-- Left features -->
+  <rect x="80" y="180" width="180" height="100" rx="12" fill="white" fill-opacity="0.1"/>
+  <text x="170" y="220" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle">💳</text>
+  <text x="170" y="250" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">BNPL 2x Interest-Free</text>
+  
+  <rect x="80" y="320" width="180" height="100" rx="12" fill="white" fill-opacity="0.1"/>
+  <text x="170" y="360" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle">📅</text>
+  <text x="170" y="390" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">Laybye Plans</text>
+  
+  <!-- Right features -->
+  <rect x="1084" y="180" width="180" height="100" rx="12" fill="white" fill-opacity="0.1"/>
+  <text x="1174" y="220" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle">📱</text>
+  <text x="1174" y="250" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">WhatsApp Orders</text>
+  
+  <rect x="1084" y="320" width="180" height="100" rx="12" fill="white" fill-opacity="0.1"/>
+  <text x="1174" y="360" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle">🛡️</text>
+  <text x="1174" y="390" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">SASSA Ready</text>
+  
+  <!-- Bottom CTA -->
+  <rect x="540" y="560" width="264" height="44" rx="8" fill="#00897B"/>
+  <text x="672" y="588" font-family="Arial, sans-serif" font-size="13" fill="white" font-weight="bold" text-anchor="middle">Start Selling Today →</text>
+  
+  <!-- Play Button Overlay -->
+  <circle cx="672" cy="384" r="60" fill="white" fill-opacity="0.9"/>
+  <polygon points="655,354 655,414 705,384" fill="#00897B"/>
+  
+  <!-- Title Text -->
+  <text x="672" y="710" font-family="Arial, sans-serif" font-size="28" fill="white" font-weight="bold" text-anchor="middle">Watch GroSell Demo</text>
+  <text x="672" y="745" font-family="Arial, sans-serif" font-size="16" fill="white" fill-opacity="0.8" text-anchor="middle">WhatsApp Commerce with BNPL &amp; Laybye</text>
+</svg>

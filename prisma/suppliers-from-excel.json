@@ -1,0 +1,2492 @@
+[
+  {
+    "name": "SAB (AB InBev SA)",
+    "website": "sabmiller.co.za",
+    "verticals": "Food & Bev, Liquor & Nightlife",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 1,
+    "minOrder": "1 case",
+    "notes": "Castle, Hansa, Carling Black Label. Excise duty compliant."
+  },
+  {
+    "name": "Heineken Beverages SA",
+    "website": "heineken.co.za",
+    "verticals": "Food & Bev, Liquor & Nightlife",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 1,
+    "minOrder": "1 case",
+    "notes": "Heineken, Amstel, Windhoek, Tafel. SARB excise reg."
+  },
+  {
+    "name": "Distell Group",
+    "website": "distell.co.za",
+    "verticals": "Liquor & Nightlife",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 2,
+    "minOrder": "1 case",
+    "notes": "KWV, Klipdrift, Savanna, Hunter's, Durbanville Hills."
+  },
+  {
+    "name": "Diageo SA",
+    "website": "diageo.com",
+    "verticals": "Liquor & Nightlife",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 2,
+    "minOrder": "3 bottles",
+    "notes": "Johnnie Walker, Smirnoff, Baileys, Ciroc, Tanqueray."
+  },
+  {
+    "name": "Pernod Ricard SA",
+    "website": "pernod-ricard.com",
+    "verticals": "Liquor & Nightlife",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "6 bottles",
+    "notes": "Jameson, Chivas, Absolut, Ballantine's."
+  },
+  {
+    "name": "Brown-Forman SA",
+    "website": "brown-forman.com",
+    "verticals": "Liquor & Nightlife",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "6 bottles",
+    "notes": "Jack Daniel's, Woodford Reserve, Chambord."
+  },
+  {
+    "name": "Tiger Brands",
+    "website": "tigerbrands.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 4,
+    "leadDays": 1,
+    "minOrder": "1 case",
+    "notes": "All Gold, Ace, Koo, Purity, Tastic, Oros. Category leader."
+  },
+  {
+    "name": "Pioneer Foods (PepsiCo)",
+    "website": "pioneerfoodssa.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "5 units",
+    "notes": "Sasko, Spekko, Ceres, Bokomo, Weet-Bix, Corn Flakes."
+  },
+  {
+    "name": "Premier Foods",
+    "website": "premierfm.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 4,
+    "leadDays": 1,
+    "minOrder": "5 units",
+    "notes": "Snowflake, Albany, Iwisa, Blue Ribbon. Bread & flour leader."
+  },
+  {
+    "name": "Clover SA",
+    "website": "clover.co.za",
+    "verticals": "Grocery & FMCG, Hospitality",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "6 units",
+    "notes": "Milk, cheese, yogurt, Tropika, Aquartz. Chilled delivery."
+  },
+  {
+    "name": "Coca-Cola Beverages SA",
+    "website": "coca-colabeverages.co.za",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 1,
+    "minOrder": "1 tray",
+    "notes": "Coke, Fanta, Sprite, Powerade, Schweppes, Minute Maid."
+  },
+  {
+    "name": "Unilever SA",
+    "website": "unilever.co.za",
+    "verticals": "Grocery & FMCG, Health & Beauty",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 case",
+    "notes": "Dove, Sunlight, Omo, Stork, Lifebuoy, Knorr, Rajah."
+  },
+  {
+    "name": "Illovo Sugar (Huletts)",
+    "website": "illovo.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 2,
+    "minOrder": "2 bags",
+    "notes": "Huletts, White Sugar, Brown Sugar. Major SA refiner."
+  },
+  {
+    "name": "Astral Foods / County Fair",
+    "website": "astralfoods.com",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 4,
+    "leadDays": 1,
+    "minOrder": "5 kg",
+    "notes": "Goldi, County Fair, Festive. SA's largest poultry producer."
+  },
+  {
+    "name": "Rainbow Chicken",
+    "website": "rainbowchicken.co.za",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "5 kg",
+    "notes": "Fresh and frozen chicken products. National distribution."
+  },
+  {
+    "name": "Karan Beef",
+    "website": "karanbeef.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 1,
+    "minOrder": "10 kg",
+    "notes": "SA's largest cattle feedlot. Chilled beef. HACCP certified."
+  },
+  {
+    "name": "Eskort Ltd",
+    "website": "eskort.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "5 kg",
+    "notes": "Bacon, ham, sausages, boerewors. SABS HACCP."
+  },
+  {
+    "name": "Oceana Group",
+    "website": "oceana.co.za",
+    "verticals": "Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "12 cans",
+    "notes": "Lucky Star pilchards, canned fish. Major SA seafood."
+  },
+  {
+    "name": "Quantum Foods",
+    "website": "quantumfoods.co.za",
+    "verticals": "Grocery & FMCG, Hospitality",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "1 tray",
+    "notes": "Eggs (Eggs2Go, Nulaid). National egg distribution."
+  },
+  {
+    "name": "PPC Cement",
+    "website": "ppc.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 2,
+    "minOrder": "1 bag",
+    "notes": "Ordinary Portland Cement. Nationwide. Bulk pricing."
+  },
+  {
+    "name": "Holcim SA (Lafarge)",
+    "website": "lafarge.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 2,
+    "minOrder": "1 bag",
+    "notes": "Supa Set, OPC. Major SA cement manufacturer."
+  },
+  {
+    "name": "Corobrik",
+    "website": "corobrik.com",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "1000 units",
+    "notes": "Face bricks, pavers. SABS certified. SA-wide branches."
+  },
+  {
+    "name": "Cape Gate Steel",
+    "website": "capegate.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "5 bars",
+    "notes": "Rebar, wire, sheets, pipes. ISO 9001. SA manufacturer."
+  },
+  {
+    "name": "Plascon SA",
+    "website": "plascon.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "1 bucket",
+    "notes": "Interior/exterior paint. Major SA paint brand."
+  },
+  {
+    "name": "AkzoNobel SA (Dulux)",
+    "website": "dulux.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "1 bucket",
+    "notes": "Dulux, Armstead. Interior/exterior. Colour mixing in-store."
+  },
+  {
+    "name": "Marley Pipe Systems",
+    "website": "marley.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "5 lengths",
+    "notes": "CPVC, PVC, HDPE pipes. Fittings. SANS certified."
+  },
+  {
+    "name": "Aberdare Cables",
+    "website": "aberdare.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "1 roll",
+    "notes": "Electrical cable. SANS 1418. SA manufacturer."
+  },
+  {
+    "name": "Sika SA",
+    "website": "sika.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "12 units",
+    "notes": "Sikaflex, SikaTop, SikaBond. Global construction chemicals."
+  },
+  {
+    "name": "Bosch SA",
+    "website": "bosch.co.za",
+    "verticals": "Hardware & Building, Electronics",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "1 unit",
+    "notes": "Power tools, SDS drills, grinders. German quality."
+  },
+  {
+    "name": "Bata Industrial",
+    "website": "bata.co.za",
+    "verticals": "Hardware & Building, Fashion",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "1 pair",
+    "notes": "Steel-toe, safety footwear. OHS Act compliant. SA-made."
+  },
+  {
+    "name": "L'Or\u00e9al SA Professional",
+    "website": "loreal.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "12 tubes",
+    "notes": "Majirel, Inoa, K\u00e9rastase, Wella professional."
+  },
+  {
+    "name": "Wella Professional (P&G)",
+    "website": "wella.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "12 tubes",
+    "notes": "Koleston, System Professional, WellaPlex."
+  },
+  {
+    "name": "Lycon SA",
+    "website": "lycon.com.au",
+    "verticals": "Health & Beauty",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "6 units",
+    "notes": "Strip wax, hard wax, pre & post wax. Premium professional."
+  },
+  {
+    "name": "Nail Supplies SA",
+    "website": "nailsupplies.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 4,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "Gel, acrylic, UV lamps, nail art. SA distributor."
+  },
+  {
+    "name": "Barber Supplies SA",
+    "website": "barbersupplies.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 4,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "Clippers, shears, blades, Barbicide. Professional only."
+  },
+  {
+    "name": "Tattoo Supplies SA",
+    "website": "tattoosupplies.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "5 units",
+    "notes": "Eternal, Intenze, FK Irons equipment. SAHPRA-aware."
+  },
+  {
+    "name": "Adcock Ingram",
+    "website": "adcock.co.za",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "24 units",
+    "notes": "Panado, Corenza, Betadine, Bioplus. SAHPRA registered."
+  },
+  {
+    "name": "Aspen Pharmacare",
+    "website": "aspenpharma.com",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "24 units",
+    "notes": "Generic medicines, Allergex. SAHPRA. SA manufacturer."
+  },
+  {
+    "name": "Pfizer SA",
+    "website": "pfizer.co.za",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "12 units",
+    "notes": "Centrum, Caltrate, Advil, Diflucan. Multinational."
+  },
+  {
+    "name": "USN SA",
+    "website": "usn.co.za",
+    "verticals": "Health & Pharmacy, Sport & Leisure",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "5 units",
+    "notes": "Whey, creatine, pre-workout. SA-made sports nutrition."
+  },
+  {
+    "name": "Vital Health Foods",
+    "website": "vital.co.za",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "12 units",
+    "notes": "Vital Plus, Omega-3, vitamins. SA natural health leader."
+  },
+  {
+    "name": "Heavenly Amenities",
+    "website": "heavenlyamenities.co.za",
+    "verticals": "Hospitality",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "50 units",
+    "notes": "Hotel toiletries: shampoo, soap, gel. Custom branding."
+  },
+  {
+    "name": "Linen SA",
+    "website": "linenco.co.za",
+    "verticals": "Hospitality",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "1 pack",
+    "notes": "T300 cotton linen, towels, bath mats. Hospitality grade."
+  },
+  {
+    "name": "Bidvest Catering Supplies",
+    "website": "bidvest.co.za",
+    "verticals": "Food & Bev, Hospitality",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "1 unit",
+    "notes": "Full catering equipment, disposables. National."
+  },
+  {
+    "name": "Bidpaper Plus",
+    "website": "bidpaper.co.za",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "500 units",
+    "notes": "Eco packaging, bags, cups, containers. FSC options."
+  },
+  {
+    "name": "Samsung SA",
+    "website": "samsung.com/za",
+    "verticals": "Electronics & Tech",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "1 unit",
+    "notes": "Phones, TVs, appliances. ICASA certified."
+  },
+  {
+    "name": "Apple SA / iStore",
+    "website": "istore.co.za",
+    "verticals": "Electronics & Tech",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "1 unit",
+    "notes": "iPhone, MacBook, iPad. Official SA distributor."
+  },
+  {
+    "name": "Logitech SA",
+    "website": "logitech.com",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "3 units",
+    "notes": "Peripherals, webcams, headsets. Major IT accessories."
+  },
+  {
+    "name": "HP SA",
+    "website": "hp.com/za",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "1 unit",
+    "notes": "Laptops, printers, toner. Global brand."
+  },
+  {
+    "name": "Lenovo SA",
+    "website": "lenovo.com/za",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "1 unit",
+    "notes": "IdeaPad, ThinkPad. Education and SME market."
+  },
+  {
+    "name": "Trojan Sports SA",
+    "website": "trojansports.co.za",
+    "verticals": "Sport & Leisure",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "5 units",
+    "notes": "SA-made sports equipment. Major local brand."
+  },
+  {
+    "name": "adidas SA",
+    "website": "adidas.co.za",
+    "verticals": "Sport & Leisure, Fashion",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "6 units",
+    "notes": "Sport footwear, balls, apparel."
+  },
+  {
+    "name": "Gray-Nicolls SA",
+    "website": "graynicolls.co.za",
+    "verticals": "Sport & Leisure",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 14,
+    "minOrder": "3 units",
+    "notes": "Cricket equipment. Official SA distributor."
+  },
+  {
+    "name": "Funeralware SA",
+    "website": "funeralware.co.za",
+    "verticals": "Professional Services",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "1 unit",
+    "notes": "Coffins, caskets, urns. National delivery."
+  },
+  {
+    "name": "Castrol SA",
+    "website": "castrol.co.za",
+    "verticals": "Professional Services",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "5 units",
+    "notes": "Motor oils, lubricants. BP Group brand."
+  },
+  {
+    "name": "Willard Batteries",
+    "website": "willard.co.za",
+    "verticals": "Professional Services",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 2,
+    "minOrder": "1 unit",
+    "notes": "Car batteries. SA manufacturer. Nationwide."
+  },
+  {
+    "name": "Kazang (Mastercard)",
+    "website": "kazang.co.za",
+    "verticals": "Grocery & FMCG, All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 0,
+    "minOrder": "1 integration",
+    "notes": "Prepaid services, airtime, electricity tokens. API-based."
+  },
+  {
+    "name": "Quantum Foods",
+    "website": "quantumfoods.co.za",
+    "verticals": "Grocery & FMCG, Hospitality",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "1 tray",
+    "notes": "Eggs, poultry. National egg distribution."
+  },
+  {
+    "name": "Kimberly-Clark SA",
+    "website": "huggies.co.za",
+    "verticals": "Childcare & Education",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 pack",
+    "notes": "Huggies nappies, wipes, Kleenex, Scott."
+  },
+  {
+    "name": "Nestl\u00e9 SA",
+    "website": "nestle.co.za",
+    "verticals": "Childcare & Education, Hospitality",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "6 units",
+    "notes": "Purity, Nescaf\u00e9, Milo, Nestum, Maggi."
+  },
+  {
+    "name": "Faber-Castell SA",
+    "website": "faber-castell.co.za",
+    "verticals": "Childcare & Education",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "Crayons, pens, pencils. Education stationery."
+  },
+  {
+    "name": "Sappi SA",
+    "website": "sappi.com",
+    "verticals": "Childcare & Education, Professional",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 ream",
+    "notes": "Paper, printing media. SA manufacturer."
+  },
+  {
+    "name": "McCain Foods SA",
+    "website": "mccain.co.za",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "1 bag",
+    "notes": "Frozen chips, vegetables, meals. Global brand, SA plant in Johannesburg."
+  },
+  {
+    "name": "Nestl\u00e9 SA Professional",
+    "website": "nestle.co.za",
+    "verticals": "Food & Bev, Hospitality",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "6 units",
+    "notes": "Milo, Kit Kat, Maggi, Nescaf\u00e9. Foodservice division with bulk formats."
+  },
+  {
+    "name": "RCL Foods",
+    "website": "rclfoods.com",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 2,
+    "minOrder": "5 kg",
+    "notes": "Sunbake, Vector, Selati sugar, Epol. Major SA food manufacturer."
+  },
+  {
+    "name": "Mondel\u0113z SA",
+    "website": "mondelez.com",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "1 case",
+    "notes": "Cadbury, Oreo, Belvita, Halls, Stimorol. Confectionery leader."
+  },
+  {
+    "name": "Mars Wrigley SA",
+    "website": "mars.com",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "1 case",
+    "notes": "Snickers, M&Ms, Twix, Juicy Fruit, Extra gum."
+  },
+  {
+    "name": "Proctor & Gamble SA",
+    "website": "pg.com",
+    "verticals": "Grocery & FMCG, Health & Beauty",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "1 case",
+    "notes": "Gillette, Pampers, Ariel, Head & Shoulders, Pantene, Vicks."
+  },
+  {
+    "name": "Reckitt Benckiser SA",
+    "website": "rb.com",
+    "verticals": "Grocery & FMCG, Childcare & Edu",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "1 case",
+    "notes": "Dettol, Harpic, Finish, Durex, Nurofen, Strepsils, Gaviscon."
+  },
+  {
+    "name": "Willowton Group",
+    "website": "willowton.co.za",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "4 units",
+    "notes": "Tropika Oil, Sunfoil, Canola oil. SA's largest edible oils manufacturer."
+  },
+  {
+    "name": "Rhodes Food Group",
+    "website": "rhodesfoods.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "1 case",
+    "notes": "Rhodes jams, canned fruit, pie fillings, Bull Brand."
+  },
+  {
+    "name": "Sea Harvest Group",
+    "website": "seaharvest.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "5 kg",
+    "notes": "Fresh and frozen fish, hake, calamari. MSC certified."
+  },
+  {
+    "name": "Tiger Consumer Brands",
+    "website": "tigerbrands.co.za",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 4,
+    "leadDays": 1,
+    "minOrder": "1 case",
+    "notes": "Doom, Raid, Black Cat, Fatti's & Moni's, Bakers, Energade."
+  },
+  {
+    "name": "Chalmar Beef & Lamb",
+    "website": "chalmar.co.za",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "10 kg",
+    "notes": "Premium chilled beef and lamb. Wagyu and grass-fed options."
+  },
+  {
+    "name": "Bidfood SA (Bidvest Foodservice)",
+    "website": "bidfood.co.za",
+    "verticals": "Food & Bev, Hospitality",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 2,
+    "minOrder": "1 order",
+    "notes": "Full foodservice distributor. Chilled, frozen, ambient. 24h delivery."
+  },
+  {
+    "name": "Freshmark (Shoprite Group)",
+    "website": "freshmark.co.za",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 4,
+    "leadDays": 1,
+    "minOrder": "1 pallet",
+    "notes": "Fresh produce, meat, dairy. Shoprite group supplier arm."
+  },
+  {
+    "name": "Afrox (Air Products)",
+    "website": "afrox.co.za",
+    "verticals": "Food & Bev, Hardware",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 2,
+    "minOrder": "1 cylinder",
+    "notes": "LPG gas, industrial gases, welding gases. Nationwide."
+  },
+  {
+    "name": "Parmalat SA",
+    "website": "parmalat.co.za",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 1,
+    "minOrder": "6 units",
+    "notes": "Milk, cheese (Parmalat, Bonnita), yogurt, cream. Lactalis Group."
+  },
+  {
+    "name": "Lancewood Cheese",
+    "website": "lancewood.co.za",
+    "verticals": "Food & Bev, Grocery & FMCG",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 2,
+    "minOrder": "3 kg",
+    "notes": "Cheddar, gouda, mozzarella, cream cheese. SA premium cheese."
+  },
+  {
+    "name": "Fridge to Fork",
+    "website": "fridgetofork.co.za",
+    "verticals": "Food & Bev, Hospitality",
+    "tier": "bronze",
+    "bbbeeLevel": 4,
+    "leadDays": 1,
+    "minOrder": "24 units",
+    "notes": "Frozen pastry, croissants, bread dough. Bakery convenience."
+  },
+  {
+    "name": "Monin SA (Bidvest)",
+    "website": "bidvest.co.za",
+    "verticals": "Food & Bev",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "6 bottles",
+    "notes": "Monin syrups, sauces, frapp\u00e9 bases. Full flavour range."
+  },
+  {
+    "name": "DairyBelle",
+    "website": "dairybelle.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "6 units",
+    "notes": "Milk, butter, yogurt, cheese. KZN-based dairy cooperative."
+  },
+  {
+    "name": "KWV Wines & Spirits",
+    "website": "kwv.co.za",
+    "verticals": "Liquor & Nightlife",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "6 bottles",
+    "notes": "KWV brandy, wines, grappa. Paarl-based co-operative. Export quality."
+  },
+  {
+    "name": "Spier Wines",
+    "website": "spier.co.za",
+    "verticals": "Liquor & Nightlife",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "6 bottles",
+    "notes": "Chenin Blanc, Cabernet, Pinotage. Sustainability certified. Stellenbosch."
+  },
+  {
+    "name": "Diemersdal Estate",
+    "website": "diemersdal.co.za",
+    "verticals": "Liquor & Nightlife",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "6 bottles",
+    "notes": "Sauvignon Blanc specialist. Durbanville Hills region. WO certified."
+  },
+  {
+    "name": "Meerlust Estate",
+    "website": "meerlust.co.za",
+    "verticals": "Liquor & Nightlife",
+    "tier": "bronze",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "6 bottles",
+    "notes": "Rubicon, Merlot, Chardonnay. Stellenbosch. Premium."
+  },
+  {
+    "name": "Boekenhoutskloof Winery",
+    "website": "boekenhoutskloof.co.za",
+    "verticals": "Liquor & Nightlife",
+    "tier": "bronze",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "6 bottles",
+    "notes": "The Chocolate Block, Porcupine Ridge. Franschhoek."
+  },
+  {
+    "name": "DGB (Douglas Green Bellingham)",
+    "website": "dgb.co.za",
+    "verticals": "Liquor & Nightlife",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "12 bottles",
+    "notes": "Bellingham, Douglas Green, Boschendal, Franschhoek Cellar."
+  },
+  {
+    "name": "Edward Snell & Co",
+    "website": "edwardsnell.co.za",
+    "verticals": "Liquor & Nightlife",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "6 bottles",
+    "notes": "Oude Meester, Viceroy, Hunter's, Mainstay cane. Distell distributor."
+  },
+  {
+    "name": "Moet Hennessy SA",
+    "website": "mh-sa.co.za",
+    "verticals": "Liquor & Nightlife",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "3 bottles",
+    "notes": "Hennessy, Mo\u00ebt, Dom P\u00e9rignon, Veuve Clicquot, Belvedere."
+  },
+  {
+    "name": "William Grant & Sons SA",
+    "website": "williamgrant.com",
+    "verticals": "Liquor & Nightlife",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "6 bottles",
+    "notes": "Glenfiddich, Balvenie, Monkey Shoulder, Grant's, Hendrick's."
+  },
+  {
+    "name": "Bacardi Martini SA",
+    "website": "bacardi.com",
+    "verticals": "Liquor & Nightlife",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "6 bottles",
+    "notes": "Bacardi, Martini, Bombay Sapphire, Grey Goose, Eristoff."
+  },
+  {
+    "name": "Makro Wholesale (Massmart)",
+    "website": "makro.co.za",
+    "verticals": "Liquor & Nightlife, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 case",
+    "notes": "Cash & carry wholesale: beer, spirits, wine. Bulk pricing."
+  },
+  {
+    "name": "Simba / PepsiCo SA",
+    "website": "pepsico.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 case",
+    "notes": "Simba, Lays, Doritos, Fritos, Cheetos, Liqui-Fruit, Tropicana."
+  },
+  {
+    "name": "AVI Ltd",
+    "website": "avi.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "1 case",
+    "notes": "Freshpak, Five Roses, Bakers, I&J, Frisco, National Brands."
+  },
+  {
+    "name": "Libstar Holdings",
+    "website": "libstar.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "1 case",
+    "notes": "Lancewood, Denny, Denny mushrooms, Lavida, Montagu Foods."
+  },
+  {
+    "name": "Denny Mushrooms",
+    "website": "denny.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 2,
+    "minOrder": "5 kg",
+    "notes": "White button, portobello, oyster. SA largest mushroom grower."
+  },
+  {
+    "name": "Fattis & Moni's (Tiger Brands)",
+    "website": "tigerbrands.co.za",
+    "verticals": "Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 4,
+    "leadDays": 1,
+    "minOrder": "1 case",
+    "notes": "Pasta range. SA market leader in dry pasta."
+  },
+  {
+    "name": "Cape Herb & Spice",
+    "website": "capeherbandspice.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "6 units",
+    "notes": "Spice grinders, rubs, herbs. Westcoast SA producer. Export quality."
+  },
+  {
+    "name": "Robertsons (Unilever)",
+    "website": "unilever.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 case",
+    "notes": "Robertsons spices, herbs, seasoning. SA pantry staple."
+  },
+  {
+    "name": "National Brands Ltd (NBL)",
+    "website": "nationalbiltong.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "6 units",
+    "notes": "Bakers biscuits, Baumann's, House of Coffees. Biltong range."
+  },
+  {
+    "name": "Olympic Dairy",
+    "website": "olympicdairy.co.za",
+    "verticals": "Grocery & FMCG",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "6 units",
+    "notes": "Yogurt, flavoured milk, dairy blends. KZN-based."
+  },
+  {
+    "name": "Spar Group (Wholesale)",
+    "website": "spar.co.za",
+    "verticals": "Grocery & FMCG, All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 1,
+    "minOrder": "1 pallet",
+    "notes": "SPAR wholesale: ambient, chilled, frozen. Nationwide depots."
+  },
+  {
+    "name": "Metcash Trading Africa",
+    "website": "metcash.com",
+    "verticals": "Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "1 pallet",
+    "notes": "IGA wholesale: Pick 'n Pay franchise supply. Nationwide."
+  },
+  {
+    "name": "Ruto Mills",
+    "website": "rutomills.co.za",
+    "verticals": "Grocery & FMCG",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 2,
+    "minOrder": "5 kg",
+    "notes": "Maize meal, samp, beans. KZN-based miller. Rural market."
+  },
+  {
+    "name": "Foodcorp SA",
+    "website": "foodcorp.co.za",
+    "verticals": "Grocery & FMCG, Food & Bev",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 2,
+    "minOrder": "1 case",
+    "notes": "Glenryck, Mageu No.1, Sasko bread. Pioneer subsidiary."
+  },
+  {
+    "name": "Schwarzkopf Professional SA",
+    "website": "schwarzkopf.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "6 units",
+    "notes": "Blondme, IGORA Royal, Keratin Styling, Silhouette."
+  },
+  {
+    "name": "Joico SA (Revlon Prof)",
+    "website": "joico.com",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "3 units",
+    "notes": "K-Pak, Color Intensity, Moisture Recovery, Defy Damage."
+  },
+  {
+    "name": "Redken Professional SA",
+    "website": "redken.com",
+    "verticals": "Health & Beauty",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "6 units",
+    "notes": "All Soft, Color Extend, Brews, Extreme. Salon professional."
+  },
+  {
+    "name": "Goldwell SA",
+    "website": "goldwell.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "6 units",
+    "notes": "Topchic, Colorance, Kerasilk. German professional brand."
+  },
+  {
+    "name": "OPI Products SA",
+    "website": "opi.com",
+    "verticals": "Health & Beauty",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "6 bottles",
+    "notes": "Nail lacquer, GelColor, Infinite Shine. SAHPRA registered."
+  },
+  {
+    "name": "Essie SA (L'Or\u00e9al)",
+    "website": "loreal.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "6 bottles",
+    "notes": "Nail polish, base/top coat, treatments."
+  },
+  {
+    "name": "BABOR SA",
+    "website": "babor.com",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "3 units",
+    "notes": "Professional skincare, ampoules, masks. Aesthetic clinics."
+  },
+  {
+    "name": "Dermalogica SA",
+    "website": "dermalogica.com",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "3 units",
+    "notes": "Professional facials, microfoliant, biolumin-C. IIAA affiliate."
+  },
+  {
+    "name": "The International Dermal Institute",
+    "website": "dermalogica.com",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "1 course",
+    "notes": "Professional education and product systems for skincare."
+  },
+  {
+    "name": "Comfort Zone SA",
+    "website": "comfortzone.it",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "3 units",
+    "notes": "Sacred Nature, Sublime Skin, Body Strategist. Spa brand."
+  },
+  {
+    "name": "Medline SA",
+    "website": "medlinesa.co.za",
+    "verticals": "Health & Beauty, Health & Pharmacy",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "1 box",
+    "notes": "Medical gloves, drapes, consumables. SA healthcare distributor."
+  },
+  {
+    "name": "Lycon Cosmetics SA",
+    "website": "lycon.com.au",
+    "verticals": "Health & Beauty",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "6 units",
+    "notes": "Lycon hard wax, Lycojet, pre/post products. Waxing specialist."
+  },
+  {
+    "name": "Nala Beauty Supplies",
+    "website": "nalabeauty.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 4,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "African hair care, braiding hair, weaves. Black-owned SA brand."
+  },
+  {
+    "name": "Belo Lash Extensions SA",
+    "website": "belolash.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 4,
+    "leadDays": 7,
+    "minOrder": "5 trays",
+    "notes": "Individual lashes, volume fans, adhesives. SA specialist."
+  },
+  {
+    "name": "Burmax SA (Beauty Supplies)",
+    "website": "beautysupplies.co.za",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "Professional salon supplies, tools, accessories."
+  },
+  {
+    "name": "Swarfega SA (Deb Group)",
+    "website": "debgroup.com",
+    "verticals": "Health & Beauty",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "6 units",
+    "notes": "Hand cleaners, industrial skin care. Workshop and salon."
+  },
+  {
+    "name": "The Foschini Group (TFG)",
+    "website": "tfggroup.co.za",
+    "verticals": "Fashion & Apparel",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 14,
+    "minOrder": "12 units",
+    "notes": "Foschini, Exact, Totalsports, Sterns, American Swiss. Wholesale to boutiques."
+  },
+  {
+    "name": "Truworths Wholesale",
+    "website": "truworths.co.za",
+    "verticals": "Fashion & Apparel",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 14,
+    "minOrder": "12 units",
+    "notes": "Truworths, Identity, Daniel Hechter. Apparel wholesale."
+  },
+  {
+    "name": "Rex Trueform Clothing",
+    "website": "rextrueform.co.za",
+    "verticals": "Fashion & Apparel",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 14,
+    "minOrder": "25 units",
+    "notes": "Cape Town manufacturer. Workwear, uniforms, fashion. SA-made."
+  },
+  {
+    "name": "LRM Clothing",
+    "website": "lrm.co.za",
+    "verticals": "Fashion & Apparel",
+    "tier": "bronze",
+    "bbbeeLevel": 3,
+    "leadDays": 14,
+    "minOrder": "12 units",
+    "notes": "Ladies fashion wholesale. Johannesburg-based. SA brand."
+  },
+  {
+    "name": "Barron Corporate Clothing",
+    "website": "barron.co.za",
+    "verticals": "Fashion & Apparel",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 14,
+    "minOrder": "25 units",
+    "notes": "Corporate shirts, polos, jackets, caps. MOQ 25. Embroidery."
+  },
+  {
+    "name": "Scan SA (PPE)",
+    "website": "scansa.co.za",
+    "verticals": "Fashion & Apparel, Hardware",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "25 units",
+    "notes": "Hi-vis vests, overalls, safety apparel. SABS compliant."
+  },
+  {
+    "name": "Tsonga Footwear",
+    "website": "tsonga.co.za",
+    "verticals": "Fashion & Apparel",
+    "tier": "silver",
+    "bbbeeLevel": 4,
+    "leadDays": 14,
+    "minOrder": "6 pairs",
+    "notes": "Veldskoen, handcrafted leather. 100% SA-made. B-BBEE Level 2."
+  },
+  {
+    "name": "Bata Shoe Company SA",
+    "website": "bata.co.za",
+    "verticals": "Fashion & Apparel",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "6 pairs",
+    "notes": "Bata, North Star, Toughees, Marie Claire school shoes."
+  },
+  {
+    "name": "Green Cross Shoes",
+    "website": "greencrossshoes.co.za",
+    "verticals": "Fashion & Apparel",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "6 pairs",
+    "notes": "Comfort and casual footwear. SA-made. School and formal."
+  },
+  {
+    "name": "Africa Bales / Durban Importers",
+    "website": "africabales.co.za",
+    "verticals": "Fashion & Apparel",
+    "tier": "bronze",
+    "bbbeeLevel": 4,
+    "leadDays": 14,
+    "minOrder": "1 bale",
+    "notes": "Second-hand clothing bales 25\u201345kg. Mixed/sorted. Thrift market."
+  },
+  {
+    "name": "Gutermann SA (Coats)",
+    "website": "gutermann.com",
+    "verticals": "Fashion & Apparel",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "10 spools",
+    "notes": "Sewing thread, zips, notions. Global brand, SA distributor."
+  },
+  {
+    "name": "Textiles SA / SA Fabrics",
+    "website": "textilesmart.co.za",
+    "verticals": "Fashion & Apparel",
+    "tier": "bronze",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "5 metres",
+    "notes": "Cotton, polyester, linen, suiting. Johannesburg fabric district."
+  },
+  {
+    "name": "Empire Carton / Packaging",
+    "website": "empirecarton.co.za",
+    "verticals": "Fashion & Apparel, All Verticals",
+    "tier": "bronze",
+    "bbbeeLevel": 3,
+    "leadDays": 10,
+    "minOrder": "100 units",
+    "notes": "Retail bags, boxes, gift wrap. Custom print. Cape Town."
+  },
+  {
+    "name": "Bayer SA",
+    "website": "bayer.co.za",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "24 units",
+    "notes": "Aspirin, Canesten, Bepanthen, Redoxon, Berocca, Aleve."
+  },
+  {
+    "name": "GSK SA (Haleon)",
+    "website": "gsk.com",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "12 units",
+    "notes": "Panadol, Sensodyne, Voltaren, Betadine, Piriton, Otrivin."
+  },
+  {
+    "name": "Johnson & Johnson SA",
+    "website": "jnj.com",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "12 units",
+    "notes": "Band-Aid, Neutrogena, Aveeno, OB, Listerine, Imodium."
+  },
+  {
+    "name": "Novartis SA",
+    "website": "novartis.com",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "12 units",
+    "notes": "Voltaren, Vicks NyQuil, Habitrol, Otrivin. Consumer health."
+  },
+  {
+    "name": "Sanofi SA",
+    "website": "sanofi.com",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "12 units",
+    "notes": "Allegra, Dulcolax, Maalox, Nasivion, No-Spa, Enterogermina."
+  },
+  {
+    "name": "Boehringer Ingelheim SA",
+    "website": "boehringer.com",
+    "verticals": "Health & Pharmacy",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "6 units",
+    "notes": "Buscopan, Dulcolax, Mucoangin, Frontline (vet)."
+  },
+  {
+    "name": "Alcon SA",
+    "website": "alcon.com",
+    "verticals": "Health & Pharmacy",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "5 boxes",
+    "notes": "Contact lens solutions, Systane, Optive eye drops."
+  },
+  {
+    "name": "Cipla Medpro SA",
+    "website": "cipla.co.za",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "24 units",
+    "notes": "Generic medicines. SAHPRA registered. SA manufacturer."
+  },
+  {
+    "name": "Mylan SA (Viatris)",
+    "website": "viatris.com",
+    "verticals": "Health & Pharmacy",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "12 units",
+    "notes": "Generic pharmaceuticals. SAHPRA registered."
+  },
+  {
+    "name": "Clicks Wholesale (Group)",
+    "website": "clicks.co.za",
+    "verticals": "Health & Pharmacy, Health & Beauty",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "6 units",
+    "notes": "Clicks private label: vitamins, toiletries, health foods."
+  },
+  {
+    "name": "Dis-Chem Pharmacies (Wholesale)",
+    "website": "dischem.co.za",
+    "verticals": "Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "6 units",
+    "notes": "Dis-Chem brand: supplements, health foods, beauty products."
+  },
+  {
+    "name": "Nature's Choice SA",
+    "website": "natureschoice.co.za",
+    "verticals": "Health & Pharmacy",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "6 units",
+    "notes": "Organic foods, superfoods, supplements. Stellenbosch."
+  },
+  {
+    "name": "Solal Technologies",
+    "website": "solal.co.za",
+    "verticals": "Health & Pharmacy",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "6 units",
+    "notes": "Premium nutraceuticals, anti-aging, health optimization."
+  },
+  {
+    "name": "Herbex SA",
+    "website": "herbex.co.za",
+    "verticals": "Health & Pharmacy",
+    "tier": "silver",
+    "bbbeeLevel": 4,
+    "leadDays": 5,
+    "minOrder": "12 units",
+    "notes": "Herbal slimming, detox, weight loss. SA-produced."
+  },
+  {
+    "name": "Vonk Pharma Supplies",
+    "website": "vonkpharma.co.za",
+    "verticals": "Health & Pharmacy",
+    "tier": "bronze",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "Pharmacy dispensary consumables, packaging, labels."
+  },
+  {
+    "name": "Tsogo Sun Procurement",
+    "website": "tsogosun.com",
+    "verticals": "Hospitality",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "10 units",
+    "notes": "Hotel amenities, linen, equipment. Preferred for mid-scale."
+  },
+  {
+    "name": "Southern Sun Wholesale",
+    "website": "southernsun.com",
+    "verticals": "Hospitality",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "5 units",
+    "notes": "Hospitality supplies: linen, toiletries, F&B equipment."
+  },
+  {
+    "name": "Peermont Procurement",
+    "website": "peermont.com",
+    "verticals": "Hospitality",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "5 units",
+    "notes": "Guest amenities, housekeeping products, conferencing supplies."
+  },
+  {
+    "name": "Protea Hotels (Marriott) Supply",
+    "website": "marriott.com",
+    "verticals": "Hospitality",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "5 units",
+    "notes": "International standard amenities for franchise compliance."
+  },
+  {
+    "name": "Cape Linen SA",
+    "website": "capelinen.co.za",
+    "verticals": "Hospitality",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "6 sets",
+    "notes": "Hotel-grade linen: sheets, towels, pillowcases. Cape Town."
+  },
+  {
+    "name": "Sancella SA (Essity)",
+    "website": "essity.com",
+    "verticals": "Hospitality",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "1 case",
+    "notes": "TENA, Tempo, Libresse, hotel tissue, toilet paper."
+  },
+  {
+    "name": "Twinsaver (Essity)",
+    "website": "twinsaver.co.za",
+    "verticals": "Hospitality, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "1 case",
+    "notes": "Toilet paper, paper towels, serviettes, tissues."
+  },
+  {
+    "name": "Absa Merchant Services (Float)",
+    "website": "absa.co.za",
+    "verticals": "Hospitality, All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 0,
+    "minOrder": "1 terminal",
+    "notes": "POS terminals, card machines, merchant services."
+  },
+  {
+    "name": "Ceres Fruit Juices",
+    "website": "ceres.co.za",
+    "verticals": "Hospitality, Grocery & FMCG",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "6 cartons",
+    "notes": "100% fruit juices, NFC, Ceres, Liqui-Fruit, Tropika."
+  },
+  {
+    "name": "Drostdy-Hof Wines",
+    "website": "drostdyhof.co.za",
+    "verticals": "Hospitality, Liquor",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "12 bottles",
+    "notes": "House wine brand. Restaurant and hotel favourite. Bellingham."
+  },
+  {
+    "name": "La Motte Wine Estate",
+    "website": "la-motte.com",
+    "verticals": "Hospitality, Liquor",
+    "tier": "bronze",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "6 bottles",
+    "notes": "Premium Franschhoek wines. Restaurant pairing specialist."
+  },
+  {
+    "name": "AfriSam SA",
+    "website": "afrisam.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 2,
+    "minOrder": "1 bag",
+    "notes": "Cement, readymix concrete, aggregates. SA manufacturer."
+  },
+  {
+    "name": "Lafarge Holcim SA",
+    "website": "lafarge.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 2,
+    "minOrder": "1 bag",
+    "notes": "Cement, concrete, aggregates. National distribution."
+  },
+  {
+    "name": "Murray & Roberts Building",
+    "website": "murrob.com",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "1 delivery",
+    "notes": "Structural steel, formwork, temporary works. Construction."
+  },
+  {
+    "name": "Protek Building Chemicals",
+    "website": "protek.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "6 units",
+    "notes": "Waterproofing, crack fillers, damp seal, roof coatings."
+  },
+  {
+    "name": "Alcolin (Sika)",
+    "website": "alcolin.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "6 units",
+    "notes": "Plaster of Paris, wood glue, contact adhesive, wall filler."
+  },
+  {
+    "name": "Hilti SA",
+    "website": "hilti.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "1 unit",
+    "notes": "Diamond drilling, anchors, fasteners, power tools. SABS."
+  },
+  {
+    "name": "Gedore Tools SA",
+    "website": "gedore.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "1 set",
+    "notes": "Hand tools, spanners, sockets, screwdrivers. German quality."
+  },
+  {
+    "name": "Efekto Garden & Pest",
+    "website": "efekto.co.za",
+    "verticals": "Hardware & Building, Agri",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "6 units",
+    "notes": "Pesticides, herbicides, fungicides. NRCS registered SA."
+  },
+  {
+    "name": "Starke Ayres Seeds",
+    "website": "starkeayres.co.za",
+    "verticals": "Hardware & Building, Agri",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "5 units",
+    "notes": "Vegetable seeds, seedlings, fertilisers. SA specialist."
+  },
+  {
+    "name": "Omnia Fertilisers",
+    "website": "omnia.co.za",
+    "verticals": "Hardware & Building, Agri",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "1 bag",
+    "notes": "LAN, superphosphate, compound NPK. SA largest fertiliser."
+  },
+  {
+    "name": "Netafim SA",
+    "website": "netafim.co.za",
+    "verticals": "Hardware & Building, Agri",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "1 kit",
+    "notes": "Drip irrigation, sprinklers. Israeli tech, SA manufacture."
+  },
+  {
+    "name": "Crabtree / Schneider Electric SA",
+    "website": "schneider-electric.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "10 units",
+    "notes": "Electrical fittings, DB boards, switches. SABS approved."
+  },
+  {
+    "name": "Legrand SA",
+    "website": "legrand.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "Wiring accessories, cable management, surge protectors."
+  },
+  {
+    "name": "Jojo Tanks SA",
+    "website": "jojotanks.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "1 unit",
+    "notes": "Water storage tanks 260L\u201310 000L. SA manufacturer. SABS."
+  },
+  {
+    "name": "Rectron SA (Ingram Micro)",
+    "website": "rectron.co.za",
+    "verticals": "Electronics & Tech",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "1 unit",
+    "notes": "ICT distributor: HP, Lenovo, Epson, Logitech, Samsung. Major SA distrib."
+  },
+  {
+    "name": "Mustek SA",
+    "website": "mustek.co.za",
+    "verticals": "Electronics & Tech",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "1 unit",
+    "notes": "PC components, storage, UPS, Mecer brand. SA ICT distributor."
+  },
+  {
+    "name": "Axiz SA",
+    "website": "axiz.co.za",
+    "verticals": "Electronics & Tech",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "1 unit",
+    "notes": "Microsoft, Dell, Cisco, VMware, HP. B2B ICT distribution."
+  },
+  {
+    "name": "Tarsus Technology",
+    "website": "tarsus.co.za",
+    "verticals": "Electronics & Tech",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 3,
+    "minOrder": "1 unit",
+    "notes": "Apple, Lenovo, Acer, Dell. SA Apple Authorised Reseller."
+  },
+  {
+    "name": "Datasquare SA",
+    "website": "datasquare.co.za",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "1 unit",
+    "notes": "Specialised AV, surveillance, networking equipment."
+  },
+  {
+    "name": "Epson SA",
+    "website": "epson.co.za",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "1 unit",
+    "notes": "Inkjet, laser, label printers, projectors, scanners."
+  },
+  {
+    "name": "Canon SA",
+    "website": "canon.co.za",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "1 unit",
+    "notes": "Cameras, printers, copiers, scanners. SA distribution."
+  },
+  {
+    "name": "Seagate SA",
+    "website": "seagate.com",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "1 unit",
+    "notes": "Hard drives, SSDs, NAS. Global storage brand SA distributor."
+  },
+  {
+    "name": "Eaton (UPS) SA",
+    "website": "eaton.com",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "1 unit",
+    "notes": "UPS, surge protection, power management. SABS certified."
+  },
+  {
+    "name": "TP-Link SA",
+    "website": "tp-link.com/za",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "3 units",
+    "notes": "WiFi routers, switches, mesh networking. Affordable."
+  },
+  {
+    "name": "Hikvision SA",
+    "website": "hikvision.com",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "1 unit",
+    "notes": "CCTV cameras, DVR/NVR, surveillance. Market leader."
+  },
+  {
+    "name": "Ring (Amazon)",
+    "website": "amazon.com",
+    "verticals": "Electronics & Tech",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "1 unit",
+    "notes": "Smart doorbells, cameras, security. Amazon ecosystem."
+  },
+  {
+    "name": "Nike SA",
+    "website": "nike.com",
+    "verticals": "Sport & Leisure, Fashion",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "6 units",
+    "notes": "Footwear, apparel, equipment. Global sports brand."
+  },
+  {
+    "name": "Puma SA",
+    "website": "puma.com",
+    "verticals": "Sport & Leisure, Fashion",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "6 units",
+    "notes": "Footwear, apparel, accessories. Global brand."
+  },
+  {
+    "name": "New Balance SA",
+    "website": "newbalance.com",
+    "verticals": "Sport & Leisure, Fashion",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "6 pairs",
+    "notes": "Running, training footwear. US brand, SA distributor."
+  },
+  {
+    "name": "Asics SA",
+    "website": "asics.com",
+    "verticals": "Sport & Leisure, Fashion",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "6 pairs",
+    "notes": "Running shoes, sports footwear. Japanese tech."
+  },
+  {
+    "name": "Speedo SA",
+    "website": "speedo.com",
+    "verticals": "Sport & Leisure",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "6 units",
+    "notes": "Swimwear, goggles, training aids. Swim specialist."
+  },
+  {
+    "name": "Biogen SA",
+    "website": "biogen.co.za",
+    "verticals": "Sport & Leisure, Health & Pharmacy",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "6 units",
+    "notes": "Sports nutrition, protein, creatine. SA brand."
+  },
+  {
+    "name": "Evox Nutrition",
+    "website": "evox.co.za",
+    "verticals": "Sport & Leisure",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "6 units",
+    "notes": "Whey, casein, amino acids, fat burners. SA-made."
+  },
+  {
+    "name": "Muscletech SA",
+    "website": "muscletech.com",
+    "verticals": "Sport & Leisure",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "6 units",
+    "notes": "Nitro-Tech, Cell-Tech, Platinum. Global sports nutrition."
+  },
+  {
+    "name": "SSG (Sporting Supplies Group)",
+    "website": "ssg.co.za",
+    "verticals": "Sport & Leisure",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "5 units",
+    "notes": "Cricket, rugby, soccer, netball equipment. SA wholesale."
+  },
+  {
+    "name": "Kookaburra SA",
+    "website": "kookaburra.co.za",
+    "verticals": "Sport & Leisure",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 14,
+    "minOrder": "3 units",
+    "notes": "Cricket bats, balls, gloves, pads. Australia brand SA distrib."
+  },
+  {
+    "name": "Mitre SA",
+    "website": "mitre.com",
+    "verticals": "Sport & Leisure",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 14,
+    "minOrder": "6 units",
+    "notes": "Footballs, shin guards, goalkeeper gloves."
+  },
+  {
+    "name": "Umbro SA",
+    "website": "umbro.com",
+    "verticals": "Sport & Leisure, Fashion",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "6 units",
+    "notes": "Football kits, training apparel. Club supplier."
+  },
+  {
+    "name": "CE Rental / Events Supply",
+    "website": "cerental.co.za",
+    "verticals": "Sport & Leisure",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "100 units",
+    "notes": "Event furniture, tents, staging, AV. Johannesburg-based."
+  },
+  {
+    "name": "Horizon Fitness SA",
+    "website": "horizonfitness.co.za",
+    "verticals": "Sport & Leisure",
+    "tier": "bronze",
+    "bbbeeLevel": 2,
+    "leadDays": 14,
+    "minOrder": "1 unit",
+    "notes": "Treadmills, bikes, ellipticals. USA brand SA distribtor."
+  },
+  {
+    "name": "Huggies / Kimberly-Clark",
+    "website": "huggies.co.za",
+    "verticals": "Childcare & Edu",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 pack",
+    "notes": "Huggies nappies, pull-ups, wipes. Global brand."
+  },
+  {
+    "name": "Pampers / P&G SA",
+    "website": "pg.com",
+    "verticals": "Childcare & Edu",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 pack",
+    "notes": "Pampers, Swaddlers, Baby Dry. P&G SA."
+  },
+  {
+    "name": "Philips Avent SA",
+    "website": "philips.co.za",
+    "verticals": "Childcare & Edu",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "3 units",
+    "notes": "Baby bottles, soothers, monitors, breast pumps."
+  },
+  {
+    "name": "Hasbro SA",
+    "website": "hasbro.com",
+    "verticals": "Childcare & Edu",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "6 units",
+    "notes": "Play-Doh, Nerf, My Little Pony, Monopoly. Educational toys."
+  },
+  {
+    "name": "Mattel SA",
+    "website": "mattel.com",
+    "verticals": "Childcare & Edu",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "6 units",
+    "notes": "Barbie, Hot Wheels, Fisher-Price, UNO. Global toy leader."
+  },
+  {
+    "name": "Lego SA",
+    "website": "lego.com",
+    "verticals": "Childcare & Edu",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "3 units",
+    "notes": "LEGO bricks, LEGO Education. STEM learning."
+  },
+  {
+    "name": "Planskool (Hasboro)",
+    "website": "hasbro.com",
+    "verticals": "Childcare & Edu",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "6 units",
+    "notes": "Playskool Baby blocks, pegs, shape sorters. Toddler toys."
+  },
+  {
+    "name": "Office National SA",
+    "website": "officenational.co.za",
+    "verticals": "Childcare & Edu, Professional",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "Office and school stationery, furniture, filing. Nationwide."
+  },
+  {
+    "name": "Juta & Co",
+    "website": "juta.co.za",
+    "verticals": "Childcare & Edu, Professional",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "Legal, educational textbooks. SA publisher. Zero-rated books."
+  },
+  {
+    "name": "Promethean SA",
+    "website": "promethean.com",
+    "verticals": "Childcare & Edu",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 21,
+    "minOrder": "1 unit",
+    "notes": "Interactive whiteboards, ActivPanel. Education technology."
+  },
+  {
+    "name": "Fluke SA (Stationery House)",
+    "website": "stationeryhouse.co.za",
+    "verticals": "Childcare & Edu",
+    "tier": "bronze",
+    "bbbeeLevel": 3,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "School stationery bulk: pens, rulers, crayons, notebooks."
+  },
+  {
+    "name": "Shell SA",
+    "website": "shell.co.za",
+    "verticals": "Professional Services",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "4 units",
+    "notes": "Shell Helix motor oils, grease, transmission fluids."
+  },
+  {
+    "name": "Mobil SA (ExxonMobil)",
+    "website": "exxonmobil.com",
+    "verticals": "Professional Services",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "4 units",
+    "notes": "Mobil 1, Mobil Super, hydraulic, gear oils."
+  },
+  {
+    "name": "Total Energies SA",
+    "website": "total.co.za",
+    "verticals": "Professional Services",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "4 units",
+    "notes": "Total Quartz motor oils, Rubia diesel oils, hydraulic."
+  },
+  {
+    "name": "Wurth SA",
+    "website": "wurth.co.za",
+    "verticals": "Professional Services, Hardware",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "1 order",
+    "notes": "Workshop chemicals, fasteners, tools. German quality."
+  },
+  {
+    "name": "3M SA",
+    "website": "3m.co.za",
+    "verticals": "Professional Services, Hardware",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "1 case",
+    "notes": "Masking tape, sanding discs, ear muffs, safety glasses."
+  },
+  {
+    "name": "Fram / Fleetguard SA",
+    "website": "fleetguard.co.za",
+    "verticals": "Professional Services",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "5 units",
+    "notes": "Oil, air, fuel, cabin filters. Major SA parts distributor."
+  },
+  {
+    "name": "Super Group Parts",
+    "website": "supergroup.co.za",
+    "verticals": "Professional Services",
+    "tier": "silver",
+    "bbbeeLevel": 2,
+    "leadDays": 2,
+    "minOrder": "1 unit",
+    "notes": "Vehicle parts, accessories. Listed SA automotive."
+  },
+  {
+    "name": "Midas Auto Parts",
+    "website": "midas.co.za",
+    "verticals": "Professional Services",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "1 unit",
+    "notes": "Fitment centre and retail: brakes, belts, oils, filters."
+  },
+  {
+    "name": "Dodge Chemical Co SA",
+    "website": "dodgechemical.co.za",
+    "verticals": "Professional Services",
+    "tier": "bronze",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "5 units",
+    "notes": "Embalming, mortuary chemicals. Licensed distributors only."
+  },
+  {
+    "name": "AVBOB Wholesale",
+    "website": "avbob.co.za",
+    "verticals": "Professional Services",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 3,
+    "minOrder": "1 unit",
+    "notes": "Coffins, caskets, embalming products, floral. Co-operative."
+  },
+  {
+    "name": "SA Funeral Supplies",
+    "website": "safuneralsupplies.co.za",
+    "verticals": "Professional Services",
+    "tier": "bronze",
+    "bbbeeLevel": 4,
+    "leadDays": 5,
+    "minOrder": "1 unit",
+    "notes": "Funeral consumables, printed materials, urns."
+  },
+  {
+    "name": "Kreussler SA",
+    "website": "kreussler.co.za",
+    "verticals": "Professional Services",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "3 units",
+    "notes": "Dry cleaning chemicals, spotting agents. German formula."
+  },
+  {
+    "name": "Sage SA",
+    "website": "sage.com/za",
+    "verticals": "Professional Services",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 0,
+    "minOrder": "1 licence",
+    "notes": "Sage Accounting, Payroll, HR. Market leader SA SME software."
+  },
+  {
+    "name": "Xero SA",
+    "website": "xero.com",
+    "verticals": "Professional Services",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 0,
+    "minOrder": "1 licence",
+    "notes": "Cloud accounting. Growing SA market. API-friendly."
+  },
+  {
+    "name": "Fluke SA (Test & Measure)",
+    "website": "flukesa.co.za",
+    "verticals": "Professional Services",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "1 unit",
+    "notes": "Multimeters, clamp meters, insulation testers. Electrical."
+  },
+  {
+    "name": "Rexel SA",
+    "website": "rexel.co.za",
+    "verticals": "Professional Services, Hardware",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "5 units",
+    "notes": "Electrical distribution, industrial supplies, MRO."
+  },
+  {
+    "name": "Makro / Massmart Wholesale",
+    "website": "makro.co.za",
+    "verticals": "All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 case",
+    "notes": "Cash & carry wholesale. Pan-vertical. Nationwide."
+  },
+  {
+    "name": "Game (Massmart)",
+    "website": "game.co.za",
+    "verticals": "All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "1 unit",
+    "notes": "General merchandise, electronics, appliances."
+  },
+  {
+    "name": "Builders Warehouse",
+    "website": "builders.co.za",
+    "verticals": "Hardware & Building",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 1,
+    "minOrder": "1 unit",
+    "notes": "Hardware retail. Stocks major brands. Build-it affiliate."
+  },
+  {
+    "name": "Volpes (Textile Wholesale)",
+    "website": "volpes.co.za",
+    "verticals": "Hospitality, Fashion",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 7,
+    "minOrder": "1 bale",
+    "notes": "Towels, linen, fabric rolls. Cape Town wholesale."
+  },
+  {
+    "name": "Sanitech / Rentokil SA",
+    "website": "rentokil.co.za",
+    "verticals": "All Verticals",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 3,
+    "minOrder": "1 contract",
+    "notes": "Pest control, hygiene services. Nationwide. Contract-based."
+  },
+  {
+    "name": "Securitas SA",
+    "website": "securitas.com",
+    "verticals": "All Verticals",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 7,
+    "minOrder": "1 contract",
+    "notes": "Security services, guards, monitoring. SA operation."
+  },
+  {
+    "name": "DHL Supply Chain SA",
+    "website": "dhl.com",
+    "verticals": "All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 shipment",
+    "notes": "Logistics, warehousing, last-mile delivery. Nationwide."
+  },
+  {
+    "name": "The Courier Guy",
+    "website": "thecourierguy.co.za",
+    "verticals": "All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "1 parcel",
+    "notes": "Affordable courier. GroDeliver partner. API integration."
+  },
+  {
+    "name": "Aramex SA",
+    "website": "aramex.com",
+    "verticals": "All Verticals",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 1,
+    "minOrder": "1 parcel",
+    "notes": "International and domestic courier. E-commerce specialist."
+  },
+  {
+    "name": "RAM Courier SA",
+    "website": "ram.co.za",
+    "verticals": "All Verticals",
+    "tier": "silver",
+    "bbbeeLevel": 3,
+    "leadDays": 1,
+    "minOrder": "1 parcel",
+    "notes": "Same-day and next-day courier. B2B focus. GroDeliver partner."
+  },
+  {
+    "name": "Datalogic SA (Barcode)",
+    "website": "datalogic.com",
+    "verticals": "All Verticals",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "1 unit",
+    "notes": "Barcode scanners, mobile computers. POS hardware."
+  },
+  {
+    "name": "Zebra Technologies SA",
+    "website": "zebra.com",
+    "verticals": "All Verticals",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "1 unit",
+    "notes": "Label printers, barcode scanners, mobile POS hardware."
+  },
+  {
+    "name": "Honeywell SA",
+    "website": "honeywell.com",
+    "verticals": "All Verticals",
+    "tier": "bronze",
+    "bbbeeLevel": 1,
+    "leadDays": 14,
+    "minOrder": "1 unit",
+    "notes": "Barcode readers, mobile computers, thermal printers."
+  },
+  {
+    "name": "Epson SA (POS)",
+    "website": "epson.co.za",
+    "verticals": "All Verticals",
+    "tier": "silver",
+    "bbbeeLevel": 1,
+    "leadDays": 5,
+    "minOrder": "1 unit",
+    "notes": "TM-series thermal receipt printers. POS specialist."
+  },
+  {
+    "name": "Bixolon SA",
+    "website": "bixolon.com",
+    "verticals": "All Verticals",
+    "tier": "bronze",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "1 unit",
+    "notes": "Receipt and label printers. GroPOS compatible."
+  },
+  {
+    "name": "Star Micronics SA",
+    "website": "starmicronics.com",
+    "verticals": "All Verticals",
+    "tier": "bronze",
+    "bbbeeLevel": 2,
+    "leadDays": 7,
+    "minOrder": "1 unit",
+    "notes": "Thermal receipt printers, kitchen printers, tablet stands."
+  },
+  {
+    "name": "PayFast / DPO Group",
+    "website": "payfast.co.za",
+    "verticals": "All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 0,
+    "minOrder": "1 integration",
+    "notes": "Online payment gateway. GoPay integration partner."
+  },
+  {
+    "name": "Yoco Technologies",
+    "website": "yoco.com",
+    "verticals": "All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 0,
+    "minOrder": "1 terminal",
+    "notes": "Card machines, POS app, business tools. SA-founded fintech."
+  },
+  {
+    "name": "Peach Payments",
+    "website": "peachpayments.com",
+    "verticals": "All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 0,
+    "minOrder": "1 integration",
+    "notes": "Payment gateway, card acquiring. GroPay integration."
+  },
+  {
+    "name": "Ozow (i-Pay)",
+    "website": "ozow.com",
+    "verticals": "All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 3,
+    "leadDays": 0,
+    "minOrder": "1 integration",
+    "notes": "Instant EFT, open banking payments. BankServ member."
+  },
+  {
+    "name": "Paycorp / Net1",
+    "website": "net1.com",
+    "verticals": "All Verticals",
+    "tier": "gold",
+    "bbbeeLevel": 2,
+    "leadDays": 0,
+    "minOrder": "1 integration",
+    "notes": "EFT, prepaid, bill payments. Kazang parent. SARB licensed."
+  }
+]

@@ -1,0 +1,1148 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+// ============================================
+// NETLIFY/POSTGRESQL CONFIGURATION
+// ============================================
+// For Netlify deployment, use a cloud PostgreSQL database:
+// 1. Neon (https://neon.tech) - Recommended, free tier
+// 2. Supabase (https://supabase.com) - Free tier
+// 3. PlanetScale (https://planetscale.com) - Free tier
+// 4. Railway (https://railway.app) - Free tier
+//
+// Set DATABASE_URL environment variable in Netlify:
+// DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Optional: for connection pooling
+}
+
+// ============================================
+// CORE USER MODELS
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  role      String   @default("user") // user, merchant, agent, admin
+  status    String   @default("active") // active, suspended, deleted
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  posts     Post[]
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// MERCHANT MODELS
+// ============================================
+
+model Merchant {
+  id                    String              @id @default(cuid())
+  name                  String
+  slug                  String              @unique
+  email                 String?
+  phone                 String?
+  logo                  String?
+  businessType          String              @default("restaurant")
+  vertical              String              @default("food_beverage")
+  subVertical           String?
+  address               String?
+  city                  String?
+  province              String?
+  postalCode            String?
+  country               String              @default("ZA")
+  registrationNumber    String?
+  vatNumber             String?
+  status                String              @default("active") // active, suspended, deleted
+  subscriptionPlan      String              @default("free") // free, starter, pro, enterprise
+  subscriptionStatus    String              @default("active")
+  subscriptionExpiresAt DateTime?
+  settings              String? // JSON
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  locations             MerchantLocation[]
+  staff                 MerchantStaff[]
+  products              MerchantProduct[]
+  categories            MerchantCategory[]
+  orders                Order[]
+  transactions          Transaction[]
+}
+
+model MerchantLocation {
+  id          String    @id @default(cuid())
+  merchantId  String
+  merchant    Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name        String
+  address     String?
+  city        String?
+  province    String?
+  postalCode  String?
+  phone       String?
+  email       String?
+  isPrimary   Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  openTime    String?   // HH:mm
+  closeTime   String?   // HH:mm
+  workingDays String?   // JSON array [1,2,3,4,5]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model MerchantStaff {
+  id         String    @id @default(cuid())
+  merchantId String
+  merchant   Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  userId     String?
+  name       String
+  email      String?
+  phone      String?
+  role       String    @default("staff") // owner, manager, staff, cashier
+  pin        String?   // Hashed PIN
+  status     String    @default("active")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model MerchantCategory {
+  id          String            @id @default(cuid())
+  merchantId  String
+  merchant    Merchant          @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  color       String            @default("#00897B")
+  icon        String?
+  sortOrder   Int               @default(0)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  products    MerchantProduct[]
+}
+
+model MerchantProduct {
+  id           String            @id @default(cuid())
+  merchantId   String
+  merchant     Merchant          @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  category     MerchantCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  sku          String?
+  name         String
+  description  String?
+  price        Float             @default(0)
+  costPrice    Float?
+  vatRate      Float             @default(15)
+  vatInclusive Boolean           @default(true)
+  image        String?
+  barcode      String?
+  isAvailable  Boolean           @default(true)
+  trackStock   Boolean           @default(false)
+  stockQty     Float             @default(0)
+  minStock     Float             @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+// ============================================
+// ORDER & TRANSACTION MODELS
+// ============================================
+
+model Order {
+  id               String        @id @default(cuid())
+  orderNumber      String        @unique
+  merchantId       String
+  merchant         Merchant      @relation(fields: [merchantId], references: [id])
+  locationId       String?
+  staffId          String?
+  customerId       String?
+  status           String        @default("pending") // pending, confirmed, preparing, ready, completed, cancelled
+  orderType        String        @default("dine_in") // dine_in, takeaway, delivery
+  tableNumber      String?
+  subtotal         Float         @default(0)
+  vat              Float         @default(0)
+  discount         Float         @default(0)
+  total            Float         @default(0)
+  paymentStatus    String        @default("pending") // pending, paid, refunded
+  paymentMethod    String?
+  notes            String?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  cancelledReason  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  items            OrderItem[]
+  transactions     Transaction[]
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  name        String
+  quantity    Float    @default(1)
+  unitPrice   Float    @default(0)
+  totalPrice  Float    @default(0)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Transaction {
+  id              String    @id @default(cuid())
+  transactionId   String    @unique
+  merchantId      String
+  merchant        Merchant  @relation(fields: [merchantId], references: [id])
+  orderId         String?
+  order           Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  type            String    // payment, refund, withdrawal, fee
+  amount          Float     @default(0)
+  currency        String    @default("ZAR")
+  status          String    @default("pending") // pending, completed, failed
+  paymentMethod   String?
+  paymentProvider String?
+  reference       String?
+  metadata        String?   // JSON
+  processedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ============================================
+// FLOOR PLAN MODELS
+// ============================================
+
+model FloorSection {
+  id         String            @id @default(cuid())
+  name       String
+  color      String            @default("#00897B")
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  tables     RestaurantTable[]
+  merchantId String?
+}
+
+model RestaurantTable {
+  id           String            @id @default(cuid())
+  number       String
+  shape        String            @default("circle")
+  x            Float             @default(0)
+  y            Float             @default(0)
+  width        Float             @default(60)
+  height       Float             @default(60)
+  rotation     Float             @default(0)
+  seats        Int               @default(4)
+  status       String            @default("available")
+  minSpending  Float?
+  sectionId    String
+  section      FloorSection      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  serverId     String?
+  server       Server?           @relation(fields: [serverId], references: [id])
+  reservation  TableReservation?
+  currentOrder TableOrder?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model Server {
+  id        String            @id @default(cuid())
+  name      String
+  status    String            @default("active")
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  tables    RestaurantTable[]
+}
+
+model TableReservation {
+  id           String          @id @default(cuid())
+  customerName String
+  phone        String?
+  time         String
+  guests       Int             @default(2)
+  notes        String?
+  tableId      String          @unique
+  table        RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model TableOrder {
+  id        String          @id @default(cuid())
+  orderId   String
+  items     Int             @default(0)
+  total     Float           @default(0)
+  startTime String
+  guests    Int             @default(1)
+  tableId   String          @unique
+  table     RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+// ============================================
+// KITCHEN DISPLAY MODELS
+// ============================================
+
+model KitchenStation {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String   @default("Flame")
+  color     String   @default("#EF4444")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model KitchenOrder {
+  id              String                @id @default(cuid())
+  orderNumber     String
+  type            String                @default("dine-in")
+  priority        String                @default("normal")
+  tableNumber     String?
+  customerName    String?
+  status          String                @default("new")
+  estimatedTime   Int                   @default(15)
+  notes           String?
+  waiterName      String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  items           KitchenOrderItem[]
+  stationRoutings KitchenOrderStation[]
+}
+
+model KitchenOrderItem {
+  id              String       @id @default(cuid())
+  name            String
+  quantity        Int          @default(1)
+  notes           String?
+  modifiers       String?
+  status          String       @default("pending")
+  station         String       @default("grill")
+  preparationTime Int          @default(15)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  dietary         String?
+  allergens       String?
+  spicyLevel      Int?
+  orderId         String
+  order           KitchenOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model KitchenOrderStation {
+  id        String       @id @default(cuid())
+  station   String
+  orderId   String
+  order     KitchenOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+}
+
+// ============================================
+// RECIPE ENGINE MODELS
+// ============================================
+
+model Ingredient {
+  id           String             @id @default(cuid())
+  name         String
+  sku          String             @unique
+  category     String
+  currentStock Float              @default(0)
+  unit         String             @default("g")
+  costPerUnit  Float              @default(0)
+  reorderPoint Float              @default(0)
+  location     String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  recipeItems  RecipeIngredient[]
+  deductions   StockDeduction[]
+}
+
+model Recipe {
+  id                   String             @id @default(cuid())
+  name                 String
+  category             String             @default("mains")
+  description          String?
+  sku                  String             @unique
+  preparationTime      Int                @default(15)
+  yield                Int                @default(1)
+  yieldUnit            String             @default("serving")
+  sellingPrice         Float              @default(0)
+  station              String             @default("grill")
+  active               Boolean            @default(true)
+  allergens            String?
+  dietary              String?
+  preparationSteps     String?
+  timesSold            Int                @default(0)
+  deductionsLast30Days Float              @default(0)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  ingredients          RecipeIngredient[]
+  deductions           StockDeduction[]
+}
+
+model RecipeIngredient {
+  id           String     @id @default(cuid())
+  quantity     Float
+  unit         String     @default("g")
+  cost         Float      @default(0)
+  optional     Boolean    @default(false)
+  substitute   String?
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  recipeId     String
+  recipe       Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model StockDeduction {
+  id           String     @id @default(cuid())
+  quantity     Float
+  unit         String
+  cost         Float
+  orderId      String
+  recipeId     String
+  recipe       Recipe     @relation(fields: [recipeId], references: [id])
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  createdAt    DateTime   @default(now())
+}
+
+// ============================================
+// BOOKING & APPOINTMENT MODELS
+// ============================================
+
+model BookingService {
+  id                String         @id @default(cuid())
+  name              String
+  category          String         @default("general")
+  duration          Int            @default(30)
+  price             Float          @default(0)
+  description       String?
+  depositRequired   Boolean        @default(false)
+  depositAmount     Float?
+  depositPercentage Float?
+  active            Boolean        @default(true)
+  bufferAfter       Int            @default(0)
+  maxPerDay         Int?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  appointments      Appointment[]
+  staffServices     StaffService[]
+}
+
+model Staff {
+  id           String         @id @default(cuid())
+  name         String
+  email        String?
+  phone        String?
+  avatar       String?
+  color        String         @default("#00897B")
+  status       String         @default("active")
+  role         String         @default("staff")
+  specialties  String?
+  workingHours String?
+  rating       Float          @default(0)
+  reviewCount  Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  appointments Appointment[]
+  services     StaffService[]
+  breaks       StaffBreak[]
+}
+
+model StaffService {
+  id          String         @id @default(cuid())
+  staffId     String
+  staff       Staff          @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  serviceId   String
+  service     BookingService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  customPrice Float?
+  isPrimary   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([staffId, serviceId])
+}
+
+model StaffBreak {
+  id        String   @id @default(cuid())
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  date      String
+  startTime String
+  endTime   String
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id                    String                 @id @default(cuid())
+  name                  String
+  phone                 String?
+  email                 String?
+  notes                 String?
+  tags                  String?
+  totalSpent            Float                  @default(0)
+  visitCount            Int                    @default(0)
+  lastVisit             DateTime?
+  loyaltyPoints         Int                    @default(0)
+  loyaltyTier           String                 @default("bronze")
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  appointments          Appointment[]
+  memberships           CustomerMembership[]
+  packages              CustomerPackage[]
+  recurringAppointments RecurringAppointment[]
+}
+
+model Appointment {
+  id               String                @id @default(cuid())
+  customerId       String?
+  customer         Customer?             @relation(fields: [customerId], references: [id])
+  customerName     String
+  customerPhone    String?
+  customerEmail    String?
+  staffId          String
+  staff            Staff                 @relation(fields: [staffId], references: [id])
+  serviceId        String
+  service          BookingService        @relation(fields: [serviceId], references: [id])
+  date             String
+  time             String
+  duration         Int
+  status           String                @default("scheduled")
+  total            Float
+  depositAmount    Float?
+  depositPaid      Boolean               @default(false)
+  depositMethod    String?
+  depositReference String?
+  notes            String?
+  source           String                @default("in-store")
+  reminder24hSent  Boolean               @default(false)
+  reminder2hSent   Boolean               @default(false)
+  confirmationSent Boolean               @default(false)
+  cancelledAt      DateTime?
+  cancelledReason  String?
+  completedAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  reminders        AppointmentReminder[]
+}
+
+model AppointmentReminder {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  type          String
+  channel       String
+  sentAt        DateTime
+  status        String      @default("sent")
+  message       String?
+  createdAt     DateTime    @default(now())
+}
+
+model BookingSettings {
+  id                    String   @id @default(cuid())
+  merchantId            String   @unique
+  onlineBookingEnabled  Boolean  @default(true)
+  requireDeposit        Boolean  @default(false)
+  defaultDepositPct     Float    @default(20)
+  sendConfirmationSMS   Boolean  @default(true)
+  sendReminder24h       Boolean  @default(true)
+  sendReminder2h        Boolean  @default(true)
+  sendWhatsApp          Boolean  @default(false)
+  allowOnlineReschedule Boolean  @default(true)
+  allowOnlineCancel     Boolean  @default(true)
+  cancellationPolicy    String   @default("moderate")
+  cancellationHours     Int      @default(24)
+  minBookingNotice      Int      @default(2)
+  maxAdvanceBooking     Int      @default(30)
+  autoConfirmBookings   Boolean  @default(false)
+  bufferBetweenSlots    Int      @default(0)
+  workingHoursStart     String   @default("08:00")
+  workingHoursEnd       String   @default("18:00")
+  workingDays           String   @default("1,2,3,4,5,6")
+  whatsappNumber        String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model RecurringAppointment {
+  id                  String   @id @default(cuid())
+  customerId          String
+  customer            Customer @relation(fields: [customerId], references: [id])
+  staffId             String
+  serviceId           String
+  frequency           String
+  dayOfWeek           Int?
+  dayOfMonth          Int?
+  time                String
+  startDate           String
+  endDate             String?
+  active              Boolean  @default(true)
+  appointmentsCreated Int      @default(0)
+  lastAppointmentDate String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model MembershipPlan {
+  id               String               @id @default(cuid())
+  name             String
+  monthlyFee       Float
+  includedServices String?
+  rollover         Boolean              @default(false)
+  active           Boolean              @default(true)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  customers        CustomerMembership[]
+}
+
+model CustomerMembership {
+  id                String         @id @default(cuid())
+  customerId        String
+  customer          Customer       @relation(fields: [customerId], references: [id])
+  planId            String
+  plan              MembershipPlan @relation(fields: [planId], references: [id])
+  startDate         String
+  renewalDate       String
+  servicesRemaining String?
+  status            String         @default("active")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+model TreatmentPackage {
+  id             String            @id @default(cuid())
+  name           String
+  description    String?
+  treatments     String
+  price          Float
+  validityMonths Int               @default(6)
+  sessionsTotal  Int               @default(1)
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  customers      CustomerPackage[]
+}
+
+model CustomerPackage {
+  id                String           @id @default(cuid())
+  customerId        String
+  customer          Customer         @relation(fields: [customerId], references: [id])
+  packageId         String
+  package           TreatmentPackage @relation(fields: [packageId], references: [id])
+  purchaseDate      String
+  expiryDate        String
+  sessionsRemaining Int
+  sessionsTotal     Int
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model ReminderTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  channel   String
+  subject   String?
+  message   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DepositRule {
+  id              String   @id @default(cuid())
+  name            String
+  serviceCategory String?
+  serviceId       String?
+  depositType     String   @default("percentage")
+  depositValue    Float    @default(20)
+  minAmount       Float    @default(0)
+  nonRefundable   Boolean  @default(true)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================
+// GROSUPPLY - B2B PROCUREMENT MODELS
+// ============================================
+
+model Supplier {
+  id                 String          @id @default(cuid())
+  name               String
+  code               String          @unique
+  contactPerson      String?
+  email              String?
+  phone              String?
+  address            String?
+  city               String?
+  province           String?
+  postalCode         String?
+  bankName           String?
+  bankAccount        String?
+  bankBranch         String?
+  tier               String          @default("bronze")
+  rating             Float           @default(0)
+  reviewCount        Int             @default(0)
+  deliveryDays       Int             @default(3)
+  minOrderValue      Float           @default(0)
+  paymentTerms       String          @default("net30")
+  categories         String?
+  notes              String?
+  status             String          @default("active")
+  verificationStatus String          @default("pending")
+  verifiedAt         DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  rfqs               RFQ[]
+  purchaseOrders     PurchaseOrder[]
+  quotes             SupplierQuote[]
+}
+
+model RFQ {
+  id              String          @id @default(cuid())
+  number          String          @unique
+  supplierId      String?
+  supplier        Supplier?       @relation(fields: [supplierId], references: [id])
+  status          String          @default("draft")
+  requiredBy      String
+  deliveryAddress String?
+  notes           String?
+  internalNotes   String?
+  totalQuotes     Int             @default(0)
+  selectedQuoteId String?
+  createdBy       String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  items           RFQItem[]
+  quotes          SupplierQuote[]
+  purchaseOrder   PurchaseOrder?
+}
+
+model RFQItem {
+  id          String   @id @default(cuid())
+  rfqId       String
+  rfq         RFQ      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  sku         String
+  description String
+  quantity    Float    @default(1)
+  unit        String   @default("each")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SupplierQuote {
+  id            String              @id @default(cuid())
+  rfqId         String
+  rfq           RFQ                 @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  supplierId    String
+  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  status        String              @default("submitted")
+  subtotal      Float               @default(0)
+  vat           Float               @default(0)
+  deliveryCost  Float               @default(0)
+  total         Float               @default(0)
+  deliveryDays  Int                 @default(3)
+  paymentTerms  String?
+  validUntil    String
+  notes         String?
+  submittedAt   DateTime            @default(now())
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  items         SupplierQuoteItem[]
+  purchaseOrder PurchaseOrder?
+}
+
+model SupplierQuoteItem {
+  id          String        @id @default(cuid())
+  quoteId     String
+  quote       SupplierQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  sku         String
+  description String?
+  unitPrice   Float         @default(0)
+  quantity    Float         @default(1)
+  totalPrice  Float         @default(0)
+  inStock     Boolean       @default(true)
+  leadTime    Int?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model PurchaseOrder {
+  id                String              @id @default(cuid())
+  number            String              @unique
+  rfqId             String?             @unique
+  rfq               RFQ?                @relation(fields: [rfqId], references: [id])
+  quoteId           String?             @unique
+  quote             SupplierQuote?      @relation(fields: [quoteId], references: [id])
+  supplierId        String
+  supplier          Supplier            @relation(fields: [supplierId], references: [id])
+  status            String              @default("draft")
+  subtotal          Float               @default(0)
+  vat               Float               @default(0)
+  deliveryCost      Float               @default(0)
+  total             Float               @default(0)
+  deliveryAddress   String?
+  requestedDate     String
+  confirmedDate     String?
+  trackingNumber    String?
+  estimatedDelivery String?
+  notes             String?
+  internalNotes     String?
+  createdBy         String?
+  sentAt            DateTime?
+  confirmedAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  items             PurchaseOrderItem[]
+  grns              GoodsReceivedNote[]
+}
+
+model PurchaseOrderItem {
+  id          String        @id @default(cuid())
+  poId        String
+  po          PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  sku         String
+  description String
+  quantity    Float         @default(1)
+  unitPrice   Float         @default(0)
+  totalPrice  Float         @default(0)
+  unit        String        @default("each")
+  receivedQty Float         @default(0)
+  rejectedQty Float         @default(0)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model GoodsReceivedNote {
+  id               String        @id @default(cuid())
+  number           String        @unique
+  poId             String
+  po               PurchaseOrder @relation(fields: [poId], references: [id])
+  status           String        @default("draft")
+  receivedBy       String?
+  receivedAt       DateTime?
+  notes            String?
+  discrepancyNotes String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  items            GRNItem[]
+}
+
+model GRNItem {
+  id           String            @id @default(cuid())
+  grnId        String
+  grn          GoodsReceivedNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  sku          String
+  description  String?
+  orderedQty   Float             @default(0)
+  receivedQty  Float             @default(0)
+  rejectedQty  Float             @default(0)
+  rejectReason String?
+  batchNumber  String?
+  expiryDate   String?
+  unitPrice    Float             @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+// ============================================
+// CONSUMER WALLET MODELS
+// ============================================
+
+model ConsumerWallet {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  balanceCents        Int      @default(0)
+  reservedCents       Int      @default(0)
+  pendingCents        Int      @default(0)
+  currency            String   @default("ZAR")
+  dailySpendLimit     Int?
+  dailySpentCents     Int      @default(0)
+  monthlySpendLimit   Int?
+  monthlySpentCents   Int      @default(0)
+  totalReceivedCents  Int      @default(0)
+  totalSentCents      Int      @default(0)
+  totalTopupsCents    Int      @default(0)
+  totalWithdrawalsCents Int    @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  transactions        ConsumerTransaction[]
+  cards               VirtualCard[]
+  savings             SavingsGoal[]
+  loyaltyPoints       LoyaltyAccount[]
+  bills               BillPayment[]
+  vouchers            UserVoucher[]
+}
+
+model ConsumerTransaction {
+  id              String         @id @default(cuid())
+  walletId        String
+  wallet          ConsumerWallet @relation(fields: [walletId], references: [id])
+  type            String // topup, send, receive, payment, withdrawal, refund
+  amountCents     Int
+  feeCents        Int            @default(0)
+  status          String         @default("pending") // pending, completed, failed, reversed
+  description     String?
+  reference       String?
+  counterpartyId  String?
+  counterpartyName String?
+  counterpartyType String? // user, merchant, biller
+  merchantId      String?
+  merchantName    String?
+  categoryId      String?
+  categoryName    String?
+  metadata        String? // JSON
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model VirtualCard {
+  id              String         @id @default(cuid())
+  walletId        String
+  wallet          ConsumerWallet @relation(fields: [walletId], references: [id])
+  cardType        String         @default("visa") // visa, mastercard
+  lastFour        String
+  expiryMonth     Int
+  expiryYear      Int
+  cvv             String         // Encrypted
+  cardholderName  String
+  status          String         @default("active") // active, frozen, cancelled
+  spendingLimit   Int?
+  spentThisMonth  Int            @default(0)
+  isVirtual       Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  transactions    CardTransaction[]
+}
+
+model CardTransaction {
+  id            String      @id @default(cuid())
+  cardId        String
+  card          VirtualCard @relation(fields: [cardId], references: [id])
+  merchantName  String
+  merchantCategory String?
+  amountCents   Int
+  currency      String      @default("ZAR")
+  status        String      @default("pending")
+  description   String?
+  authorizedAt  DateTime?
+  settledAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model SavingsGoal {
+  id           String         @id @default(cuid())
+  walletId     String
+  wallet       ConsumerWallet @relation(fields: [walletId], references: [id])
+  name         String
+  targetCents  Int
+  savedCents   Int            @default(0)
+  deadline     String?
+  icon         String?
+  color        String?
+  status       String         @default("active") // active, completed, cancelled
+  autoSave     Boolean        @default(false)
+  autoSaveAmount Int?
+  autoSaveFrequency String?   // daily, weekly, monthly
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model LoyaltyAccount {
+  id          String         @id @default(cuid())
+  walletId    String
+  wallet      ConsumerWallet @relation(fields: [walletId], references: [id])
+  merchantId  String
+  merchantName String
+  points      Int            @default(0)
+  tier        String         @default("bronze")
+  totalEarned Int            @default(0)
+  totalRedeemed Int          @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model BillPayment {
+  id            String         @id @default(cuid())
+  walletId      String
+  wallet        ConsumerWallet @relation(fields: [walletId], references: [id])
+  billerType    String // electricity, water, dstv, airtime, etc.
+  billerName    String
+  accountNumber String
+  amountCents   Int
+  feeCents      Int            @default(0)
+  status        String         @default("pending")
+  reference     String?
+  receiptNumber String?
+  paidAt        DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model UserVoucher {
+  id           String         @id @default(cuid())
+  walletId     String
+  wallet       ConsumerWallet @relation(fields: [walletId], references: [id])
+  voucherCode  String
+  voucherType  String // discount, cashback, free_item
+  valueCents   Int
+  minSpendCents Int?
+  merchantId   String?
+  merchantName String?
+  expiresAt    DateTime?
+  usedAt       DateTime?
+  status       String         @default("active") // active, used, expired
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+// ============================================
+// GROCREDIT MODELS
+// ============================================
+
+model GroCreditAccount {
+  id                String   @id @default(cuid())
+  merchantId        String   @unique
+  tier              String   @default("bronze") // bronze, silver, gold, platinum
+  creditLimitCents  Int      @default(0)
+  availableCents    Int      @default(0)
+  usedCents         Int      @default(0)
+  interestRate      Float    @default(0)
+  status            String   @default("active") // active, frozen, closed
+  nextPaymentDue    String?
+  nextPaymentAmount Int?
+  totalBorrowed     Int      @default(0)
+  totalRepaid       Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  drawRequests      GroCreditDrawRequest[]
+  repayments        GroCreditRepayment[]
+}
+
+model GroCreditDrawRequest {
+  id           String            @id @default(cuid())
+  accountId    String
+  account      GroCreditAccount  @relation(fields: [accountId], references: [id])
+  amountCents  Int
+  status       String            @default("pending") // pending, approved, rejected, disbursed
+  purpose      String?
+  approvedBy   String?
+  approvedAt   DateTime?
+  rejectedAt   DateTime?
+  rejectReason String?
+  disbursedAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model GroCreditRepayment {
+  id           String           @id @default(cuid())
+  accountId    String
+  account      GroCreditAccount @relation(fields: [accountId], references: [id])
+  amountCents  Int
+  principalCents Int
+  interestCents Int
+  status       String           @default("pending") // pending, completed, failed
+  method       String? // card, ewallet, bank_transfer
+  reference    String?
+  paidAt       DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+// ============================================
+// AGENT NETWORK MODELS
+// ============================================
+
+model Agent {
+  id                String     @id @default(cuid())
+  userId            String     @unique
+  code              String     @unique
+  name              String
+  email             String
+  phone             String
+  tier              String     @default("1") // 1, 2, 3, 4, 5
+  status            String     @default("active") // active, suspended, terminated
+  totalEarnings     Float      @default(0)
+  availableEarnings Float      @default(0)
+  paidEarnings      Float      @default(0)
+  referralCount     Int        @default(0)
+  totalNetworkSize  Int        @default(0)
+  parentAgentId     String?
+  parentAgent       Agent?     @relation("AgentHierarchy", fields: [parentAgentId], references: [id])
+  children          Agent[]    @relation("AgentHierarchy")
+  referrals         Referral[]
+  commissions       Commission[]
+  payouts           AgentPayout[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model Referral {
+  id           String   @id @default(cuid())
+  agentId      String
+  agent        Agent    @relation(fields: [agentId], references: [id])
+  merchantId   String
+  merchantName String
+  status       String   @default("pending") // pending, signed_up, active, churned
+  signedUpAt   DateTime?
+  activatedAt  DateTime?
+  churnedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Commission {
+  id             String   @id @default(cuid())
+  agentId        String
+  agent          Agent    @relation(fields: [agentId], references: [id])
+  referralId     String?
+  type           String   // signup, transaction, override
+  amount         Float
+  tierLevel      Int?
+  status         String   @default("pending") // pending, available, paid
+  transactionRef String?
+  paidAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model AgentPayout {
+  id           String   @id @default(cuid())
+  agentId      String
+  agent        Agent    @relation(fields: [agentId], references: [id])
+  amount       Float
+  status       String   @default("pending") // pending, processing, completed, failed
+  method       String   // bank_transfer, ewallet
+  reference    String?
+  processedAt  DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

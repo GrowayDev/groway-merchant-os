@@ -1,0 +1,1690 @@
+# GROWAY MERCHANT OS — MASTER DEVOPS & BUILD GUIDE
+## Complete Platform Upgrade, SAPE, Payments, Settlement & GLM Build Instructions
+
+**Document No:** SPZ-DEVOPS-MASTER-001  
+**Revision:** A  
+**Date:** 12 October 2026  
+**Owner:** Groway (Pty) Ltd — Platform & Technology  
+**Status:** For GLM Build Team, Platform Team, Investor & Funder Review  
+**Classification:** CONFIDENTIAL — QUALIFIED INVESTORS
+
+
+# ⚠️ CRITICAL — READ FIRST
+
+## §00.1 GLM/ZHIPU SECURITY GUARDRAILS
+
+Given the ZCode incident of September 2026 (automatic source code upload to Alibaba Cloud OSS), **this document mandates the following guardrails for all GLM-built code**:
+
+| Guardrail | Requirement |
+| :--- | :--- |
+| **No ZCode Client** | Use only the GLM API — no desktop clients, no IDE plugins that auto-upload |
+| **Local-Only Build** | All builds run on Groway-controlled infrastructure (no cloud build agents outside AWS Cape Town) |
+| **Secret Isolation** | GLM has access to NO production secrets — ever |
+| **Code Review Gate** | Every GLM-generated PR is manually reviewed by a Groway engineer |
+| **Secrets Scan** | TruffleHog + Gitleaks on every PR before merge |
+| **Dependency Pin** | All dependencies pinned with `npm ci` — no floating versions |
+| **Network Egress** | Build agents have no outbound internet except npm registry (mirrored) |
+| **Audit Log** | Every GLM interaction logged to immutable S3 bucket |
+| **Prompt Redaction** | No customer data, PII, or financial data in GLM prompts |
+| **Air-Gapped Testing** | Integration tests run in isolated VPC |
+
+**Failure to comply with any guardrail = immediate halt of GLM engagement.**
+
+## §00.2 Build Philosophy
+
+```mermaid
+flowchart TD
+    A[GLM generates code] --> B[Groway engineer reviews]
+    B --> C[Automated scan]
+    C --> D{Safe?}
+    D -->|No| E[Reject, educate GLM]
+    D -->|Yes| F[Feature branch]
+    F --> G[CI/CD pipeline]
+    G --> H[Staging]
+    H --> I[Manual QA]
+    I --> J[Production]
+    
+    style E fill:#f8d4d4
+    style J fill:#d4e8d4
+```
+
+
+# PART 1 — EXECUTIVE SUMMARY
+
+## §01 THE COMPLETE UPGRADE
+
+This master document consolidates and extends:
+
+1. **The 25 strategic upgrades** (SPZ-OS-STRAT-001)
+2. **SAPE** — SpazaBox Authentication & Provenance Engine
+3. **Direct payments** through Merchant OS
+4. **Settlement engine** improvements
+5. **Third-party payment providers** (all major SA operators)
+6. **Newly identified areas** (30 additional capabilities)
+
+## §02 THE 55 TOTAL UPGRADES
+
+| Category | Upgrades | Priority |
+| :--- | ---: | :--- |
+| **Strategic (25 from original)** | 25 | CRITICAL |
+| **SAPE (7 components)** | 7 | CRITICAL |
+| **Payments & Settlement (8)** | 8 | CRITICAL |
+| **New areas (15)** | 15 | HIGH |
+| **Total** | **55** | |
+
+## §03 INVESTMENT & RETURN
+
+| Metric | Value |
+| :--- | ---: |
+| **Total investment** | R34.5M |
+| **Duration** | 24 months |
+| **Annual revenue uplift** | +R428M |
+| **Payback** | 11 months |
+| **IRR** | 340% |
+
+
+# PART 2 — THE 25 STRATEGIC UPGRADES (CONSOLIDATED)
+
+## §04 DEMAND INTELLIGENCE (3 upgrades)
+
+### 4.1 AI-Powered Demand Forecasting
+
+| Component | Specification |
+| :--- | :--- |
+| **Models** | Prophet + XGBoost + LSTM ensemble |
+| **Horizon** | 7 days, SKU-level |
+| **Accuracy** | 85% within ±10% |
+| **Inputs** | Sales, weather, calendar, footfall, grants |
+| **Outputs** | Forecast, reorder, promotions, staffing |
+| **Impact** | +R3.6M–R5.4M/door/yr |
+
+### 4.2 Dynamic Pricing Engine
+
+| Rule Type | Example |
+| :--- | :--- |
+| Time-based | 10% off bread after 18:00 |
+| Expiry-based | 30% off dairy expiring tomorrow |
+| Demand-based | +5% cold drinks when >30°C |
+| Bundle-based | Kota + Coke at R5 discount |
+| Competitive | Match within 500m |
+| Loyalty | 5% off members |
+
+### 4.3 Voice-First Ordering
+
+| Language | Coverage |
+| :--- | :--- |
+| English | Default |
+| isiZulu | KZN, Gauteng |
+| Sesotho | Free State, Limpopo |
+| Xitsonga | Limpopo |
+| Tshivenda | Limpopo |
+| Afrikaans | Western Cape, N. Cape |
+
+## §05 AUTONOMOUS OPERATIONS (2 upgrades)
+
+### 5.1 Self-Healing Infrastructure
+
+```mermaid
+flowchart LR
+    D[Detect] --> DG[Diagnose]
+    DG --> A[Act]
+    A --> L[Learn]
+    L --> D
+```
+
+### 5.2 Autonomous Inventory
+
+- Weight-based tracking
+- Computer vision counting
+- POS auto-deduction
+- Auto-reorder + auto-approval
+- Shrinkage detection
+
+## §06 EMBEDDED FINANCE (3 upgrades)
+
+### 6.1 Working Capital Advances
+### 6.2 Embedded Insurance
+### 6.3 Consumer Credit & BNPL
+
+## §07 AI SECURITY (2 upgrades)
+
+### 7.1 AI CCTV Analytics
+### 7.2 Predictive Crime Intelligence
+
+## §08 CLIMATE INTELLIGENCE (2 upgrades)
+
+### 8.1 Weather-Aware Trading
+### 8.2 Solar & Battery Optimization
+
+## §09 NETWORK EFFECTS (2 upgrades)
+
+### 9.1 Node-Level Intelligence
+### 9.2 P2P Energy Trading
+
+## §10 FUNDER TRANSPARENCY (2 upgrades)
+
+### 10.1 Real-Time Funder Dashboard
+### 10.2 Automated Compliance Evidence
+
+## §11 OPERATOR EMPOWERMENT (3 upgrades)
+
+### 11.1 Offline-First Architecture
+### 11.2 Operator Academy
+### 11.3 Mentorship & Community
+
+## §12 ECOSYSTEM EXPANSION (4 upgrades)
+
+### 12.1 Platform-as-a-Service
+### 12.2 Data-as-a-Service
+### 12.3 Government Services
+### 12.4 Health & Wellness
+
+
+# PART 3 — SAPE (SPAZABOX AUTHENTICATION & PROVENANCE ENGINE)
+
+## §13 SAPE ARCHITECTURE
+
+### 13.1 The Six Layers
+
+```mermaid
+flowchart TD
+    L1[Layer 1<br/>Supplier Verification] --> L2[Layer 2<br/>Product Serialisation]
+    L2 --> L3[Layer 3<br/>Chain of Custody]
+    L3 --> L4[Layer 4<br/>POS Verification]
+    L4 --> L5[Layer 5<br/>Consumer Verification]
+    L5 --> L6[Layer 6<br/>Authority Sharing]
+```
+
+### 13.2 SAPE Service Specification
+
+| Property | Value |
+| :--- | :--- |
+| **Service name** | `sape-service` |
+| **Port** | 3004 |
+| **Language** | TypeScript (Node.js 20) |
+| **Framework** | Fastify |
+| **Database** | PostgreSQL 16 + TimescaleDB |
+| **Blockchain** | Hyperledger Fabric |
+| **Cache** | Redis 7 Cluster |
+| **Deployment** | Kubernetes (EKS) |
+| **Replicas** | 3 (min), 10 (max) |
+
+### 13.3 SAPE API Contract
+
+```typescript
+// SAPE API TypeScript Interface
+
+interface SupplierVerificationRequest {
+  supplierId: string;
+  cicNumber: string;
+  taxClearance: string;
+  sabsRegistration?: string;
+  sahpraRegistration?: string;
+  nocRegistration?: string;
+  bankConfirmation: string;
+  productLiability: string;
+}
+
+interface SupplierVerificationResponse {
+  verificationId: string;
+  status: 'VERIFIED' | 'PENDING' | 'REJECTED';
+  trustScore: number; // 0-100
+  checks: {
+    cic: boolean;
+    tax: boolean;
+    sabs: boolean;
+    sahpra: boolean;
+    noc: boolean;
+    bank: boolean;
+    insurance: boolean;
+  };
+  validUntil: Date;
+}
+
+interface ProductSerialisationRequest {
+  gtin: string;
+  batchNumber: string;
+  expiryDate: Date;
+  quantity: number;
+  manufacturerId: string;
+  productionDate: Date;
+}
+
+interface ProductSerialisationResponse {
+  productIdentityId: string;
+  serialNumbers: string[];
+  signature: string;
+  blockchainTxId: string;
+  gs1DataMatrix: string; // Base64 encoded
+}
+
+interface CustodyEventRequest {
+  productSerialId: string;
+  eventType: 'MANUFACTURED' | 'IMPORTED' | 'RECEIVED_GROSUPPLY' | 'DISPATCHED_NODE' | 'RECEIVED_NODE' | 'SHELVED' | 'SOLD';
+  location: { lat: number; lng: number };
+  actorId: string;
+  timestamp: Date;
+  metadata?: Record<string, any>;
+}
+
+interface POSVerificationRequest {
+  barcodeData: string; // GS1 DataMatrix
+  operatorId: string;
+  transactionId: string;
+  posTimestamp: Date;
+}
+
+interface POSVerificationResponse {
+  verified: boolean;
+  productIdentity?: {
+    gtin: string;
+    batch: string;
+    expiry: Date;
+    serial: string;
+    manufacturer: string;
+    signatureValid: boolean;
+  };
+  failureReason?: 'SERIAL_NOT_FOUND' | 'SIGNATURE_INVALID' | 'EXPIRED' | 'NETWORK_BLOCKED' | 'UNAUTHORIZED_LOCATION';
+  responseTimeMs: number;
+}
+```
+
+### 13.4 SAPE Database Schema
+
+```sql
+-- SAPE Core Tables
+
+CREATE TABLE authenticated_suppliers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cic_number VARCHAR(50) UNIQUE NOT NULL,
+  company_name VARCHAR(255) NOT NULL,
+  verification_status VARCHAR(20) NOT NULL CHECK (verification_status IN ('VERIFIED', 'PENDING', 'REJECTED', 'SUSPENDED')),
+  trust_score INTEGER CHECK (trust_score BETWEEN 0 AND 100),
+  verification_date TIMESTAMPTZ,
+  verification_docs JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE product_identities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  gtin VARCHAR(14) NOT NULL,
+  batch_number VARCHAR(50) NOT NULL,
+  expiry_date DATE NOT NULL,
+  manufacturer_id UUID REFERENCES authenticated_suppliers(id),
+  signature TEXT NOT NULL,
+  blockchain_tx_id VARCHAR(100),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (gtin, batch_number)
+);
+
+CREATE TABLE product_serials (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_identity_id UUID REFERENCES product_identities(id),
+  serial_number VARCHAR(50) UNIQUE NOT NULL,
+  status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'SOLD', 'BLOCKED', 'RECALLED')),
+  current_location JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE custody_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_serial_id UUID REFERENCES product_serials(id),
+  event_type VARCHAR(30) NOT NULL,
+  location_lat DECIMAL(10, 8),
+  location_lng DECIMAL(11, 8),
+  actor_id UUID NOT NULL,
+  timestamp TIMESTAMPTZ NOT NULL,
+  metadata JSONB,
+  blockchain_tx_id VARCHAR(100),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE pos_verifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_id UUID NOT NULL,
+  product_serial_id UUID REFERENCES product_serials(id),
+  verification_result BOOLEAN NOT NULL,
+  failure_reason VARCHAR(50),
+  response_time_ms INTEGER NOT NULL,
+  operator_id UUID NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE verification_failures (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_serial_id UUID,
+  failure_reason VARCHAR(50) NOT NULL,
+  operator_id UUID NOT NULL,
+  action_taken VARCHAR(100),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE network_blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_gtin VARCHAR(14) NOT NULL,
+  block_reason TEXT NOT NULL,
+  block_date TIMESTAMPTZ DEFAULT NOW(),
+  lifted_date TIMESTAMPTZ,
+  authority_notified BOOLEAN DEFAULT FALSE,
+  authority_notified_at TIMESTAMPTZ
+);
+
+CREATE TABLE authority_notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  authority VARCHAR(50) NOT NULL CHECK (authority IN ('SAHPRA', 'NCC', 'SARS', 'SAPS', 'DTIC', 'SABS')),
+  notification_type VARCHAR(50) NOT NULL,
+  data_payload JSONB NOT NULL,
+  sent_at TIMESTAMPTZ DEFAULT NOW(),
+  acknowledged_at TIMESTAMPTZ,
+  reference_number VARCHAR(100)
+);
+
+-- TimescaleDB hypertable for custody events
+SELECT create_hypertable('custody_events', 'timestamp');
+```
+
+### 13.5 Blockchain (Hyperledger Fabric) Chaincode
+
+```javascript
+// SAPE Chaincode — anchors product identity and custody events
+
+'use strict';
+
+const { Contract } = require('fabric-contract-api');
+
+class SAPEContract extends Contract {
+
+  // Anchor product identity
+  async anchorProduct(ctx, productIdentityId, gtin, batch, expiry, signature) {
+    const identity = {
+      productIdentityId,
+      gtin,
+      batch,
+      expiry,
+      signature,
+      timestamp: new Date().toISOString(),
+    };
+    await ctx.stub.putState(
+      `PRODUCT_${productIdentityId}`,
+      Buffer.from(JSON.stringify(identity))
+    );
+    return JSON.stringify(identity);
+  }
+
+  // Anchor custody event
+  async anchorCustodyEvent(ctx, eventId, productSerialId, eventType, location, actorId) {
+    const event = {
+      eventId,
+      productSerialId,
+      eventType,
+      location,
+      actorId,
+      timestamp: new Date().toISOString(),
+    };
+    await ctx.stub.putState(
+      `CUSTODY_${eventId}`,
+      Buffer.from(JSON.stringify(event))
+    );
+    return JSON.stringify(event);
+  }
+
+  // Verify product
+  async verifyProduct(ctx, productIdentityId) {
+    const identityBytes = await ctx.stub.getState(`PRODUCT_${productIdentityId}`);
+    if (!identityBytes || identityBytes.length === 0) {
+      throw new Error(`Product ${productIdentityId} not found`);
+    }
+    return identityBytes.toString();
+  }
+
+  // Query custody chain
+  async queryCustodyChain(ctx, productSerialId) {
+    const query = {
+      selector: { productSerialId: productSerialId },
+      sort: [{ timestamp: 'asc' }],
+    };
+    const iterator = await ctx.stub.getQueryResult(JSON.stringify(query));
+    const results = [];
+    while (true) {
+      const res = await iterator.next();
+      if (res.value && res.value.value.toString()) {
+        results.push(JSON.parse(res.value.value.toString('utf8')));
+      }
+      if (res.done) {
+        await iterator.close();
+        return JSON.stringify(results);
+      }
+    }
+  }
+}
+
+module.exports = SAPEContract;
+```
+
+### 13.6 SAPE Monitoring & Alerts
+
+| Metric | Threshold | Alert |
+| :--- | :--- | :--- |
+| POS verification latency (p95) | <500ms | PagerDuty |
+| Verification failure rate | >1% | Slack + PagerDuty |
+| Blockchain sync lag | >5 blocks | Slack |
+| Authority notification latency | >1 hour | PagerDuty |
+| Supplier verification backlog | >50 | Slack |
+| Anomaly detection rate | >5/day | Slack |
+| GS1 API error rate | >0.5% | Slack |
+
+
+# PART 4 — DIRECT PAYMENTS THROUGH MERCHANT OS
+
+## §14 PAYMENT ORCHESTRATOR
+
+### 14.1 Architecture
+
+```mermaid
+flowchart TD
+    subgraph MOS["MERCHANT OS"]
+        M1[Payment Dashboard]
+        M2[Invoice View]
+        M3[Auto-Pay Setup]
+    end
+    
+    subgraph PO["PAYMENT ORCHESTRATOR"]
+        O1[Router]
+        O2[Adapter Registry]
+        O3[Retry Logic]
+        O4[Idempotency]
+    end
+    
+    subgraph Providers["PROVIDERS"]
+        P1[Yoco]
+        P2[iKhokha]
+        P3[Peach]
+        P4[PayFast]
+        P5[Ozow]
+        P6[Stitch]
+        P7[PayGate]
+        P8[Banks]
+    end
+    
+    subgraph SE["SETTLEMENT ENGINE"]
+        S1[Reconciliation]
+        S2[Payout Queue]
+        S3[Fee Calc]
+    end
+    
+    M1 --> O1
+    O1 --> O2
+    O2 --> P1
+    O2 --> P2
+    O2 --> P3
+    O2 --> P4
+    O2 --> P5
+    O2 --> P6
+    O2 --> P7
+    O2 --> P8
+    O3 --> O2
+    O4 --> O1
+    O1 --> S1
+    S1 --> S2
+    S1 --> S3
+```
+
+### 14.2 Payment Types
+
+| Type | Amount | Frequency | Provider |
+| :--- | :--- | :--- | :--- |
+| Stock order | R500–R50K | Weekly | GroSupply → Orchestrator |
+| Platform fee | R599–R699 | Monthly | Auto-debit |
+| Instalment | R3.3K–R9.2K | Monthly | DebiCheck |
+| Service fee | R500–R5K | Ad-hoc | Any |
+| Deposit | R50K–R150K | Once | EFT/Card |
+| Insurance | R150–R350 | Monthly | Auto-debit |
+
+## §15 PAYMENT ORCHESTRATOR API
+
+```typescript
+// Payment Orchestrator TypeScript Interface
+
+interface CreatePaymentRequest {
+  merchantId: string;
+  amount: number; // in cents
+  currency: 'ZAR';
+  paymentType: 'STOCK_ORDER' | 'PLATFORM_FEE' | 'INSTALMENT' | 'SERVICE_FEE' | 'DEPOSIT' | 'INSURANCE';
+  reference: string;
+  description: string;
+  metadata?: Record<string, any>;
+  preferredProvider?: PaymentProvider;
+  idempotencyKey: string;
+}
+
+interface CreatePaymentResponse {
+  paymentId: string;
+  provider: PaymentProvider;
+  providerReference: string;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED';
+  paymentUrl?: string;
+  qrCode?: string;
+  expiresAt: Date;
+}
+
+type PaymentProvider = 
+  | 'YOCO' 
+  | 'IKHOKHA' 
+  | 'PEACH' 
+  | 'PAYFAST' 
+  | 'OZOW' 
+  | 'STITCH' 
+  | 'PAYGATE'
+  | 'FNB_EFT'
+  | 'ABSA_EFT'
+  | 'STANDARD_BANK_EFT'
+  | 'NEDBANK_EFT'
+  | 'CAPITEC_EFT';
+```
+
+## §16 PAYMENT PROVIDER INTEGRATIONS
+
+### 16.1 Yoco
+
+```typescript
+// Yoco Adapter
+
+class YocoAdapter implements PaymentAdapter {
+  private baseUrl = 'https://api.yoco.com/v1';
+  private secretKey: string;
+
+  async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {
+    const response = await fetch(`${this.baseUrl}/checkouts`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.secretKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount: request.amount,
+        currency: 'ZAR',
+        successUrl: `${process.env.APP_URL}/payment/success`,
+        cancelUrl: `${process.env.APP_URL}/payment/cancel`,
+        failureUrl: `${process.env.APP_URL}/payment/failure`,
+        metadata: {
+          merchantId: request.merchantId,
+          reference: request.reference,
+        },
+      }),
+    });
+
+    const data = await response.json();
+    return {
+      paymentId: data.id,
+      provider: 'YOCO',
+      providerReference: data.id,
+      status: 'PENDING',
+      paymentUrl: data.redirectUrl,
+      expiresAt: new Date(data.expiresAt),
+    };
+  }
+
+  async verifyWebhook(payload: any, signature: string): Promise<boolean> {
+    const crypto = require('crypto');
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.YOCO_WEBHOOK_SECRET)
+      .update(JSON.stringify(payload))
+      .digest('hex');
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
+  }
+
+  async refundPayment(paymentId: string, amount: number): Promise<RefundResponse> {
+    const response = await fetch(`${this.baseUrl}/refunds`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.secretKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chargeId: paymentId,
+        amount: amount,
+      }),
+    });
+    return response.json();
+  }
+}
+```
+
+### 16.2 iKhokha
+
+```typescript
+// iKhokha Adapter (HMAC-SHA256 signature required)
+
+class iKhokhaAdapter implements PaymentAdapter {
+  private baseUrl = 'https://dev.ikhokha.com/api';
+  private appId: string;
+  private appSecret: string;
+
+  async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {
+    const timestamp = Date.now().toString();
+    const payload = {
+      amount: request.amount / 100,
+      currency: 'ZAR',
+      reference: request.reference,
+      merchantId: request.merchantId,
+      callbackUrl: `${process.env.APP_URL}/webhooks/ikhokha`,
+    };
+
+    const signature = this.generateSignature(payload, timestamp);
+
+    const response = await fetch(`${this.baseUrl}/pay`, {
+      method: 'POST',
+      headers: {
+        'IK-AppID': this.appId,
+        'IK-Timestamp': timestamp,
+        'IK-Signature': signature,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    return response.json();
+  }
+
+  private generateSignature(payload: any, timestamp: string): string {
+    const crypto = require('crypto');
+    const payloadString = JSON.stringify(payload);
+    const signatureString = `${this.appId}${timestamp}${payloadString}`;
+    return crypto
+      .createHmac('sha256', this.appSecret)
+      .update(signatureString)
+      .digest('hex');
+  }
+}
+```
+
+### 16.3 All Providers — Adapter Registry
+
+| Provider | Base URL | Auth | Webhook Secret |
+| :--- | :--- | :--- | :--- |
+| **Yoco** | `api.yoco.com/v1` | Bearer | HMAC SHA256 |
+| **iKhokha** | `dev.ikhokha.com/api` | HMAC SHA256 | HMAC |
+| **Peach** | `sandbox-card.peachpayments.com/v1` | API Key | HMAC |
+| **PayFast** | `payfast.co.za/eng/process` | Merchant ID + Key | MD5 + Passphrase |
+| **Ozow** | `api.ozow.com` | API Key + Site Key | Hash |
+| **Stitch** | `api.stitch.money/graphql` | OAuth 2.0 | JWT |
+| **PayGate** | `secure.paygate.co.za` | PayGate ID | Checksum |
+
+### 16.4 Direct Bank Payouts
+
+| Bank | Method | API |
+| :--- | :--- | :--- |
+| **FNB** | EFT / PayShap | FNB Business API |
+| **ABSA** | EFT / Absa Pay | Absa API |
+| **Standard Bank** | EFT / PayShap | SB API |
+| **Nedbank** | EFT / Nedbank Direct | Nedbank API |
+| **Capitec** | EFT / Capitec Pay | Capitec API |
+| **Investec** | EFT | Investec API |
+| **TymeBank** | EFT | TymeBank API |
+
+
+# PART 5 — SETTLEMENT ENGINE
+
+## §17 SETTLEMENT ENGINE ARCHITECTURE
+
+### 17.1 Component Diagram
+
+```mermaid
+flowchart TD
+    subgraph Ingestion["INGESTION"]
+        I1[Webhook Receiver]
+        I2[API Polling]
+        I3[Batch File Import]
+    end
+    
+    subgraph Processing["PROCESSING"]
+        P1[Normaliser]
+        P2[Fee Calculator]
+        P3[Reconciliation]
+        P4[Dispute Handler]
+    end
+    
+    subgraph Storage["STORAGE"]
+        S1[(PostgreSQL)]
+        S2[(Redis)]
+        S3[(S3)]
+    end
+    
+    subgraph Payout["PAYOUT"]
+        O1[Scheduler]
+        O2[Bank File Generator]
+        O3[Payout API]
+    end
+    
+    subgraph Reporting["REPORTING"]
+        R1[Merchant Dashboard]
+        R2[Funder Report]
+        R3[Recon Report]
+    end
+    
+    I1 --> P1
+    I2 --> P1
+    I3 --> P1
+    P1 --> P2
+    P1 --> P3
+    P1 --> P4
+    P2 --> S1
+    P3 --> S1
+    P4 --> S1
+    P3 --> S2
+    P3 --> S3
+    O1 --> O2
+    O1 --> O3
+    O2 --> S1
+    O3 --> S1
+    S1 --> R1
+    S1 --> R2
+    S1 --> R3
+```
+
+### 17.2 Settlement Engine Database Schema
+
+```sql
+-- Settlement Engine Tables
+
+CREATE TABLE settlement_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider VARCHAR(30) NOT NULL,
+  provider_tx_id VARCHAR(100) UNIQUE NOT NULL,
+  merchant_id UUID NOT NULL,
+  amount_cents BIGINT NOT NULL,
+  fee_cents BIGINT NOT NULL,
+  net_amount_cents BIGINT NOT NULL,
+  currency VARCHAR(3) DEFAULT 'ZAR',
+  status VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'SETTLED', 'FAILED', 'REFUNDED', 'DISPUTED')),
+  payment_type VARCHAR(30) NOT NULL,
+  reference VARCHAR(100),
+  metadata JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  settled_at TIMESTAMPTZ
+);
+
+CREATE TABLE settlement_batches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  batch_date DATE NOT NULL,
+  provider VARCHAR(30) NOT NULL,
+  total_amount_cents BIGINT NOT NULL,
+  total_fees_cents BIGINT NOT NULL,
+  total_net_cents BIGINT NOT NULL,
+  transaction_count INTEGER NOT NULL,
+  status VARCHAR(20) DEFAULT 'PENDING',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (batch_date, provider)
+);
+
+CREATE TABLE settlement_payouts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  batch_id UUID REFERENCES settlement_batches(id),
+  merchant_id UUID NOT NULL,
+  amount_cents BIGINT NOT NULL,
+  bank_account JSONB NOT NULL,
+  status VARCHAR(20) DEFAULT 'QUEUED',
+  payout_reference VARCHAR(100),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  paid_at TIMESTAMPTZ
+);
+
+CREATE TABLE settlement_reconciliation (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  batch_id UUID REFERENCES settlement_batches(id),
+  provider_file_url TEXT NOT NULL,
+  internal_file_url TEXT NOT NULL,
+  variance_count INTEGER DEFAULT 0,
+  variance_amount_cents BIGINT DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'PENDING',
+  resolved_at TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE settlement_disputes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_id UUID REFERENCES settlement_transactions(id),
+  reason TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'OPEN',
+  resolution TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ
+);
+
+CREATE TABLE merchant_ledgers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  merchant_id UUID UNIQUE NOT NULL,
+  balance_cents BIGINT DEFAULT 0,
+  pending_cents BIGINT DEFAULT 0,
+  reserved_cents BIGINT DEFAULT 0,
+  last_settlement_date DATE,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE provider_configs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider VARCHAR(30) UNIQUE NOT NULL,
+  api_key_encrypted TEXT,
+  api_secret_encrypted TEXT,
+  webhook_secret_encrypted TEXT,
+  priority INTEGER DEFAULT 100,
+  enabled BOOLEAN DEFAULT TRUE,
+  fee_structure JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### 17.3 Settlement Engine API
+
+```typescript
+// Settlement Engine API
+
+interface SettlementEngine {
+  // Transactions
+  getTransaction(id: string): Promise<SettlementTransaction>;
+  listTransactions(filter: TransactionFilter): Promise<PaginatedResult<SettlementTransaction>>;
+  
+  // Batches
+  createBatch(date: Date, provider: PaymentProvider): Promise<SettlementBatch>;
+  getBatch(id: string): Promise<SettlementBatch>;
+  processBatch(id: string): Promise<ProcessResult>;
+  
+  // Payouts
+  queuePayout(batchId: string, merchantId: string): Promise<SettlementPayout>;
+  processPayout(payoutId: string): Promise<PayoutResult>;
+  
+  // Reconciliation
+  startReconciliation(batchId: string): Promise<ReconciliationResult>;
+  resolveVariance(varianceId: string, resolution: string): Promise<void>;
+  
+  // Disputes
+  createDispute(transactionId: string, reason: string): Promise<SettlementDispute>;
+  resolveDispute(disputeId: string, resolution: string): Promise<void>;
+  
+  // Ledger
+  getLedger(merchantId: string): Promise<MerchantLedger>;
+  updateLedger(merchantId: string, delta: LedgerDelta): Promise<void>;
+  
+  // Reports
+  generateReport(type: ReportType, filter: ReportFilter): Promise<Report>;
+}
+```
+
+### 17.4 Settlement Workflow
+
+| Step | Action | Frequency | Responsible |
+| :--- | :--- | :--- | :--- |
+| 1 | Receive webhook | Real-time | Webhook Receiver |
+| 2 | Normalise | Real-time | Normaliser |
+| 3 | Calculate fees | Real-time | Fee Calculator |
+| 4 | Match order/invoice | Real-time | Reconciliation |
+| 5 | Queue payout | Daily 17:00 | Scheduler |
+| 6 | Generate bank file | Daily 18:00 | Bank File Generator |
+| 7 | Submit payout | Daily 19:00 | Payout API |
+| 8 | Confirm settlement | T+1 | Reconciliation |
+| 9 | Update ledger | T+1 | Ledger Service |
+| 10 | Generate reports | T+1 | Reporting |
+
+
+# PART 6 — 15 NEWLY IDENTIFIED AREAS
+
+## §18 NEW AREAS OVERVIEW
+
+| # | Area | Purpose | Priority |
+| :--- | :--- | :--- | :--- |
+| 26 | Data Migration & Schema Evolution | Move SQLite → PostgreSQL, monolith → microservices | CRITICAL |
+| 27 | Feature Flags & Progressive Rollout | Release to subset of doors | HIGH |
+| 28 | A/B Testing Framework | Test pricing, UX, promotions | HIGH |
+| 29 | Multi-Tenancy Architecture | White-label, PaaS | HIGH |
+| 30 | Regulatory Compliance Automation | POPIA, PCI DSS, SAHPRA, NCR | CRITICAL |
+| 31 | Anti-Fraud & AML | Protect embedded finance | CRITICAL |
+| 32 | Dispute Resolution Workflows | Consumer + merchant | HIGH |
+| 33 | KYC/KYB Automation | Onboarding | HIGH |
+| 34 | Credit Scoring & Risk Models | Township-appropriate | CRITICAL |
+| 35 | Bank Feed Reconciliation | SARB, bank APIs | HIGH |
+| 36 | Multi-Currency & Cross-Border | Future expansion | MEDIUM |
+| 37 | DR with Hot/Warm/Cold Standby | Resilience | CRITICAL |
+| 38 | FinOps & Cost Optimization | Cloud spend | MEDIUM |
+| 39 | Developer Experience (DevEx) | Docs, SDKs, sandbox | HIGH |
+| 40 | Accessibility (WCAG) | Inclusive township deployment | HIGH |
+
+## §19 DATA MIGRATION & SCHEMA EVOLUTION
+
+### 19.1 Migration Strategy
+
+```mermaid
+flowchart LR
+    A[SQLite Dev] --> B[PostgreSQL Prod]
+    B --> C[Microservices DBs]
+    
+    A1[Monolith] --> B1[Modular Monolith]
+    B1 --> C1[Microservices]
+```
+
+### 19.2 Migration Steps
+
+| Step | Action | Tool | Risk |
+| :--- | :--- | :--- | :--- |
+| 1 | Baseline schema | Prisma Migrate | Low |
+| 2 | Data export | pg_dump | Low |
+| 3 | Data transform | Custom scripts | Medium |
+| 4 | Parallel run | Dual-write | High |
+| 5 | Cutover | DNS + connection switch | High |
+| 6 | Verify | Reconciliation | Medium |
+| 7 | Decommission | — | Low |
+
+### 19.3 Schema Evolution Rules
+
+| Rule | Specification |
+| :--- | :--- |
+| **Backward compatible** | Every migration must be backward compatible |
+| **Additive only** | Add columns/tables; never drop in the same release |
+| **Two-phase** | Add → populate → enforce → drop |
+| **Rollback plan** | Every migration has a rollback script |
+| **Test in staging** | Full data clone in staging |
+| **Zero downtime** | No table locks; use online DDL |
+
+## §20 FEATURE FLAGS & PROGRESSIVE ROLLOUT
+
+### 20.1 Feature Flag Architecture
+
+```typescript
+// Feature Flag Service
+
+interface FeatureFlag {
+  key: string;
+  enabled: boolean;
+  rolloutPercentage: number; // 0-100
+  targetIds?: string[]; // Specific doors/merchants
+  targetRegions?: string[];
+  targetBrands?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+class FeatureFlagService {
+  async isEnabled(flagKey: string, context: FlagContext): Promise<boolean> {
+    const flag = await this.getFlag(flagKey);
+    if (!flag || !flag.enabled) return false;
+    
+    if (flag.targetIds?.includes(context.merchantId)) return true;
+    if (flag.targetRegions?.includes(context.region)) return true;
+    if (flag.targetBrands?.includes(context.brand)) return true;
+    
+    // Percentage rollout
+    const hash = this.hashContext(flagKey, context.merchantId);
+    return (hash % 100) < flag.rolloutPercentage;
+  }
+}
+```
+
+### 20.2 Rollout Stages
+
+| Stage | Audience | Duration | Success Criteria |
+| :--- | :--- | :--- | :--- |
+| **Internal** | Groway staff | 3 days | No errors |
+| **Canary** | 1 door | 1 week | Metrics stable |
+| **Early Adopter** | 10 doors | 2 weeks | KPIs improve |
+| **Broad** | 100 doors | 2 weeks | Full rollout |
+| **Full** | All doors | — | — |
+
+## §21 A/B TESTING FRAMEWORK
+
+### 21.1 Framework Design
+
+```typescript
+interface ABTest {
+  id: string;
+  name: string;
+  hypothesis: string;
+  variants: Variant[];
+  metrics: string[];
+  startDate: Date;
+  endDate: Date;
+  status: 'DRAFT' | 'RUNNING' | 'COMPLETED' | 'ABORTED';
+  sampleSize: number;
+  confidenceLevel: number;
+}
+
+interface Variant {
+  id: string;
+  name: string;
+  allocation: number; // 0-100
+  config: Record<string, any>;
+}
+```
+
+### 21.2 Test Ideas
+
+| Test | Control | Variant | Metric |
+| :--- | :--- | :--- | :--- |
+| **Pricing** | R45 bread | R42 bread | Volume, margin |
+| **Promotion** | No promo | 10% off | Basket size |
+| **UX** | 3-tap reorder | 1-tap reorder | Reorder frequency |
+| **Messaging** | "Buy now" | "Save R5" | Conversion |
+| **Layout** | 2 columns | 3 columns | Time on screen |
+
+## §22 MULTI-TENANCY ARCHITECTURE
+
+### 22.1 Tenancy Model
+
+```mermaid
+flowchart TD
+    subgraph Shared["SHARED INFRASTRUCTURE"]
+        A[API Gateway]
+        B[Auth Service]
+        C[Database Cluster]
+    end
+    
+    subgraph Tenants["TENANTS"]
+        T1[Groway/SpazaBox]
+        T2[White-Label Partner 1]
+        T3[White-Label Partner 2]
+    end
+    
+    T1 --> A
+    T2 --> A
+    T3 --> A
+    A --> B
+    B --> C
+```
+
+### 22.2 Isolation Model
+
+| Level | Model | Use Case |
+| :--- | :--- | :--- |
+| **Row-Level** | `tenant_id` on every table | Default |
+| **Schema-Level** | Separate schema per tenant | Enterprise |
+| **Database-Level** | Separate DB per tenant | White-label |
+| **Cluster-Level** | Separate cluster | Regulated |
+
+## §23 REGULATORY COMPLIANCE AUTOMATION
+
+### 23.1 Compliance Matrix
+
+| Regulation | Requirement | Automation |
+| :--- | :--- | :--- |
+| **POPIA** | Data protection | Consent management, audit logs |
+| **PCI DSS** | Card data | Tokenization, no storage |
+| **SAHPRA** | Pharma traceability | SAPE Layer 2 + 3 |
+| **NCR** | Credit provider | Registration, affordability |
+| **FICA** | AML/KYC | Automated screening |
+| **OHS** | Workplace safety | Incident tracking |
+| **SANS 10142** | Electrical | CoC verification |
+
+### 23.2 Compliance Automation
+
+```typescript
+interface ComplianceCheck {
+  id: string;
+  regulation: string;
+  entity: string;
+  status: 'COMPLIANT' | 'NON_COMPLIANT' | 'PENDING';
+  lastCheck: Date;
+  nextCheck: Date;
+  evidence: string[];
+  remediation?: string;
+}
+```
+
+## §24 ANTI-FRAUD & AML
+
+### 24.1 Fraud Detection Engine
+
+```mermaid
+flowchart TD
+    T[Transaction] --> R[Rules Engine]
+    T --> M[ML Model]
+    R --> S[Score]
+    M --> S
+    S --> D{Threshold?}
+    D -->|< 30| A[Approve]
+    D -->|30-70| V[Verify]
+    D -->|> 70| B[Block]
+```
+
+### 24.2 Rules
+
+| Rule | Threshold | Action |
+| :--- | :--- | :--- |
+| **Velocity** | >10 tx/hour | Verify |
+| **Amount** | >R10K | Verify |
+| **Location** | Outside node | Block |
+| **Device** | New device | Verify |
+| **Pattern** | Unusual SKU mix | Verify |
+
+### 24.3 AML Screening
+
+| Check | Provider | Frequency |
+| :--- | :--- | :--- |
+| **Sanctions** | Dow Jones | Onboarding + daily |
+| **PEP** | Refinitiv | Onboarding + daily |
+| **Adverse media** | LexisNexis | Monthly |
+| **CIPC** | CIPC | Onboarding |
+| **Credit** | TransUnion | Onboarding |
+
+## §25 DISPUTE RESOLUTION WORKFLOWS
+
+### 25.1 Dispute Types
+
+| Type | Filed by | SLA | Escalation |
+| :--- | :--- | :--- | :--- |
+| **Consumer** | Customer | 7 days | Ombudsman |
+| **Merchant** | Operator | 14 days | Panel |
+| **Funder** | Funder | 30 days | CEO |
+| **Payment** | Provider | 5 days | Provider |
+
+### 25.2 Workflow
+
+```mermaid
+flowchart LR
+    A[Dispute Filed] --> B[Auto-Acknowledge]
+    B --> C[Assign]
+    C --> D[Investigate]
+    D --> E{Resolved?}
+    E -->|Yes| F[Close]
+    E -->|No| G[Escalate]
+    G --> H[Panel]
+    H --> I[Decision]
+```
+
+## §26 KYC/KYB AUTOMATION
+
+### 26.1 KYC (Consumer)
+
+| Check | Provider | Data |
+| :--- | :--- | :--- |
+| **ID** | Home Affairs | SA ID |
+| **Selfie** | Smile Identity | Face match |
+| **Address** | Bank | Proof of address |
+| **Phone** | Network | SIM ownership |
+
+### 26.2 KYB (Merchant)
+
+| Check | Provider | Data |
+| :--- | :--- | :--- |
+| **CIPC** | CIPC | Company registration |
+| **Tax** | SARS | Tax clearance |
+| **Bank** | Bank | Account verification |
+| **Directors** | CIPC | Director IDs |
+| **Sanctions** | Dow Jones | Screening |
+
+## §27 CREDIT SCORING & RISK MODELS
+
+### 27.1 Township Credit Model
+
+```mermaid
+flowchart TD
+    subgraph Inputs["INPUTS"]
+        I1[Sales history]
+        I2[Payment history]
+        I3[Stock behaviour]
+        I4[Footfall]
+        I5[Grant dates]
+        I6[Node performance]
+    end
+    
+    subgraph Model["MODEL"]
+        M1[Logistic Regression]
+        M2[Gradient Boosting]
+        M3[Ensemble]
+    end
+    
+    subgraph Output["OUTPUT"]
+        O1[Credit score 0-1000]
+        O2[Risk tier]
+        O3[Credit limit]
+        O4[Pricing]
+    end
+    
+    I1 --> M1
+    I2 --> M1
+    I3 --> M2
+    I4 --> M2
+    I5 --> M2
+    I6 --> M3
+    M1 --> M3
+    M2 --> M3
+    M3 --> O1
+    M3 --> O2
+    M3 --> O3
+    M3 --> O4
+```
+
+### 27.2 Risk Tiers
+
+| Tier | Score | Credit Limit | Interest |
+| :--- | :--- | :--- | :--- |
+| **A** | 800+ | R100K | 1.5%/mo |
+| **B** | 600–799 | R50K | 2.5%/mo |
+| **C** | 400–599 | R20K | 3.5%/mo |
+| **D** | 200–399 | R5K | 5%/mo |
+| **E** | <200 | Decline | — |
+
+## §28 BANK FEED RECONCILIATION
+
+### 28.1 SARB Integration
+
+| Bank | API | Frequency |
+| :--- | :--- | :--- |
+| **FNB** | Business API | Real-time |
+| **ABSA** | Absa API | Daily |
+| **Standard Bank** | SB API | Real-time |
+| **Nedbank** | Nedbank API | Daily |
+| **Capitec** | Capitec API | Real-time |
+
+### 28.2 Reconciliation Process
+
+```mermaid
+flowchart LR
+    A[Bank Feed] --> B[Normalise]
+    B --> C[Match]
+    C --> D{Exact Match?}
+    D -->|Yes| E[Auto-Reconcile]
+    D -->|No| F[Manual Review]
+    F --> G[Resolve]
+    G --> E
+```
+
+## §29 MULTI-CURRENCY & CROSS-BORDER
+
+### 29.1 Currencies
+
+| Currency | Status | Markets |
+| :--- | :--- | :--- |
+| **ZAR** | Primary | South Africa |
+| **USD** | Future | International |
+| **BWP** | Future | Botswana |
+| **ZMW** | Future | Zambia |
+| **MZN** | Future | Mozambique |
+
+### 29.2 Cross-Border
+
+| Feature | Specification |
+| :--- | :--- |
+| **Forex** | Real-time rates |
+| **Settlement** | Multi-currency ledgers |
+| **Compliance** | Cross-border AML |
+| **Tax** | Transfer pricing |
+
+## §30 DISASTER RECOVERY
+
+### 30.1 RTO/RPO Targets
+
+| Tier | Service | RTO | RPO |
+| :--- | :--- | :--- | :--- |
+| **1** | Payments | 15 min | 0 |
+| **1** | Settlement | 15 min | 0 |
+| **1** | SAPE | 30 min | 5 min |
+| **2** | Merchant OS | 1 hr | 5 min |
+| **2** | POS | 1 hr | 5 min |
+| **3** | Analytics | 4 hrs | 1 hr |
+
+### 30.2 DR Strategy
+
+| Component | Strategy |
+| :--- | :--- |
+| **Database** | Multi-AZ + cross-region replica |
+| **Redis** | Cluster + persistence |
+| **Kafka** | Multi-broker + replication |
+| **S3** | Cross-region replication |
+| **Kubernetes** | Multi-cluster |
+| **DNS** | Route 53 failover |
+
+## §31 FINOPS & COST OPTIMIZATION
+
+### 31.1 Cost Optimization
+
+| Area | Optimization | Savings |
+| :--- | :--- | :--- |
+| **Compute** | Spot instances for batch | 60% |
+| **Storage** | S3 Intelligent-Tiering | 40% |
+| **Database** | Reserved instances | 30% |
+| **Network** | CloudFront CDN | 25% |
+| **Logs** | Retention policies | 50% |
+
+### 31.2 Cost Monitoring
+
+| Metric | Target |
+| :--- | :--- |
+| **Cost per door** | <R50/month |
+| **Cost per transaction** | <R0.05 |
+| **Cloud spend growth** | <20%/year |
+
+## §32 DEVELOPER EXPERIENCE (DEVEX)
+
+### 32.1 DevEx Pillars
+
+| Pillar | Deliverable |
+| :--- | :--- |
+| **Documentation** | API docs, SDK docs, tutorials |
+| **SDKs** | TypeScript, Python, PHP, Java |
+| **Sandbox** | Full API sandbox |
+| **Postman Collection** | Ready-to-use |
+| **Code Samples** | GitHub repos |
+| **Support** | Slack channel, email |
+
+### 32.2 API Documentation
+
+```yaml
+openapi: 3.0.0
+info:
+  title: Groway Merchant OS API
+  version: 2.0.0
+  description: Complete API for Merchant OS, SAPE, Payments, Settlement
+servers:
+  - url: https://api.groway.co.za/v2
+  - url: https://sandbox-api.groway.co.za/v2
+paths:
+  /merchant-os/sales:
+    post:
+      summary: Record a sale
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sale'
+      responses:
+        '201':
+          description: Sale recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleResponse'
+```
+
+## §33 ACCESSIBILITY (WCAG)
+
+### 33.1 WCAG 2.1 AA Compliance
+
+| Principle | Requirement | Implementation |
+| :--- | :--- | :--- |
+| **Perceivable** | Text alternatives | Alt text on all images |
+| **Operable** | Keyboard accessible | Full keyboard nav |
+| **Understandable** | Readable | Simple language option |
+| **Robust** | Compatible | Screen reader tested |
+
+### 33.2 Township-Specific
+
+| Feature | Specification |
+| :--- | :--- |
+| **Large text** | Default 16px, scalable to 24px |
+| **High contrast** | 4.5:1 minimum |
+| **Simple language** | Grade 6 reading level |
+| **Voice** | Full voice control |
+| **Offline** | Full functionality |
+
+
+# PART 7 — GLM BUILD INSTRUCTIONS
+
+## §34 GLM BUILD PACKAGE
+
+### 34.1 Project Structure
+
+```
+groway-merchant-os/
+├── apps/
+│   ├── api-gateway/
+│   ├── auth-service/
+│   ├── merchant-os/
+│   ├── settlement-engine/
+│   ├── sape-service/
+│   ├── iot-gateway/
+│   ├── payment-orchestrator/
+│   ├── notification-service/
+│   ├── analytics-service/
+│   └── fleet-service/
+├── packages/
+│   ├── shared-types/
+│   ├── shared-utils/
+│   ├── database/
+│   ├── blockchain/
+│   └── ui/
+├── infrastructure/
+│   ├── terraform/
+│   ├── helm/
+│   └── kubernetes/
+├── docs/
+│   ├── api/
+│   ├── architecture/
+│   └── deployment/
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+└── .github/
+    └── workflows/
+```
+
+### 34.2 Per-Service Build Instructions
+
+For each service, GLM must generate:
+
+| Component | Deliverable |
+| :--- | :--- |
+| **Service** | Fastify/Next.js application |
+| **Database** | Prisma schema + migrations |
+| **API** | OpenAPI spec + implementation |
+| **Tests** | Unit + integration + e2e |
+| **Dockerfile** | Multi-stage build |
+| **Helm chart** | Kubernetes deployment |
+| **Terraform** | Infrastructure as code |
+| **Documentation** | README + API docs |
+
+### 34.3 GLM Build Prompts
+
+**Prompt 1: Auth Service**
+
+```
+Build the auth-service microservice for Groway Merchant OS.
+
+Stack: Fastify, TypeScript, PostgreSQL (Prisma), Redis, JWT.
+Features: NextAuth v4, OTP, PIN, RBAC, session management, POPIA compliance.
+API: /register, /login, /otp/send, /otp/verify, /refresh, /logout, /me
+Database: User, Session, Role, Permission tables.
+Tests: Unit (Jest), Integration (Supertest), E2E (Playwright).
+Deploy: Docker + Helm + ArgoCD.
+Security: bcrypt, rate limiting, audit logging.
+```
+
+**Prompt 2: SAPE Service**
+
+```
+Build the sape-service microservice for Groway Merchant OS.
+
+Stack: Fastify, TypeScript, PostgreSQL, TimescaleDB, Hyperledger Fabric, Redis.
+Features: Supplier verification, product serialisation, chain of custody, POS verification, consumer verification, authority sharing.
+API: /suppliers/verify, /products/serialise, /custody/events, /pos/verify, /consumer/scan, /authority/notify, /authority/dashboard, /tip-off, /trust-score
+Database: AuthenticatedSupplier, ProductIdentity, ProductSerial, CustodyEvent, POSVerification, VerificationFailure, NetworkBlock, AuthorityNotification, TipOff
+Blockchain: Hyperledger Fabric chaincode (anchorProduct, anchorCustodyEvent, verifyProduct, queryCustodyChain)
+Tests: Unit, Integration (including blockchain), E2E.
+Deploy: Docker + Helm + ArgoCD.
+Security: Signature validation, anomaly detection, authority API keys.
+```
+
+**Prompt 3: Payment Orchestrator**
+
+```
+Build the payment-orchestrator microservice for Groway Merchant OS.
+
+Stack: Fastify, TypeScript, PostgreSQL, Redis.
+Features: Multi-provider routing, adapter registry, retry logic, idempotency, webhook verification, refunds.
+Providers: Yoco, iKhokha, Peach, PayFast, Ozow, Stitch, PayGate, FNB, ABSA, Standard Bank, Nedbank, Capitec.
+API: /payments/create, /payments/:id, /payments/:id/refund, /webhooks/:provider, /providers
+Database: Payment, Transaction, Refund, ProviderConfig
+Tests: Unit (mocked providers), Integration (sandbox providers), E2E.
+Deploy: Docker + Helm + ArgoCD.
+Security: HMAC verification, idempotency keys, secret isolation.
+```
+
+**Prompt 4: Settlement Engine**
+
+```
+Build the settlement-engine microservice for Groway Merchant OS.
+
+Stack: Fastify, TypeScript, PostgreSQL, Redis, S3.
+Features: Transaction ingestion, normalisation, fee calculation, reconciliation, payouts, disputes, ledger, reporting.
+API: /transactions, /batches, /payouts, /reconciliation, /disputes, /ledger, /providers, /reports
+Database: SettlementTransaction, SettlementBatch, SettlementPayout, SettlementReconciliation, SettlementDispute, MerchantLedger, ProviderConfig
+Integration: Bank file generation (FNB, ABSA, Standard Bank, Nedbank, Capitec), SARB feeds.
+Tests: Unit, Integration (bank file gen), E2E.
+Deploy: Docker + Helm + ArgoCD.
+Security: Encryption at rest, audit logs, immutable ledger.
+```
+
+### 34.4 GLM Guardrails (Repeat)
+
+| Guardrail | Enforcement |
+| :--- | :--- |
+| **No production secrets** | GLM has no access |
+| **Code review** | Every PR reviewed |
+| **Secrets scan** | TruffleHog + Gitleaks |
+| **Dependency pin** | `npm ci` only |
+| **Network egress** | Restricted to npm mirror |
+| **Audit log** | All interactions logged |
+| **Prompt redaction** | No PII in prompts |
+| **Air-gapped tests** | Isolated VPC |
+
+
+# PART 8 — IMPLEMENTATION ROADMAP
+
+## §35 24-MONTH ROADMAP
+
+```mermaid
+gantt
+    title Groway Platform Upgrade — 24 Months
+    dateFormat YYYY-MM-DD
+    section Phase 1 — Foundation (Q4 2026)
+    Architecture refactor         :2026-10-15, 12w
+    CI/CD pipeline                :2026-10-15, 8w
+    Data migration                :2026-11-01, 8w
+    Feature flags                 :2026-11-15, 6w
+    section Phase 2 — SAPE & Payments (Q1 2027)
+    SAPE service                  :2027-01-01, 16w
+    Blockchain integration        :2027-02-01, 10w
+    Payment orchestrator          :2027-01-01, 12w
+    Provider adapters             :2027-02-01, 12w
+    section Phase 3 — Settlement & Finance (Q2 2027)
+    Settlement engine             :2027-04-01, 12w
+    Bank integrations             :2027-04-01, 10w
+    Working capital               :2027-05-01, 12w
+    Embedded insurance            :2027-05-01, 10w
+    section Phase 4 — Intelligence (Q3 2027)
+    Demand forecasting            :2027-07-01, 12w
+    Dynamic pricing               :2027-07-01, 10w
+    Self-healing infra            :2027-08-01, 14w
+    AI CCTV analytics             :2027-08-01, 12w
+    section Phase 5 — Network & Climate (Q4 2027)
+    Node intelligence             :2027-10-01, 12w
+    P2P energy                    :2027-10-01, 10w
+    Weather-aware trading         :2027-11-01, 8w
+    Solar optimization            :2027-11-01, 8w
+    section Phase 6 — Ecosystem (Q1-Q2 2028)
+    Platform-as-a-Service         :2028-01-01, 16w
+    Data-as-a-Service             :2028-02-01, 12w
+    Government services           :2028-03-01, 14w
+    Health & wellness             :2028-04-01, 12w
+    section Phase 7 — Continuous (Ongoing)
+    Monitoring & optimization     :2028-01-01, 52w
+    Security hardening            :2028-01-01, 52w
+    DevEx                         :2028-01-01, 52w
+```
+
+## §36 INVESTMENT SUMMARY
+
+| Phase | Upgrades | Investment | Duration | Annual Impact |
+| :--- | :--- | ---: | :--- | ---: |
+| **1 — Foundation** | 4 | R4.2M | 12 weeks | +R45M |
+| **2 — SAPE & Payments** | 4 | R5.5M | 16 weeks | +R68M |
+| **3 — Settlement & Finance** | 4 | R5.8M | 12 weeks | +R92M |
+| **4 — Intelligence** | 4 | R5.2M | 14 weeks | +R48M |
+| **5 — Network & Climate** | 4 | R4.5M | 12 weeks | +R60M |
+| **6 — Ecosystem** | 4 | R6.8M | 16 weeks | +R21M |
+| **7 — Continuous** | 3 | R2.5M | 52 weeks | +R94M |
+| **Total** | **27** | **R34.5M** | **24 months** | **+R428M** |
+
+**Note:** Original 25 upgrades + 15 new areas = 40 unique upgrades. Investment consolidates across phases. Return reflects cumulative annual impact at full build.
+
+
+# PART 9 — SUCCESS METRICS
+
+## §37 PLATFORM METRICS
+
+| Metric | Target | Measurement |
+| :--- | :--- | :--- |
+| **Uptime** | 99.95% | Prometheus |
+| **API latency (p95)** | <200ms | Grafana |
+| **POS transaction latency** | <500ms | Grafana |
+| **SAPE verification latency** | <500ms | Grafana |
+| **Settlement accuracy** | 100% | Reconciliation |
+| **Fraud rate** | <0.1% | Fraud engine |
+| **Default rate** | <5% | Credit model |
+| **Operator NPS** | >50 | Survey |
+| **Funder confidence** | High | Survey |
+
+## §38 BUSINESS METRICS
+
+| Metric | Current | Target (24mo) |
+| :--- | ---: | ---: |
+| **Doors deployed** | 11 | 1,584 |
+| **Annual revenue** | R8M | R428M |
+| **Annual EBITDA** | R2M | R118M |
+| **Operator income** | R15K/mo | R25K/mo |
+| **Jobs created** | 100 | 3,200 |
+| **Households reached** | 5,000 | 1.14M |
+
+
+# PART 10 — CONCLUSION
+
+## §39 THE COMPLETE PICTURE
+
+This master DevOps guide consolidates:
+
+| Component | Status |
+| :--- | :--- |
+| **25 strategic upgrades** | Detailed, phased, funded |
+| **SAPE** | 6-layer architecture, blockchain, authority APIs |
+| **Direct payments** | Merchant OS → Payment Orchestrator |
+| **Settlement engine** | Reconciliation, payouts, disputes, ledger |
+| **Payment providers** | Yoco, iKhokha, Peach, PayFast, Ozow, Stitch, PayGate, Banks |
+| **15 new areas** | Data migration to DevEx |
+| **GLM build instructions** | Per-service prompts, guardrails |
+| **24-month roadmap** | Phased, funded, measured |
+
+## §40 GLM — YOU HAVE EVERYTHING
+
+**To the GLM team:**
+
+You have:
+
+1. **Complete architecture** — 10 microservices
+2. **Detailed APIs** — 686+ endpoints, extendable
+3. **Database schemas** — 296+ models, extendable
+4. **SAPE specification** — 6 layers, blockchain, authority integration
+5. **Payment integration** — 8+ providers, all SA operators
+6. **Settlement engine** — full specification
+7. **GLM guardrails** — security requirements
+8. **Build prompts** — per-service instructions
+9. **Roadmap** — 24 months, phased
+10. **Success metrics** — how you'll be measured
+
+**Build it.** Follow the guardrails. Ship quality code. Transform township retail.
+
+**The world is watching.**
+
+---
+
+**End of Master DevOps & Build Guide**
+
+*Prepared by: Groway Platform & Technology Team*  
+*For: GLM Build Team, Platform Team, Investor & Funder Review*  
+*Date: 12 October 2026*  
+*Classification: CONFIDENTIAL — QUALIFIED INVESTORS*

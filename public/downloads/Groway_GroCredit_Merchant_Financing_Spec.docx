@@ -1,0 +1,413 @@
+# GroCredit - Merchant Working Capital Facility
+
+## Version 4.0 | February 2026
+
+---
+
+## Executive Summary
+
+GroCredit is an algorithm-based merchant financing facility that determines creditworthiness through real-time sales performance analysis. Part of the Groway ecosystem, GroCredit integrates with Inventory Intelligence and Supply Intelligence to provide seamless working capital for merchants operating within the Merchant OS.
+
+---
+
+## 1. Overview
+
+### 1.1 Purpose
+
+GroCredit provides working capital to Groway merchants based on their actual sales performance, not traditional credit scores. This enables merchants to:
+
+- Purchase inventory via GroSupply
+- Manage cash flow during seasonal fluctuations
+- Expand business operations
+- Handle emergency expenses
+
+### 1.2 Key Differentiators
+
+| Feature | GroCredit | Traditional Lending |
+|---------|-----------|-------------------|
+| Credit Assessment | Algorithm-based on sales | Credit bureau score |
+| Integration | Native to Merchant OS | External process |
+| Approval Time | Instant to 24 hours | Days to weeks |
+| Interest Rate | Repo + 5-8% p.a. | Prime + 10-20% |
+| Collateral | Sales history | Physical assets |
+
+---
+
+## 2. Credit Scoring Algorithm
+
+### 2.1 Multi-Factor Scoring Model
+
+The GroCredit algorithm calculates a merchant's creditworthiness using four weighted factors:
+
+| Factor | Weight | Data Sources |
+|--------|--------|--------------|
+| Sales Performance | 40% | POS transactions, revenue trends |
+| Operational Consistency | 20% | Daily operations, peak performance |
+| Inventory Health | 20% | Stock turnover, days of stock, GMROI |
+| Supply Reliability | 20% | Supplier relationships, on-time delivery |
+
+### 2.2 Score Calculation
+
+```
+Credit Score = (Sales × 0.40) + (Operations × 0.20) + (Inventory × 0.20) + (Supply × 0.20)
+
+Range: 0-100
+Confidence: 0-100%
+```
+
+### 2.3 Sales Performance Factors (40% Weight)
+
+| Factor | Metric | Impact |
+|--------|--------|--------|
+| Monthly Revenue | Total ZAR processed | Positive if growing |
+| Growth Rate | % change month-over-month | Positive if > 0% |
+| Transaction Volume | Count of transactions | Higher = better |
+| Consistency Score | Revenue stability % | Higher = better |
+
+### 2.4 Inventory Health Factors (20% Weight)
+
+| Factor | Metric | Target |
+|--------|--------|--------|
+| Stock Turnover Rate | Times per year | 8-12x optimal |
+| Days of Stock | Average days supply | 30-45 days optimal |
+| Dead Stock Ratio | % of unsold inventory | < 5% optimal |
+| GMROI | Gross Margin Return | > 200% optimal |
+
+### 2.5 Supply Reliability Factors (20% Weight)
+
+| Factor | Metric | Target |
+|--------|--------|--------|
+| Supplier Reliability Score | On-time delivery % | > 90% optimal |
+| Active Suppliers | Count of suppliers | 3+ optimal |
+| Monthly Procurement Spend | ZAR via GroSupply | Higher = better |
+| On-Time Delivery Rate | % received on time | > 95% optimal |
+
+---
+
+## 3. Tier System
+
+### 3.1 Four-Tier Structure
+
+| Tier | Monthly Sales | Max Limit | Interest Rate | Features |
+|------|--------------|-----------|---------------|----------|
+| **Starter** | R10,000+ | R50,000 | Repo + 8% | Basic credit, standard processing |
+| **Business** | R50,000+ | R200,000 | Repo + 7% | Higher limits, priority processing, GroSupply integration |
+| **Enterprise** | R200,000+ | R1,000,000 | Repo + 6% | Maximum limits, instant approval, dedicated support |
+| **Seasonal** | R30,000+ | R150,000 | Repo + 5.5% | Flexible terms, peak season boosts, variable limits |
+
+### 3.2 Current SARB Repo Rate
+
+**8.25%** (as of February 2026)
+
+### 3.3 Interest Rate Examples
+
+| Tier | Calculation | Effective Rate |
+|------|-------------|----------------|
+| Starter | 8.25% + 8% | 16.25% APR |
+| Business | 8.25% + 7% | 15.25% APR |
+| Enterprise | 8.25% + 6% | 14.25% APR |
+| Seasonal | 8.25% + 5.5% | 13.75% APR |
+
+---
+
+## 4. Credit Limit Calculation
+
+### 4.1 Formula
+
+```
+Recommended Limit = Monthly Revenue Base × Credit Score Multiplier × Tier Multiplier
+
+Where:
+- Monthly Revenue Base = 60% of average monthly revenue
+- Credit Score Multiplier = Score / 100
+- Tier Multiplier = Enterprise (1.5x) | Business (1.0x) | Seasonal (0.8x) | Starter (0.5x)
+```
+
+### 4.2 Example Calculation
+
+**Merchant Profile:**
+- Monthly Revenue: R255,000
+- Credit Score: 78
+- Tier: Business
+
+**Calculation:**
+```
+Base = R255,000 × 0.60 = R153,000
+Score Multiplier = 78 / 100 = 0.78
+Tier Multiplier = 1.0
+
+Recommended Limit = R153,000 × 0.78 × 1.0 = R119,340
+```
+
+---
+
+## 5. Process Flow
+
+### 5.1 New Merchant Application
+
+```
+┌─────────────────┐
+│ 1. Registration │
+│   Merchant OS   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 2. Sales Period │
+│   30-90 days    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 3. Algorithm     │
+│   Calculation    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 4. Tier Assignment│
+│   Auto-Assigned  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 5. Facility Active│
+│   Ready to Draw  │
+└─────────────────┘
+```
+
+### 5.2 Draw Process
+
+1. **Request**: Merchant initiates draw in Merchant OS
+2. **Validation**: System checks available credit
+3. **Purpose Selection**: Inventory, Working Capital, GroSupply Order, Emergency
+4. **Interest Preview**: System shows estimated interest
+5. **Confirmation**: Merchant confirms draw
+6. **Disbursement**: Funds credited to merchant wallet or paid directly to supplier
+
+### 5.3 Repayment
+
+- **Minimum Payment**: 5% of outstanding balance monthly
+- **Due Date**: 25th of each month
+- **Late Fee**: 2.5% of overdue amount
+- **Full Repayment**: Any time without penalty
+
+---
+
+## 6. GroSupply Integration
+
+### 6.1 Direct Order Payment
+
+GroCredit can directly pay GroSupply purchase orders:
+
+```
+Merchant → Select PO → Pay with GroCredit → Supplier Paid
+```
+
+### 6.2 Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| Instant Payment | No waiting for bank transfers |
+| Early Payment Discounts | Capture supplier discounts |
+| Automatic Reconciliation | PO linked to credit draw |
+| Inventory Funding | Stock purchases funded immediately |
+
+### 6.3 Auto-Fund Low Stock
+
+When inventory hits reorder point:
+1. System detects low stock
+2. GroSupply RFQ generated
+3. GroCredit pre-approved for order value
+4. Merchant confirms with one click
+
+---
+
+## 7. NCA Compliance
+
+### 7.1 Applicable Regulations
+
+GroCredit is regulated under the **National Credit Act (NCA)** for sole proprietors:
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Affordability Assessment | Income vs. expenses analysis |
+| Pre-Agreement Disclosure | Clear terms before signing |
+| Credit Agreement | Formal contract provided |
+| Cooling-Off Period | 5 business days |
+| NCR Registration | Registered Credit Provider |
+
+### 7.2 Business Type Classification
+
+| Type | NCA Applicable |
+|------|---------------|
+| Sole Proprietor | Yes - Full Assessment |
+| Pty Ltd | No - Commercial Credit |
+| Close Corporation | No - Commercial Credit |
+| Partnership | Yes - Full Assessment |
+
+### 7.3 Consumer Rights
+
+- Right to apply for credit (Section 60)
+- Right to reasons for refusal (Section 62)
+- Right to information in official language (Section 63)
+- Right to access and correct credit records (Section 72)
+- Right to dispute incorrect information (Section 72)
+- Right to surrender goods (Section 127)
+
+---
+
+## 8. Protection Mechanisms
+
+### 8.1 For the Lender
+
+| Mechanism | Description |
+|-----------|-------------|
+| Dynamic Limits | Adjusts based on sales performance |
+| Multi-Factor Scoring | Not reliant on single metric |
+| Real-Time Monitoring | Daily score recalculation |
+| Automatic Suspension | If sales drop below threshold |
+| Integration Lock | Funds tied to GroSupply orders |
+
+### 8.2 For the Merchant
+
+| Mechanism | Description |
+|-----------|-------------|
+| No Over-Extension | Limit based on actual capacity |
+| Transparent Scoring | See exactly how score is calculated |
+| Fair Interest | Risk-based, not punitive |
+| Flexible Repayment | No prepayment penalties |
+| Business Support | JAX AI insights for optimization |
+
+---
+
+## 9. API Endpoints
+
+### 9.1 Merchant Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /v1/grocredit/status | Facility status + available |
+| POST | /v1/grocredit/draw | Draw funds for PO payment |
+| POST | /v1/grocredit/repayment | Make a payment |
+| GET | /v1/grocredit/transactions | Transaction history |
+| GET | /v1/grocredit/score | Credit score breakdown |
+
+### 9.2 Admin Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /admin/grocredit/portfolio | All merchant facilities |
+| POST | /admin/grocredit/:id/approve | Approve facility increase |
+| GET | /admin/grocredit/overdue | Overdue accounts |
+| GET | /admin/grocredit/analytics | Portfolio analytics |
+
+---
+
+## 10. Revenue Model
+
+### 10.1 Income Streams
+
+| Stream | Rate | Year 1 Projection |
+|--------|------|-------------------|
+| Interest Income | Repo + 5-8% | R4,000,000 |
+| Late Fees | 2.5% of overdue | R200,000 |
+| **Total** | | **R4,200,000** |
+
+### 10.2 Risk Provisioning
+
+- 2% provision for expected credit loss
+- Monthly score monitoring for early warning
+- Automatic limit reduction for declining merchants
+
+---
+
+## 11. Technical Architecture
+
+### 11.1 Integration Points
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  POS Service │────▶│ Credit       │────▶│ GroSupply    │
+│              │     │ Service      │     │ Service      │
+└──────────────┘     └──────────────┘     └──────────────┘
+       │                    │                    │
+       ▼                    ▼                    ▼
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  Inventory   │     │  Accounting  │     │   Payment    │
+│  Service     │     │  Service     │     │   Gateway    │
+└──────────────┘     └──────────────┘     └──────────────┘
+```
+
+### 11.2 Nightly Score Calculation
+
+1. Aggregate sales data from POS Service
+2. Pull inventory metrics from Inventory Service
+3. Fetch supplier data from GroSupply Service
+4. Calculate weighted scores
+5. Update credit limits if needed
+6. Generate alerts for significant changes
+
+---
+
+## 12. Compliance & Security
+
+### 12.1 Regulatory Compliance
+
+| Regulation | Requirement | Status |
+|------------|-------------|--------|
+| NCA | Credit provider registration | Compliant |
+| NCR | Annual reporting | Compliant |
+| POPIA | Data protection | Compliant |
+| FICA | Identity verification | Compliant |
+
+### 12.2 Data Security
+
+- All financial data encrypted at rest
+- Transaction audit trail
+- Access logging
+- MFA for large draws
+- Fraud detection integration
+
+---
+
+## 13. Support & Escalation
+
+### 13.1 Support Channels
+
+| Channel | Availability |
+|---------|-------------|
+| In-App Support | 24/7 |
+| Phone Support | Business hours |
+| Email | 24-48 hour response |
+
+### 13.2 Escalation Triggers
+
+- Score drop > 20 points in 30 days
+- Payment overdue > 7 days
+- Utilization > 90%
+- Multiple late payments
+
+---
+
+## Appendix A: Glossary
+
+| Term | Definition |
+|------|------------|
+| GMROI | Gross Margin Return on Inventory Investment |
+| NCA | National Credit Act |
+| NCR | National Credit Regulator |
+| Repo Rate | SARB repurchase rate (base for lending rates) |
+| Working Capital | Funds used for day-to-day operations |
+
+---
+
+## Appendix B: Revision History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 4.0 | Feb 2026 | Initial comprehensive specification |
+
+---
+
+*Document prepared for Groway Merchant OS implementation*

@@ -1,0 +1,373 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   GROWAY DESIGN TOKENS
+   Light Theme with Growth Green as Dominant
+   Inspired by Alipay's Data-Forward Minimal UI
+   ============================================ */
+
+:root {
+  /* === Core Radius === */
+  --radius: 0.75rem;
+  
+  /* === Groway Brand Colors === */
+  --groway-teal: #00897B;
+  --groway-teal-light: #26A69A;
+  --groway-teal-dark: #00695C;
+  --groway-green: #4CAF50;
+  --groway-green-light: #66BB6A;
+  --groway-green-dark: #388E3C;
+  
+  /* === Semantic Background Colors === */
+  --background: #FAFAFA;
+  --foreground: #1A1A1A;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1A;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+  
+  /* === Primary (Growth Green Gradient) === */
+  --primary: #00897B;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #00695C;
+  --primary-light: #E0F2F1;
+  
+  /* === Secondary === */
+  --secondary: #F5F5F5;
+  --secondary-foreground: #424242;
+  
+  /* === Muted === */
+  --muted: #F5F5F5;
+  --muted-foreground: #757575;
+  
+  /* === Accent === */
+  --accent: #E8F5E9;
+  --accent-foreground: #2E7D32;
+  
+  /* === Semantic Colors === */
+  --destructive: #EF5350;
+  --destructive-foreground: #FFFFFF;
+  --success: #4CAF50;
+  --success-foreground: #FFFFFF;
+  --warning: #FF9800;
+  --warning-foreground: #1A1A1A;
+  --info: #2196F3;
+  --info-foreground: #FFFFFF;
+  
+  /* === Borders & Inputs === */
+  --border: #E0E0E0;
+  --border-subtle: #F0F0F0;
+  --input: #E0E0E0;
+  --ring: #00897B;
+  
+  /* === Chart Colors === */
+  --chart-1: #00897B;
+  --chart-2: #4CAF50;
+  --chart-3: #26A69A;
+  --chart-4: #66BB6A;
+  --chart-5: #00695C;
+  
+  /* === Sidebar === */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1A1A1A;
+  --sidebar-primary: #00897B;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E0F2F1;
+  --sidebar-accent-foreground: #00695C;
+  --sidebar-border: #E0E0E0;
+  --sidebar-ring: #00897B;
+  
+  /* === Gradient Definitions === */
+  --gradient-primary: linear-gradient(135deg, #00897B 0%, #4CAF50 100%);
+  --gradient-hero: linear-gradient(135deg, #00695C 0%, #00897B 50%, #4CAF50 100%);
+  --gradient-card: linear-gradient(180deg, #E0F2F1 0%, #FFFFFF 100%);
+  --gradient-teal: linear-gradient(135deg, #00897B 0%, #26A69A 100%);
+  --gradient-green: linear-gradient(135deg, #43A047 0%, #66BB6A 100%);
+  
+  /* === Shadows === */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-teal: 0 4px 14px 0 rgba(0, 137, 123, 0.25);
+  --shadow-green: 0 4px 14px 0 rgba(76, 175, 80, 0.25);
+  
+  /* === Animation === */
+  --transition-fast: 150ms ease;
+  --transition-base: 220ms ease;
+  --transition-slow: 300ms ease;
+}
+
+/* === Dark Mode (Future Support) === */
+.dark {
+  --background: #0F1419;
+  --foreground: #F5F5F5;
+  --card: #1A1F25;
+  --card-foreground: #F5F5F5;
+  --popover: #1A1F25;
+  --popover-foreground: #F5F5F5;
+  --primary: #26A69A;
+  --primary-foreground: #0F1419;
+  --secondary: #2A2F35;
+  --secondary-foreground: #B0B0B0;
+  --muted: #2A2F35;
+  --muted-foreground: #9E9E9E;
+  --accent: #1A2F25;
+  --accent-foreground: #66BB6A;
+  --border: #2A2F35;
+  --input: #2A2F35;
+  --ring: #26A69A;
+}
+
+/* === Tailwind Theme Integration === */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* === Base Styles === */
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
+  }
+  
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--muted);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-hover);
+  }
+}
+
+/* === Utility Classes === */
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+  
+  .gradient-teal {
+    background: var(--gradient-teal);
+  }
+  
+  .gradient-green {
+    background: var(--gradient-green);
+  }
+  
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .shadow-teal {
+    box-shadow: var(--shadow-teal);
+  }
+  
+  .shadow-green {
+    box-shadow: var(--shadow-green);
+  }
+  
+  /* Alipay-inspired minimal card */
+  .card-minimal {
+    background-color: var(--card);
+    border-radius: 1rem;
+    border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+  }
+  
+  .card-minimal:hover {
+    box-shadow: var(--shadow-lg);
+    border-color: color-mix(in srgb, var(--primary) 20%, transparent);
+    transform: translateY(-4px);
+  }
+  
+  /* Product card for landing */
+  .product-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    background-color: white;
+    padding: 1.5rem;
+    border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+  
+  .product-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: linear-gradient(135deg, rgba(0, 137, 123, 0.05) 0%, rgba(76, 175, 80, 0.05) 100%);
+  }
+  
+  .product-card:hover {
+    box-shadow: var(--shadow-xl);
+    border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+    transform: translateY(-8px);
+  }
+  
+  .product-card:hover::before {
+    opacity: 1;
+  }
+  
+  /* Icon container */
+  .icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    transition: transform 0.3s ease;
+  }
+  
+  /* Grid pattern background */
+  .bg-grid {
+    background-image: 
+      linear-gradient(rgba(0, 137, 123, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 137, 123, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  
+  /* Animation keyframes */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(0, 137, 123, 0.3); }
+    50% { box-shadow: 0 0 40px rgba(0, 137, 123, 0.5); }
+  }
+  
+  @keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient-shift 3s ease infinite;
+  }
+  
+  /* Wallet Card Shimmer Animation */
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 4s infinite;
+  }
+  
+  /* Wallet Card 3D Flip */
+  @keyframes card-flip {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(180deg); }
+  }
+  
+  /* 3D Card Flip Utilities */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .transform-style-preserve-3d {
+    transform-style: preserve-3d;
+  }
+  
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+}
+
+/* === Responsive Typography === */
+@media (max-width: 640px) {
+  :root {
+    --text-display: 2.5rem;
+    --text-h1: 2rem;
+    --text-h2: 1.5rem;
+    --text-h3: 1.25rem;
+  }
+}
