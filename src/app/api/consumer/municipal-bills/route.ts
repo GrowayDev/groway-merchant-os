@@ -1,8 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { randomBytes } from 'crypto'
 import { db } from '@/lib/db'
+import { getUserId, ok, error, parseMoney, serialize } from '../_lib/helpers'
 
-// Mock municipal providers for demo
-const mockMunicipalProviders = [
+/**
+ * /api/consumer/municipal-bills
+ *
+ * There is no dedicated Prisma model for municipal bills, so we keep a
+ * static catalogue of municipalities and persist bill payments as
+ * ConsumerTransaction rows with `transactionType = 'bill_payment'`.
+ * Bill-specific metadata (municipality, account number, billType) is
+ * stored in the `reference`, `description` and `counterparty*` fields.
+ */
+
+// Static catalogue of supported municipalities
+const MUNICIPAL_PROVIDERS = [
   {
     id: 'coj',
     name: 'City of Johannesburg',
@@ -12,8 +24,8 @@ const mockMunicipalProviders = [
     accountFormat: '\\d{10}',
     accountLabel: 'Municipal Account Number',
     supportedBillTypes: ['rates', 'water', 'electricity', 'refuse'],
-    minAmount: 5000,
-    maxAmount: 50000000,
+    minAmountCents: 5000,
+    maxAmountCents: 50000000,
     feeCents: 0,
     processingTime: 'same_day',
   },
@@ -26,8 +38,8 @@ const mockMunicipalProviders = [
     accountFormat: '\\d{9}',
     accountLabel: 'Municipal Account Number',
     supportedBillTypes: ['rates', 'water', 'electricity', 'refuse'],
-    minAmount: 5000,
-    maxAmount: 50000000,
+    minAmountCents: 5000,
+    maxAmountCents: 50000000,
     feeCents: 0,
     processingTime: 'same_day',
   },
@@ -40,8 +52,8 @@ const mockMunicipalProviders = [
     accountFormat: '\\d{11}',
     accountLabel: 'Municipal Account Number',
     supportedBillTypes: ['rates', 'water', 'electricity', 'refuse'],
-    minAmount: 5000,
-    maxAmount: 50000000,
+    minAmountCents: 5000,
+    maxAmountCents: 50000000,
     feeCents: 0,
     processingTime: 'same_day',
   },
@@ -54,185 +66,209 @@ const mockMunicipalProviders = [
     accountFormat: '\\d{10}',
     accountLabel: 'Municipal Account Number',
     supportedBillTypes: ['rates', 'water', 'electricity', 'refuse'],
-    minAmount: 5000,
-    maxAmount: 50000000,
+    minAmountCents: 5000,
+    maxAmountCents: 50000000,
     feeCents: 0,
     processingTime: 'same_day',
   },
-]
+] as const
 
-// Mock stored bills for demo
-const mockBills: Map<string, any[]> = new Map()
-
-// GET /api/consumer/municipal-bills - Get municipalities and bills
+// GET /api/consumer/municipal-bills
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const action = searchParams.get('action')
-  const userId = searchParams.get('userId') || 'demo-user'
-  const municipalityId = searchParams.get('municipalityId')
-  const accountNumber = searchParams.get('accountNumber')
+  try {
+    const userId = getUserId(request)
+    const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
+    const municipalityId = searchParams.get('municipalityId')
+    const accountNumber = searchParams.get('accountNumber')
 
-  // Get list of municipalities
-  if (action === 'providers') {
-    return NextResponse.json({
-      success: true,
-      data: mockMunicipalProviders.map(p => ({
-        id: p.id,
-        name: p.name,
-        displayName: p.displayName,
-        province: p.province,
-        supportedBillTypes: p.supportedBillTypes,
-      }))
-    })
-  }
-
-  // Get bills for a user
-  if (action === 'bills') {
-    const bills = mockBills.get(userId) || []
-    return NextResponse.json({
-      success: true,
-      data: bills
-    })
-  }
-
-  // Bill lookup - fetch bill details from municipality
-  if (action === 'lookup' && municipalityId && accountNumber) {
-    const provider = mockMunicipalProviders.find(p => p.id === municipalityId)
-    
-    if (!provider) {
-      return NextResponse.json({
-        success: false,
-        error: 'Municipality not found'
-      }, { status: 404 })
-    }
-
-    // Validate account number format
-    const regex = new RegExp(`^${provider.accountFormat}$`)
-    if (!regex.test(accountNumber)) {
-      return NextResponse.json({
-        success: false,
-        error: `Invalid account number format. Expected ${provider.accountLabel}.`
-      }, { status: 400 })
-    }
-
-    // Mock bill lookup response
-    const mockBillDetails = {
-      accountNumber,
-      accountName: 'THABO MOLEFE',
-      municipality: provider.name,
-      address: '123 Main Street, Johannesburg, 2001',
-      bills: [
-        {
-          type: 'electricity',
-          description: 'Electricity - November 2024',
-          amountCents: 125000, // R1,250.00
-          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          status: 'unpaid'
+    // List municipalities
+    if (action === 'providers' || !action) {
+      return ok({
+        success: true,
+        data: {
+          providers: MUNICIPAL_PROVIDERS.map((p) => ({
+            id: p.id,
+            name: p.name,
+            displayName: p.displayName,
+            province: p.province,
+            supportedBillTypes: [...p.supportedBillTypes],
+            accountLabel: p.accountLabel,
+            minAmountCents: p.minAmountCents,
+            maxAmountCents: p.maxAmountCents,
+          })),
+          recentPayments: await getRecentBillPayments(userId),
         },
-        {
-          type: 'water',
-          description: 'Water & Sanitation - November 2024',
-          amountCents: 45000, // R450.00
-          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          status: 'unpaid'
-        },
-        {
-          type: 'rates',
-          description: 'Property Rates - Q4 2024',
-          amountCents: 89000, // R890.00
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          status: 'unpaid'
-        },
-        {
-          type: 'refuse',
-          description: 'Refuse Removal - November 2024',
-          amountCents: 15000, // R150.00
-          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          status: 'unpaid'
-        }
-      ],
-      totalOutstandingCents: 274000, // R2,740.00
+      })
     }
 
-    return NextResponse.json({
-      success: true,
-      data: mockBillDetails
-    })
+    // Recent bill payments for the user
+    if (action === 'bills') {
+      return ok({ success: true, data: await getRecentBillPayments(userId) })
+    }
+
+    // Bill lookup - returns a mock bill for the given account
+    if (action === 'lookup' && municipalityId && accountNumber) {
+      const provider = MUNICIPAL_PROVIDERS.find((p) => p.id === municipalityId)
+      if (!provider) {
+        return error('Municipality not found', 404)
+      }
+      const regex = new RegExp(`^${provider.accountFormat}$`)
+      if (!regex.test(accountNumber)) {
+        return error(`Invalid account number format. Expected ${provider.accountLabel}.`, 400)
+      }
+
+      const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0]
+      const ratesDueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0]
+
+      return ok({
+        success: true,
+        data: {
+          accountNumber,
+          accountName: 'THABO MOLEFE',
+          municipality: provider.name,
+          address: '123 Main Street, Johannesburg, 2001',
+          bills: [
+            { type: 'electricity', description: 'Electricity - current month', amountCents: 125000, dueDate, status: 'unpaid' },
+            { type: 'water', description: 'Water & Sanitation - current month', amountCents: 45000, dueDate, status: 'unpaid' },
+            { type: 'rates', description: 'Property Rates - current quarter', amountCents: 89000, dueDate: ratesDueDate, status: 'unpaid' },
+            { type: 'refuse', description: 'Refuse Removal - current month', amountCents: 15000, dueDate, status: 'unpaid' },
+          ],
+          totalOutstandingCents: 274000,
+        },
+      })
+    }
+
+    return ok({ success: true, data: { providers: MUNICIPAL_PROVIDERS } })
+  } catch (err) {
+    console.error('Municipal bills GET error:', err)
+    return error('Failed to fetch municipal bills', 500)
   }
-
-  // Default: return providers
-  return NextResponse.json({
-    success: true,
-    data: {
-      providers: mockMunicipalProviders,
-      recentPayments: mockBills.get(userId) || []
-    }
-  })
 }
 
-// POST /api/consumer/municipal-bills - Pay a municipal bill
+// POST /api/consumer/municipal-bills - pay a municipal bill
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { 
-      userId = 'demo-user',
-      municipalityId,
-      accountNumber,
-      billType,
-      amountCents,
-      reference
-    } = body
+    const userId = getUserId(request)
+    const body = await request.json().catch(() => ({} as Record<string, unknown>))
 
-    // Validate municipality
-    const provider = mockMunicipalProviders.find(p => p.id === municipalityId)
+    const municipalityId = body.municipalityId as string | undefined
+    const accountNumber = body.accountNumber as string | undefined
+    const billType = (body.billType as string) || 'electricity'
+    const amountInput = body.amountCents ?? body.amount
+    const reference = (body.reference as string | undefined) || `MUNI-${Date.now()}`
+
+    if (!municipalityId || !accountNumber || !amountInput) {
+      return error('municipalityId, accountNumber and amountCents are required')
+    }
+
+    const provider = MUNICIPAL_PROVIDERS.find((p) => p.id === municipalityId)
     if (!provider) {
-      return NextResponse.json({
-        success: false,
-        error: 'Municipality not found'
-      }, { status: 404 })
+      return error('Municipality not found', 404)
     }
 
-    // Validate amount
-    if (amountCents < provider.minAmount || amountCents > provider.maxAmount) {
-      return NextResponse.json({
-        success: false,
-        error: `Amount must be between R${provider.minAmount / 100} and R${provider.maxAmount / 100}`
-      }, { status: 400 })
+    const amount = parseMoney(amountInput as string | number)
+    const fee = BigInt(provider.feeCents)
+    if (amount < BigInt(provider.minAmountCents) || amount > BigInt(provider.maxAmountCents)) {
+      return error(
+        `Amount must be between R${provider.minAmountCents / 100} and R${provider.maxAmountCents / 100}`,
+        400,
+      )
     }
 
-    // Create payment record
-    const payment = {
-      id: `municipal-${Date.now()}`,
-      userId,
-      municipalityId,
-      municipalityName: provider.name,
-      accountNumber,
-      billType,
-      amountCents,
-      feeCents: provider.feeCents,
-      totalCents: amountCents + provider.feeCents,
-      reference: reference || `MUNI-${Date.now()}`,
-      receiptNumber: `RCP-${Date.now().toString(36).toUpperCase()}`,
-      status: 'paid',
-      processedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
+    const idempotencyKey =
+      (body.idempotencyKey as string | undefined) || randomBytes(16).toString('hex')
+
+    // Idempotency check
+    const existing = await db.consumerTransaction.findUnique({ where: { idempotencyKey } })
+    if (existing) {
+      return ok({ success: true, data: existing, message: 'Bill payment already processed' })
     }
 
-    // Store payment
-    let bills = mockBills.get(userId) || []
-    bills.unshift(payment)
-    mockBills.set(userId, bills)
+    const receiptNumber = `RCP-${Date.now().toString(36).toUpperCase()}`
 
-    return NextResponse.json({
-      success: true,
-      data: payment,
-      message: 'Municipal bill paid successfully'
+    // Debit the wallet if the user has one.
+    const wallet = await db.consumerWallet.findUnique({ where: { userId } })
+    if (wallet && wallet.balanceCents < amount + fee) {
+      return error('Insufficient funds', 400)
+    }
+
+    const tx = await db.$transaction(async (tx) => {
+      if (wallet) {
+        await tx.consumerWallet.update({
+          where: { userId },
+          data: {
+            balanceCents: { decrement: amount + fee },
+            totalSentCents: { increment: amount },
+            updatedAt: new Date(),
+          },
+        })
+      }
+
+      return tx.consumerTransaction.create({
+        data: {
+          id: `tx-${randomBytes(8).toString('hex')}`,
+          idempotencyKey,
+          userId,
+          transactionType: 'bill_payment',
+          direction: 'debit',
+          amountCents: amount,
+          feeCents: fee,
+          netAmountCents: amount + fee,
+          currency: 'ZAR',
+          status: 'completed',
+          description: `${provider.name} - ${billType} - ${accountNumber}`,
+          reference,
+          category: 'utilities',
+          counterpartyId: municipalityId,
+          counterpartyName: provider.name,
+          counterpartyType: 'municipality',
+          paymentMethod: 'wallet_balance',
+          externalRef: receiptNumber,
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
     })
-  } catch (error) {
-    console.error('Municipal bill payment error:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to process municipal bill payment'
-    }, { status: 500 })
+
+    return ok(
+      {
+        success: true,
+        data: serialize(tx),
+        message: 'Municipal bill paid successfully',
+        receiptNumber,
+      },
+      201,
+    )
+  } catch (err) {
+    console.error('Municipal bill payment error:', err)
+    return error('Failed to process municipal bill payment', 500)
   }
+}
+
+// Helper: fetch recent bill payments for a user
+async function getRecentBillPayments(userId: string) {
+  const payments = await db.consumerTransaction.findMany({
+    where: { userId, transactionType: 'bill_payment' },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+  })
+  return payments.map((p) => ({
+    id: p.id,
+    reference: p.reference,
+    municipalityName: p.counterpartyName,
+    accountNumber: p.description?.split(' - ').pop() ?? null,
+    billType: p.description?.split(' - ')[1] ?? null,
+    amountCents: p.amountCents,
+    feeCents: p.feeCents,
+    totalCents: p.netAmountCents,
+    receiptNumber: p.externalRef,
+    status: p.status,
+    processedAt: p.completedAt,
+    createdAt: p.createdAt,
+  }))
 }

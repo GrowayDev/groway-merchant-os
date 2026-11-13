@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
@@ -13,7 +14,8 @@ import {
   CreditCard,
   User,
   ChevronRight,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from 'lucide-react'
 
 interface PayShapModalProps {
@@ -31,26 +33,61 @@ export function PayShapModal({ open, onOpenChange }: PayShapModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [recipient, setRecipient] = useState<{ name: string; bank: string } | null>(null)
   const [transactionId, setTransactionId] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   const handleLookup = useCallback(async () => {
     if (!proxyId.trim()) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setRecipient({
-      name: 'J. Molefe',
-      bank: 'FNB',
-    })
-    setStep('amount')
-    setIsLoading(false)
-  }, [proxyId])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/payshap', {
+        action: 'lookup',
+        proxyType,
+        proxyId,
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Recipient not found')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setRecipient({
+        name: String(data.name || data.recipientName || 'PayShap Recipient'),
+        bank: String(data.bank || data.bankName || 'FNB'),
+      })
+      setStep('amount')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Lookup failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [proxyId, proxyType])
 
   const handleConfirm = useCallback(async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setTransactionId(`PS${Date.now().toString(36).toUpperCase()}`)
-    setStep('success')
-    setIsLoading(false)
-  }, [])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/payshap', {
+        action: 'send',
+        proxyType,
+        proxyId,
+        recipientName: recipient?.name,
+        bank: recipient?.bank,
+        amountCents: Math.round(amount * 100),
+        currency: 'ZAR',
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Payment failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setTransactionId(String(data.id || data.reference || `PS${Date.now().toString(36).toUpperCase()}`))
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [proxyType, proxyId, recipient, amount])
 
   const handleClose = useCallback(() => {
     setStep('input')
@@ -59,6 +96,7 @@ export function PayShapModal({ open, onOpenChange }: PayShapModalProps) {
     setAmount(0)
     setRecipient(null)
     setTransactionId('')
+    setError(null)
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -131,6 +169,13 @@ export function PayShapModal({ open, onOpenChange }: PayShapModalProps) {
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Look Up Recipient'}
               </Button>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -220,6 +265,10 @@ export function PayShapModal({ open, onOpenChange }: PayShapModalProps) {
                 <Check className="h-4 w-4 text-green-600" />
                 <span className="text-sm text-green-700">Payment reflects instantly</span>
               </div>
+
+              {error && (
+                <p className="text-sm text-red-500 text-center">{error}</p>
+              )}
 
               <Button
                 onClick={handleConfirm}

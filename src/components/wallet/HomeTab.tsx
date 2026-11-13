@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { apiGet, formatMoney } from '@/components/wallet/lib/api'
 import {
   Wallet,
   QrCode,
@@ -26,7 +27,9 @@ import {
   ShoppingCart,
   Receipt,
   ArrowUpRight,
-  ArrowDownLeft
+  ArrowDownLeft,
+  Loader2,
+  AlertCircle
 } from 'lucide-react'
 
 interface HomeTabProps {
@@ -39,6 +42,16 @@ interface HomeTabProps {
   onOpenTransactionHistory: () => void
 }
 
+interface RecentTransaction {
+  id: string
+  description: string
+  amount: number
+  direction: 'credit' | 'debit'
+  createdAt: string
+  status: string
+  type?: string
+}
+
 export function HomeTab({
   onOpenPayPlus,
   onOpenGrantPlus,
@@ -48,20 +61,105 @@ export function HomeTab({
   onOpenSend,
   onOpenTransactionHistory
 }: HomeTabProps) {
-  const [balance] = useState(15847.50)
   const [userName] = useState('Thabo')
+  const [balanceCents, setBalanceCents] = useState<string | null>(null)
+  const [balanceLoading, setBalanceLoading] = useState(true)
+  const [balanceError, setBalanceError] = useState<string | null>(null)
+  const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([])
+  const [txLoading, setTxLoading] = useState(true)
+  const [txError, setTxError] = useState<string | null>(null)
 
-  // Mock data
+  // Fetch wallet balance from /api/consumer/wallet/balance
+  useEffect(() => {
+    let cancelled = false
+    async function loadBalance() {
+      setBalanceLoading(true)
+      setBalanceError(null)
+      try {
+        const res = await apiGet<{ success?: boolean; data?: { balance?: { available?: string | number } } }>('/wallet/balance')
+        if (cancelled) return
+        const available = res?.data?.balance?.available
+        setBalanceCents(available != null ? String(available) : null)
+      } catch (err) {
+        if (!cancelled) {
+          setBalanceError(err instanceof Error ? err.message : 'Failed to load balance')
+          setBalanceCents(null)
+        }
+      } finally {
+        if (!cancelled) setBalanceLoading(false)
+      }
+    }
+    loadBalance()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Fetch recent transactions from /api/consumer/wallet/transactions
+  useEffect(() => {
+    let cancelled = false
+    async function loadTransactions() {
+      setTxLoading(true)
+      setTxError(null)
+      try {
+        const res = await apiGet<{ success?: boolean; data?: { transactions?: any[] } | any[] }>('/wallet/transactions?limit=4')
+        if (cancelled) return
+        const raw = res?.data
+        const list: any[] = Array.isArray(raw)
+          ? raw
+          : raw && Array.isArray((raw as any).transactions)
+          ? (raw as any).transactions
+          : []
+        const mapped: RecentTransaction[] = list.slice(0, 4).map((tx) => ({
+          id: String(tx.id || tx.reference || `TXN${Math.random()}`),
+          description: String(tx.description || tx.counterparty?.name || 'Transaction'),
+          amount: Number(tx.amount ?? tx.amountCents ?? 0) / 100,
+          direction: tx.direction === 'credit' ? 'credit' : 'debit',
+          createdAt: String(tx.createdAt || tx.completedAt || new Date().toISOString()),
+          status: String(tx.status || 'completed'),
+          type: String(tx.type || tx.transactionType || 'send'),
+        }))
+        setRecentTransactions(mapped)
+      } catch (err) {
+        if (!cancelled) {
+          setTxError(err instanceof Error ? err.message : 'Failed to load transactions')
+          setRecentTransactions([])
+        }
+      } finally {
+        if (!cancelled) setTxLoading(false)
+      }
+    }
+    loadTransactions()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const balanceDisplay = balanceCents
+    ? formatMoney(balanceCents)
+    : balanceLoading
+    ? 'Loading...'
+    : balanceError
+    ? 'Unavailable'
+    : 'R 0.00'
+
+  const formatTxTime = (iso: string) => {
+    const d = new Date(iso)
+    const diffMs = Date.now() - d.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    if (diffMins < 60) return `${Math.max(1, diffMins)}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    return d.toLocaleDateString('en-ZA')
+  }
+
+  // Mock data — kept for sections of the Home tab that don't have dedicated
+  // API endpoints yet (savings pockets, special offers, smart insights).
   const savingsPockets = [
     { name: 'Emergency Fund', target: 10000, current: 6500, color: '#00897B' },
     { name: 'Holiday Savings', target: 5000, current: 2300, color: '#4CAF50' },
-  ]
-
-  const recentTransactions = [
-    { id: 1, merchant: 'Shoprite', amount: -234.50, time: '2h ago', type: 'debit' },
-    { id: 2, merchant: 'Received from Sipho', amount: 500, time: '5h ago', type: 'credit' },
-    { id: 3, merchant: 'Vodacom Airtime', amount: -55, time: '1d ago', type: 'debit' },
-    { id: 4, merchant: 'Salary Deposit', amount: 12500, time: '2d ago', type: 'credit' },
   ]
 
   const offers = [
@@ -96,9 +194,19 @@ export function HomeTab({
         <Card className="bg-white/10 backdrop-blur border-0">
           <CardContent className="p-4">
             <p className="text-teal-100 text-xs mb-1">Available Balance</p>
-            <h2 className="text-white text-3xl font-bold mb-3">
-              R {balance.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-            </h2>
+            {balanceLoading ? (
+              <div className="flex items-center gap-2 mb-3">
+                <Loader2 className="h-5 w-5 text-white animate-spin" />
+                <span className="text-white/80 text-sm">Loading balance...</span>
+              </div>
+            ) : balanceError ? (
+              <div className="flex items-center gap-2 mb-3">
+                <AlertCircle className="h-5 w-5 text-red-200" />
+                <span className="text-red-100 text-sm">Unable to load balance</span>
+              </div>
+            ) : (
+              <h2 className="text-white text-3xl font-bold mb-3">{balanceDisplay}</h2>
+            )}
             <div className="flex items-center gap-2">
               <Badge className="bg-[#4CAF50]/20 text-green-300 border-0 text-xs">
                 <TrendingUp className="h-3 w-3 mr-1" />
@@ -358,7 +466,24 @@ export function HomeTab({
         </div>
         <Card className="bg-white border border-gray-100">
           <CardContent className="p-0 divide-y divide-gray-100">
-            {recentTransactions.map((tx) => (
+            {txLoading && (
+              <div className="flex items-center justify-center p-6">
+                <Loader2 className="h-5 w-5 text-[#00897B] animate-spin" />
+              </div>
+            )}
+            {txError && !txLoading && (
+              <div className="flex items-center gap-2 p-4">
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                <p className="text-sm text-red-600">{txError}</p>
+              </div>
+            )}
+            {!txLoading && !txError && recentTransactions.length === 0 && (
+              <div className="text-center p-6">
+                <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-[#757575]">No recent transactions</p>
+              </div>
+            )}
+            {!txLoading && !txError && recentTransactions.map((tx) => (
               <button
                 key={tx.id}
                 onClick={onOpenTransactionHistory}
@@ -366,24 +491,24 @@ export function HomeTab({
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    tx.type === 'credit' ? 'bg-green-100' : 'bg-gray-100'
+                    tx.direction === 'credit' ? 'bg-green-100' : 'bg-gray-100'
                   }`}>
-                    {tx.type === 'credit' ? (
+                    {tx.direction === 'credit' ? (
                       <ArrowDownLeft className="h-4 w-4 text-green-600" />
                     ) : (
                       <ArrowUpRight className="h-4 w-4 text-gray-600" />
                     )}
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-medium text-[#1A1A1A]">{tx.merchant}</p>
-                    <p className="text-[10px] text-[#757575]">{tx.time}</p>
+                    <p className="text-sm font-medium text-[#1A1A1A]">{tx.description}</p>
+                    <p className="text-[10px] text-[#757575]">{formatTxTime(tx.createdAt)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-sm font-bold ${
-                    tx.type === 'credit' ? 'text-green-600' : 'text-[#1A1A1A]'
+                    tx.direction === 'credit' ? 'text-green-600' : 'text-[#1A1A1A]'
                   }`}>
-                    {tx.type === 'credit' ? '+' : ''}R {Math.abs(tx.amount).toFixed(2)}
+                    {tx.direction === 'credit' ? '+' : '-'}R {Math.abs(tx.amount).toFixed(2)}
                   </span>
                   <ChevronRight className="h-4 w-4 text-gray-400" />
                 </div>

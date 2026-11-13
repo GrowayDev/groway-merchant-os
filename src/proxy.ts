@@ -68,7 +68,6 @@ const publicApiRoutes = [
 // API routes that require authentication but allow dev mode bypass
 const protectedApiRoutes = [
   // Consumer routes - require consumer auth
-  '/api/wallet/',
   '/api/consumer/',
   '/api/loyalty',
   '/api/send-money',

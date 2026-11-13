@@ -236,8 +236,8 @@ export function getRateLimitHeaders(result: RateLimitResult): Record<string, str
  */
 export const ENDPOINT_LIMITS: Record<string, { multiplier: number }> = {
   // High-traffic endpoints
-  '/api/wallet/balance': { multiplier: 1 },
-  '/api/wallet/transactions': { multiplier: 1 },
+  '/api/consumer/wallet/balance': { multiplier: 1 },
+  '/api/consumer/wallet/transactions': { multiplier: 1 },
   '/api/pos/orders': { multiplier: 2 },
   '/api/pos/products': { multiplier: 1 },
   

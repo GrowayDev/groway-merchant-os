@@ -4,13 +4,15 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
   Loader2,
   ChevronRight,
   Globe,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from 'lucide-react'
 
 interface RemittanceModalProps {
@@ -46,17 +48,41 @@ export function RemittanceModal({ open, onOpenChange }: RemittanceModalProps) {
   const [recipientPhone, setRecipientPhone] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [transactionId, setTransactionId] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   const convertedAmount = selectedProvider ? Math.round(amount * selectedProvider.rate) : amount
   const totalFee = selectedProvider ? selectedProvider.fee : 0
 
   const handleSend = useCallback(async () => {
+    if (!selectedCountry || !selectedProvider) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setTransactionId(`REM${Date.now().toString(36).toUpperCase()}`)
-    setStep('success')
-    setIsLoading(false)
-  }, [])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/payments/send', {
+        type: 'remittance',
+        recipientPhone,
+        recipientName,
+        amountCents: Math.round(amount * 100),
+        feeCents: Math.round(totalFee * 100),
+        currency: 'ZAR',
+        destinationCountry: selectedCountry.code,
+        destinationCurrency: selectedCountry.currency,
+        provider: selectedProvider.id,
+        note: `Remittance to ${selectedCountry.name}`,
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Transfer failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setTransactionId(String(data.id || data.reference || data.transactionId || `REM${Date.now().toString(36).toUpperCase()}`))
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Transfer failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedCountry, selectedProvider, amount, totalFee, recipientName, recipientPhone])
 
   const handleClose = useCallback(() => {
     setStep('country')
@@ -65,6 +91,8 @@ export function RemittanceModal({ open, onOpenChange }: RemittanceModalProps) {
     setAmount(1000)
     setRecipientName('')
     setRecipientPhone('')
+    setError(null)
+    setTransactionId('')
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -267,6 +295,13 @@ export function RemittanceModal({ open, onOpenChange }: RemittanceModalProps) {
                   <span className="text-sm font-medium text-[#1A1A1A]">{selectedProvider.name}</span>
                 </div>
               </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
 
               <Button
                 onClick={handleSend}

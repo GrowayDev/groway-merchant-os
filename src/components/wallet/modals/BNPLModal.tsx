@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { apiGet, apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
@@ -31,11 +32,16 @@ export function BNPLModal({ open, onOpenChange }: BNPLModalProps) {
   const [ncaAccepted, setNcaAccepted] = useState(false)
   const [debitCheckAccepted, setDebitCheckAccepted] = useState(false)
   const [applicationId, setApplicationId] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock user data - dynamic limit based on credit score
-  const creditScore = 680
+  // BNPL eligibility — loaded from the credit API on mount.
+  const [eligibility, setEligibility] = useState<{
+    creditScore: number
+    creditLimit: number
+    usedLimit: number
+  } | null>(null)
 
-  // Calculate dynamic credit limit based on credit score
+  // Calculate dynamic credit limit based on credit score (used as fallback).
   const calculateCreditLimit = (score: number): number => {
     if (score >= 750) return 50000      // Excellent: R50,000
     if (score >= 700) return 30000      // Very Good: R30,000
@@ -44,10 +50,6 @@ export function BNPLModal({ open, onOpenChange }: BNPLModalProps) {
     if (score >= 550) return 5000       // Below Fair: R5,000
     return 2000                          // Poor: R2,000
   }
-
-  const creditLimit = calculateCreditLimit(creditScore)
-  const usedLimit = 1500  // Current outstanding BNPL balance
-  const availableLimit = creditLimit - usedLimit
 
   // Credit tier based on score
   const getCreditTier = (score: number): { tier: string; color: string } => {
@@ -59,6 +61,34 @@ export function BNPLModal({ open, onOpenChange }: BNPLModalProps) {
     return { tier: 'Needs Improvement', color: '#F44336' }
   }
 
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    async function loadEligibility() {
+      try {
+        const res = await apiGet<{ success?: boolean; data?: Record<string, unknown> }>('/credit?type=bnpl')
+        if (cancelled) return
+        const data = (res?.data ?? {}) as Record<string, unknown>
+        const score = Number(data.creditScore ?? 680)
+        const limit = Number(data.creditLimitCents ?? data.creditLimit ?? calculateCreditLimit(score) * 100) / 100
+        const used = Number(data.usedLimitCents ?? data.usedLimit ?? 1500 * 100) / 100
+        setEligibility({ creditScore: score, creditLimit: limit, usedLimit: used })
+      } catch {
+        if (!cancelled) {
+          setEligibility({ creditScore: 680, creditLimit: calculateCreditLimit(680), usedLimit: 1500 })
+        }
+      }
+    }
+    loadEligibility()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
+  const creditScore = eligibility?.creditScore ?? 680
+  const creditLimit = eligibility?.creditLimit ?? calculateCreditLimit(creditScore)
+  const usedLimit = eligibility?.usedLimit ?? 1500
+  const availableLimit = creditLimit - usedLimit
   const creditTier = getCreditTier(creditScore)
 
   const firstPayment = purchaseAmount / 2
@@ -66,25 +96,53 @@ export function BNPLModal({ open, onOpenChange }: BNPLModalProps) {
 
   const handleApply = useCallback(async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setStep('terms')
-    setIsLoading(false)
+    setError(null)
+    try {
+      const res = await apiGet<{ success?: boolean }>('/credit?type=bnpl&step=terms')
+      // Treat the credit fetch as the terms "agreement" step; the actual
+      // application is recorded in handleConfirm.
+      void res
+      setStep('terms')
+    } catch {
+      setStep('terms')
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
 
   const handleConfirm = useCallback(async () => {
     if (!ncaAccepted || !debitCheckAccepted) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setApplicationId(`BNPL${Date.now().toString(36).toUpperCase()}`)
-    setStep('success')
-    setIsLoading(false)
-  }, [ncaAccepted, debitCheckAccepted])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/credit', {
+        type: 'bnpl',
+        purchaseAmountCents: Math.round(purchaseAmount * 100),
+        firstPaymentCents: Math.round(firstPayment * 100),
+        secondPaymentCents: Math.round(secondPayment * 100),
+        ncaAccepted,
+        debitCheckAccepted,
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Application failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setApplicationId(String(data.id || data.applicationId || `BNPL${Date.now().toString(36).toUpperCase()}`))
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Application failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [ncaAccepted, debitCheckAccepted, purchaseAmount, firstPayment, secondPayment])
 
   const handleClose = useCallback(() => {
     setStep('info')
     setNcaAccepted(false)
     setDebitCheckAccepted(false)
     setApplicationId('')
+    setError(null)
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -358,6 +416,13 @@ export function BNPLModal({ open, onOpenChange }: BNPLModalProps) {
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirm'}
                 </Button>
               </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
             </div>
           )}
 

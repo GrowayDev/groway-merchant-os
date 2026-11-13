@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiGet, apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
@@ -15,7 +16,8 @@ import {
   Music,
   ChevronRight,
   Trophy,
-  Dice5
+  Dice5,
+  AlertCircle
 } from 'lucide-react'
 
 interface VouchersModalProps {
@@ -84,14 +86,68 @@ export function VouchersModal({ open, onOpenChange }: VouchersModalProps) {
   const [amount, setAmount] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(false)
   const [voucherCode, setVoucherCode] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [catalog, setCatalog] = useState<Record<string, VoucherProduct[]>>(voucherProducts)
+  const [catalogLoading, setCatalogLoading] = useState(false)
+
+  // Fetch voucher catalog when the modal opens
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    async function loadCatalog() {
+      setCatalogLoading(true)
+      try {
+        const res = await apiGet<{ success?: boolean; data?: Record<string, VoucherProduct[]> | VoucherProduct[] }>('/vouchers')
+        if (cancelled) return
+        const raw = res?.data
+        if (Array.isArray(raw)) {
+          // group by category field if returned flat
+          const grouped: Record<string, VoucherProduct[]> = {}
+          for (const item of raw) {
+            const cat = String((item as any).category ?? 'retail')
+            if (!grouped[cat]) grouped[cat] = []
+            grouped[cat].push(item)
+          }
+          setCatalog({ ...voucherProducts, ...grouped })
+        } else if (raw && typeof raw === 'object') {
+          setCatalog({ ...voucherProducts, ...raw })
+        }
+      } catch {
+        // keep fallback catalog
+      } finally {
+        if (!cancelled) setCatalogLoading(false)
+      }
+    }
+    loadCatalog()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   const handleBuy = useCallback(async () => {
+    if (!selectedProduct) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setVoucherCode(`${selectedProduct?.name.substring(0, 3).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`)
-    setStep('success')
-    setIsLoading(false)
-  }, [selectedProduct])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/vouchers', {
+        productId: selectedProduct.id,
+        productName: selectedProduct.name,
+        amountCents: Math.round(amount * 100),
+        currency: 'ZAR',
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Purchase failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setVoucherCode(String(data.code || data.voucherCode || data.voucherPin || `${selectedProduct?.name.substring(0, 3).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`))
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Purchase failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedProduct, amount])
 
   const handleClose = useCallback(() => {
     setStep('categories')
@@ -99,6 +155,7 @@ export function VouchersModal({ open, onOpenChange }: VouchersModalProps) {
     setSelectedProduct(null)
     setAmount(0)
     setVoucherCode('')
+    setError(null)
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -174,7 +231,12 @@ export function VouchersModal({ open, onOpenChange }: VouchersModalProps) {
               )}
 
               <div className="space-y-2">
-                {(voucherProducts[selectedCategory.id] || []).map((product) => (
+                {catalogLoading && (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 text-[#00897B] animate-spin" />
+                  </div>
+                )}
+                {!catalogLoading && (catalog[selectedCategory.id] || []).map((product) => (
                   <button
                     key={product.id}
                     onClick={() => {
@@ -200,6 +262,9 @@ export function VouchersModal({ open, onOpenChange }: VouchersModalProps) {
                     <ChevronRight className="h-5 w-5 text-gray-400" />
                   </button>
                 ))}
+                {!catalogLoading && (catalog[selectedCategory.id] || []).length === 0 && (
+                  <p className="text-sm text-[#757575] text-center py-4">No vouchers available</p>
+                )}
               </div>
             </div>
           )}
@@ -237,6 +302,13 @@ export function VouchersModal({ open, onOpenChange }: VouchersModalProps) {
                   <span className="text-lg font-bold text-[#00897B]">R {amount}</span>
                 </div>
               </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
 
               <Button
                 onClick={handleBuy}

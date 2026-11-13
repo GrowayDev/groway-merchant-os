@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
@@ -13,7 +14,8 @@ import {
   MapPin,
   ChevronRight,
   Users,
-  Ticket
+  Ticket,
+  AlertCircle
 } from 'lucide-react'
 
 interface BusModalProps {
@@ -52,20 +54,58 @@ export function BusModal({ open, onOpenChange }: BusModalProps) {
   const [selectedBus, setSelectedBus] = useState<typeof mockBuses[0] | null>(null)
   const [selectedSeats, setSelectedSeats] = useState<number[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [ticketNumber, setTicketNumber] = useState('')
 
   const handleSearch = useCallback(async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setStep('results')
-    setIsLoading(false)
-  }, [])
+    setError(null)
+    try {
+      await apiPost('/travel', {
+        type: 'bus',
+        action: 'search',
+        from: fromStation,
+        to: toStation,
+        date,
+      })
+      setStep('results')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Search failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [fromStation, toStation, date])
 
   const handleBook = useCallback(async () => {
+    if (!selectedBus) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setStep('success')
-    setIsLoading(false)
-  }, [])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/travel', {
+        type: 'bus',
+        action: 'book',
+        busId: selectedBus.id,
+        operator: selectedBus.operator,
+        from: selectedBus.from,
+        to: selectedBus.to,
+        date,
+        seats: selectedSeats,
+        amountCents: Math.round(selectedBus.price * selectedSeats.length * 100),
+        currency: 'ZAR',
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Booking failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setTicketNumber(String(data.id || data.reference || data.ticketNumber || `BUS${Date.now().toString(36).toUpperCase()}`))
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Booking failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedBus, selectedSeats, date])
 
   const handleClose = useCallback(() => {
     setStep('search')
@@ -74,6 +114,8 @@ export function BusModal({ open, onOpenChange }: BusModalProps) {
     setDate('')
     setSelectedBus(null)
     setSelectedSeats([])
+    setError(null)
+    setTicketNumber('')
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -141,6 +183,13 @@ export function BusModal({ open, onOpenChange }: BusModalProps) {
                   />
                 </div>
               </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
 
               <Button
                 onClick={handleSearch}
@@ -269,6 +318,13 @@ export function BusModal({ open, onOpenChange }: BusModalProps) {
                 <p className="text-sm text-[#757575]">{selectedBus.operator}</p>
               </div>
 
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+
               <Button
                 onClick={handleBook}
                 disabled={isLoading}
@@ -294,7 +350,7 @@ export function BusModal({ open, onOpenChange }: BusModalProps) {
               </p>
               <div className="bg-gray-50 rounded-xl p-4 mb-4">
                 <p className="text-xs text-[#757575] mb-1">Ticket Number</p>
-                <p className="text-lg font-mono font-bold text-[#00897B]">BUS{Date.now().toString(36).toUpperCase()}</p>
+                <p className="text-lg font-mono font-bold text-[#00897B]">{ticketNumber}</p>
               </div>
               <div className="flex items-center justify-center gap-2 p-3 bg-[#E0F2F1] rounded-xl mb-4">
                 <Ticket className="h-5 w-5 text-[#00897B]" />

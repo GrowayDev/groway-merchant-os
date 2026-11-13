@@ -1,108 +1,71 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { randomBytes } from 'crypto'
+import { db } from '@/lib/db'
+import { getUserId, ok, error } from '../_lib/helpers'
 
-// Loyalty tier thresholds
+/**
+ * /api/consumer/loyalty
+ *
+ * Replaces the previous hardcoded mock (currentPoints = 2450) with a real
+ * Prisma query to ConsumerLoyalty. The loyalty record is created on user
+ * registration, but if it's missing we create one with 0 points and a
+ * bronze tier so the route is self-healing.
+ */
+
 const TIER_THRESHOLDS = {
   bronze: { min: 0, max: 999, multiplier: 1, benefits: ['Basic rewards'] },
   silver: { min: 1000, max: 4999, multiplier: 1.25, benefits: ['Enhanced rewards', 'Priority support'] },
   gold: { min: 5000, max: 19999, multiplier: 1.5, benefits: ['Premium rewards', 'Priority support', 'Exclusive offers'] },
   platinum: { min: 20000, max: Infinity, multiplier: 2, benefits: ['VIP rewards', '24/7 support', 'Exclusive offers', 'Free transfers'] },
-}
+} as const
 
-// Determine tier from points
-function getTierFromPoints(points: number): 'bronze' | 'silver' | 'gold' | 'platinum' {
+type Tier = keyof typeof TIER_THRESHOLDS
+
+function getTierFromPoints(points: number): Tier {
   if (points >= TIER_THRESHOLDS.platinum.min) return 'platinum'
   if (points >= TIER_THRESHOLDS.gold.min) return 'gold'
   if (points >= TIER_THRESHOLDS.silver.min) return 'silver'
   return 'bronze'
 }
 
-// Calculate points earned from transaction
-function calculatePointsEarned(amountCents: bigint, tier: string): number {
-  const basePoints = Math.floor(Number(amountCents) / 100) // 1 point per R1
-  const multiplier = TIER_THRESHOLDS[tier as keyof typeof TIER_THRESHOLDS]?.multiplier || 1
-  return Math.floor(basePoints * multiplier)
+function nextTierFor(tier: Tier): Tier | null {
+  if (tier === 'bronze') return 'silver'
+  if (tier === 'silver') return 'gold'
+  if (tier === 'gold') return 'platinum'
+  return null
 }
 
-// GET - Fetch user's loyalty status
+// GET - fetch loyalty status for the user
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const userId = getUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'User ID is required' },
-        { status: 400 }
-      )
-    }
+    const loyalty = await db.consumerLoyalty.findUnique({ where: { userId } })
 
-    // In production, fetch from database
-    // const loyalty = await db.loyaltyAccount.findUnique({
-    //   where: { userId },
-    //   include: { transactions: { orderBy: { createdAt: 'desc' }, take: 10 } }
-    // })
+    // Self-heal: create a zero-points bronze account if missing
+    const effective = loyalty ?? (await db.consumerLoyalty.create({
+      data: {
+        id: `loy-${randomBytes(8).toString('hex')}`,
+        userId,
+        tier: 'bronze',
+        points: 0,
+        totalEarned: 0,
+        totalRedeemed: 0,
+        tierProgress: 0,
+        updatedAt: new Date(),
+      },
+    }))
 
-    // Mock loyalty data
-    const currentPoints = 2450
+    const currentPoints = effective.points
     const tier = getTierFromPoints(currentPoints)
     const tierConfig = TIER_THRESHOLDS[tier]
-    const nextTier = tier === 'bronze' ? 'silver' : tier === 'silver' ? 'gold' : tier === 'gold' ? 'platinum' : null
-    const pointsToNextTier = nextTier ? TIER_THRESHOLDS[nextTier].min - currentPoints : 0
+    const nextTier = nextTierFor(tier)
+    const pointsToNextTier = nextTier ? Math.max(0, TIER_THRESHOLDS[nextTier].min - currentPoints) : 0
 
-    const recentTransactions = [
-      {
-        id: 'lt-001',
-        type: 'earned',
-        points: 45,
-        description: 'Purchase at Sipho Spaza Shop',
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      },
-      {
-        id: 'lt-002',
-        type: 'earned',
-        points: 127,
-        description: 'Purchase at Checkers Hyper',
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'lt-003',
-        type: 'redeemed',
-        points: -100,
-        description: 'Airtime voucher',
-        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      },
-    ]
-
-    const offers = [
-      {
-        id: 'offer-001',
-        merchant: 'Checkers',
-        title: '15% off groceries',
-        description: 'Spend R200 or more and get 15% off',
-        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        category: 'groceries',
-      },
-      {
-        id: 'offer-002',
-        merchant: 'Engen',
-        title: 'R2/L off fuel',
-        description: 'Valid on all fuel types',
-        validUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-        category: 'fuel',
-      },
-      {
-        id: 'offer-003',
-        merchant: 'Vodacom',
-        title: 'Double data',
-        description: 'Get 2x data on bundles R100+',
-        validUntil: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-        category: 'airtime',
-      },
-    ]
-
-    return NextResponse.json({
+    return ok({
       success: true,
       data: {
+        id: effective.id,
         points: currentPoints,
         tier,
         tierConfig: {
@@ -111,94 +74,123 @@ export async function GET(request: NextRequest) {
         },
         nextTier,
         pointsToNextTier,
-        recentTransactions,
-        offers,
+        tierProgress: effective.tierProgress,
+        tierAchievedAt: effective.tierAchievedAt,
         stats: {
-          totalEarned: 4500,
-          totalRedeemed: 2050,
-          lifetimePoints: 6550,
-        }
-      }
+          totalEarned: effective.totalEarned,
+          totalRedeemed: effective.totalRedeemed,
+          lifetimePoints: effective.totalEarned + 0,
+        },
+        createdAt: effective.createdAt,
+        updatedAt: effective.updatedAt,
+      },
     })
-
-  } catch (error) {
-    console.error('Get loyalty status error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to get loyalty status' },
-      { status: 500 }
-    )
+  } catch (err) {
+    console.error('Get loyalty status error:', err)
+    return error('Failed to get loyalty status', 500)
   }
 }
 
-// POST - Earn or redeem points
+// POST - earn or redeem points
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { userId, action, points, transactionId, description } = body
+    const userId = getUserId(request)
+    const body = await request.json().catch(() => ({} as Record<string, unknown>))
 
-    if (!userId || !action || !points) {
-      return NextResponse.json(
-        { success: false, error: 'User ID, action, and points are required' },
-        { status: 400 }
-      )
+    const action = body.action as string | undefined
+    const points = Number(body.points ?? 0)
+    const description = (body.description as string) || (action === 'earn' ? 'Points earned' : 'Points redeemed')
+
+    if (!action || !points || points <= 0) {
+      return error('action (earn|redeem) and a positive points value are required')
     }
 
-    if (action === 'earn') {
-      // In production:
-      // 1. Get user's current tier
-      // 2. Calculate points with multiplier
-      // 3. Add to loyalty account
-      // 4. Check for tier upgrade
-      
-      const result = {
-        id: `lt-${Date.now()}`,
+    const loyalty = await db.consumerLoyalty.findUnique({ where: { userId } })
+    const current = loyalty ?? (await db.consumerLoyalty.create({
+      data: {
+        id: `loy-${randomBytes(8).toString('hex')}`,
         userId,
-        type: 'earned',
-        points,
-        description: description || 'Points earned',
-        createdAt: new Date(),
-      }
+        tier: 'bronze',
+        points: 0,
+        totalEarned: 0,
+        totalRedeemed: 0,
+        tierProgress: 0,
+        updatedAt: new Date(),
+      },
+    }))
 
-      return NextResponse.json({
+    if (action === 'earn') {
+      const tierMultiplier = TIER_THRESHOLDS[getTierFromPoints(current.points)].multiplier
+      const earned = Math.floor(points * tierMultiplier)
+      const newPoints = current.points + earned
+      const newTier = getTierFromPoints(newPoints)
+      const tierAchievedAt = newTier !== getTierFromPoints(current.points) ? new Date() : current.tierAchievedAt
+
+      const updated = await db.consumerLoyalty.update({
+        where: { userId },
+        data: {
+          points: newPoints,
+          totalEarned: current.totalEarned + earned,
+          tier: newTier,
+          tierAchievedAt,
+          tierProgress: 0,
+          updatedAt: new Date(),
+        },
+      })
+
+      return ok({
         success: true,
         message: 'Points earned successfully',
-        data: result
+        data: {
+          id: `lt-${randomBytes(8).toString('hex')}`,
+          userId,
+          type: 'earned',
+          points: earned,
+          description,
+          createdAt: new Date(),
+          loyalty: updated,
+        },
       })
     }
 
     if (action === 'redeem') {
-      // In production:
-      // 1. Check user has enough points
-      // 2. Deduct points
-      // 3. Create voucher/reward
-      
-      const result = {
-        id: `lt-${Date.now()}`,
-        userId,
-        type: 'redeemed',
-        points: -points,
-        description: description || 'Points redeemed',
-        createdAt: new Date(),
-        voucherCode: `GROW${Date.now().toString(36).toUpperCase()}`,
+      if (current.points < points) {
+        return error('Insufficient points', 400)
       }
+      const newPoints = current.points - points
+      const newTier = getTierFromPoints(newPoints)
+      const voucherCode = `GROW${Date.now().toString(36).toUpperCase()}`
 
-      return NextResponse.json({
+      const updated = await db.consumerLoyalty.update({
+        where: { userId },
+        data: {
+          points: newPoints,
+          totalRedeemed: current.totalRedeemed + points,
+          tier: newTier,
+          tierProgress: 0,
+          updatedAt: new Date(),
+        },
+      })
+
+      return ok({
         success: true,
         message: 'Points redeemed successfully',
-        data: result
+        data: {
+          id: `lt-${randomBytes(8).toString('hex')}`,
+          userId,
+          type: 'redeemed',
+          points: -points,
+          description,
+          createdAt: new Date(),
+          voucherCode,
+          loyalty: updated,
+        },
       })
     }
 
-    return NextResponse.json(
-      { success: false, error: 'Invalid action. Use "earn" or "redeem"' },
-      { status: 400 }
-    )
-
-  } catch (error) {
-    console.error('Loyalty action error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to process loyalty action' },
-      { status: 500 }
-    )
+    return error('Invalid action. Use "earn" or "redeem"', 400)
+  } catch (err) {
+    console.error('Loyalty action error:', err)
+    return error('Failed to process loyalty action', 500)
   }
 }

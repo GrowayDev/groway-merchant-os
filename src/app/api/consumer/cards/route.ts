@@ -1,260 +1,184 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getAuthContext, getUserId, unauthorizedResponse, badRequestResponse } from '@/lib/auth-context'
+import { NextRequest } from 'next/server'
+import { randomBytes } from 'crypto'
+import { db } from '@/lib/db'
+import { getUserId, ok, error, parseMoney } from '../_lib/helpers'
 
-// In-memory storage for demo (replace with database in production)
-const cardsStore: Map<string, any[]> = new Map()
+/**
+ * /api/consumer/cards
+ *
+ * Replaces the previous in-memory cardsStore Map with Prisma ConsumerCard.
+ * All money fields are BigInt cents and serialised to strings in JSON.
+ */
 
-// GET /api/consumer/cards - Get all cards for a user
+// GET /api/consumer/cards - list cards for the authenticated user
 export async function GET(request: NextRequest) {
-  // Get authenticated context
-  const context = await getAuthContext(request)
-  if (!context) {
-    return unauthorizedResponse()
+  try {
+    const userId = getUserId(request)
+
+    const cards = await db.consumerCard.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return ok({ success: true, data: cards })
+  } catch (err) {
+    console.error('List cards error:', err)
+    return error('Failed to fetch cards', 500)
   }
-  
-  const { searchParams } = new URL(request.url)
-  
-  // Get userId from params or context
-  const userIdResult = getUserId(searchParams, context)
-  if (userIdResult instanceof NextResponse) {
-    return userIdResult
-  }
-  const userId = userIdResult
-  
-  // Get existing cards or create demo cards
-  let cards = cardsStore.get(userId)
-  
-  if (!cards) {
-    // Demo cards
-    cards = [
-      {
-        id: `card-${userId}-1`,
-        type: 'visa',
-        cardType: 'virtual',
-        lastFour: '4242',
-        cardholderName: 'THABO MOLEFE',
-        expiryMonth: '12',
-        expiryYear: '28',
-        cardNumber: '4242424242424242',
-        cvv: '123',
-        status: 'active',
-        onlineEnabled: true,
-        contactlessEnabled: true,
-        internationalEnabled: false,
-        atmEnabled: true,
-        spentThisMonthCents: 150000,
-        monthlyLimitCents: 500000,
-        dailyLimitCents: 20000,
-        createdAt: new Date().toISOString(),
-        color: 'green',
-      }
-    ]
-    cardsStore.set(userId, cards)
-  }
-  
-  return NextResponse.json({
-    success: true,
-    data: cards
-  })
 }
 
-// POST /api/consumer/cards - Create a new virtual card
+// POST /api/consumer/cards - create a new virtual card
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated context
-    const context = await getAuthContext(request)
-    if (!context) {
-      return unauthorizedResponse()
+    const userId = getUserId(request)
+    const body = await request.json().catch(() => ({} as Record<string, unknown>))
+
+    const cardType = (body.cardType as string) || 'visa'
+    const cardholderName = (body.cardholderName as string | undefined)?.toUpperCase() || 'GROWAY USER'
+    const monthlyLimit = parseMoney((body.monthlyLimitCents ?? body.monthlyLimit ?? 500000) as string | number)
+    const dailyLimit = parseMoney((body.dailyLimitCents ?? body.dailyLimit ?? 20000) as string | number)
+
+    // Verify that the user exists so we don't create orphaned cards.
+    const user = await db.consumerUser.findUnique({ where: { id: userId }, select: { id: true } })
+    if (!user) {
+      return error('User not found', 404)
     }
-    
-    const body = await request.json()
-    const { userId: bodyUserId, cardType = 'visa', monthlyLimit = 500000 } = body
-    
-    // Validate userId - use body param or context
-    let userId = bodyUserId
-    if (!userId) {
-      userId = context.userId
-    }
-    
-    // Security check: ensure user can only access their own data
-    if (userId !== context.userId) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied' },
-        { status: 403 }
-      )
-    }
-    
-    // Generate card details
-    const cardNumber = generateCardNumber(cardType)
-    const cvv = generateCVV()
+
+    const pan = generatePan(cardType)
+    const cvv = generateCvv()
     const expiryMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')
     const expiryYear = String(new Date().getFullYear() + 4).slice(-2)
-    
-    const newCard = {
-      id: `card-${userId}-${Date.now()}`,
-      type: cardType,
-      cardType: 'virtual',
-      lastFour: cardNumber.slice(-4),
-      cardholderName: body.cardholderName?.toUpperCase() || 'GROWAY USER',
-      expiryMonth,
-      expiryYear,
-      cardNumber,
-      cvv,
-      status: 'active',
-      onlineEnabled: true,
-      contactlessEnabled: true,
-      internationalEnabled: false,
-      atmEnabled: false,
-      spentThisMonthCents: 0,
-      monthlyLimitCents: monthlyLimit,
-      dailyLimitCents: 20000,
-      createdAt: new Date().toISOString(),
-      color: ['green', 'blue', 'purple', 'orange'][Math.floor(Math.random() * 4)],
-    }
-    
-    // Get existing cards and add new one
-    let cards = cardsStore.get(userId) || []
-    cards.push(newCard)
-    cardsStore.set(userId, cards)
-    
-    return NextResponse.json({
-      success: true,
-      data: newCard,
-      message: 'Virtual card created successfully'
+    const lastFour = pan.slice(-4)
+    const cardToken = `tok_${randomBytes(12).toString('hex')}`
+
+    const card = await db.consumerCard.create({
+      data: {
+        id: `card-${randomBytes(8).toString('hex')}`,
+        userId,
+        cardType,
+        cardCategory: 'virtual',
+        cardDesign: 'default',
+        lastFourDigits: lastFour,
+        cardToken,
+        panEncrypted: `enc_pan_${randomBytes(16).toString('hex')}`,
+        cvvEncrypted: `enc_cvv_${randomBytes(8).toString('hex')}`,
+        expiryMonth,
+        expiryYear,
+        cardholderName,
+        status: 'active',
+        spendingLimitDaily: dailyLimit,
+        spendingLimitMonthly: monthlyLimit,
+        spentTodayCents: BigInt(0),
+        spentThisMonthCents: BigInt(0),
+        onlineEnabled: true,
+        contactlessEnabled: true,
+        atmEnabled: false,
+        internationalEnabled: false,
+        activatedAt: new Date(),
+        updatedAt: new Date(),
+      },
     })
-  } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to create card'
-    }, { status: 500 })
+
+    return ok({ success: true, data: card, message: 'Virtual card created successfully' }, 201)
+  } catch (err) {
+    console.error('Create card error:', err)
+    return error('Failed to create card', 500)
   }
 }
 
-// PATCH /api/consumer/cards - Update card settings
+// PATCH /api/consumer/cards - update card settings (freeze/unfreeze, toggles, limits)
 export async function PATCH(request: NextRequest) {
   try {
-    // Get authenticated context
-    const context = await getAuthContext(request)
-    if (!context) {
-      return unauthorizedResponse()
+    const userId = getUserId(request)
+    const body = await request.json().catch(() => ({} as Record<string, unknown>))
+    const cardId = body.cardId as string | undefined
+    const updates = (body.updates as Record<string, unknown>) || {}
+
+    if (!cardId) {
+      return error('Card ID required')
     }
-    
-    const body = await request.json()
-    const { userId: bodyUserId, cardId, updates } = body
-    
-    // Validate userId - use body param or context
-    let userId = bodyUserId
-    if (!userId) {
-      userId = context.userId
+
+    const existing = await db.consumerCard.findUnique({ where: { id: cardId } })
+    if (!existing || existing.userId !== userId) {
+      return error('Card not found', 404)
     }
-    
-    // Security check: ensure user can only access their own data
-    if (userId !== context.userId) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied' },
-        { status: 403 }
-      )
+
+    const data: Record<string, unknown> = {}
+
+    if (typeof updates.status === 'string') {
+      // freeze / unfreeze / block / activate
+      data.status = updates.status
     }
-    
-    let cards = cardsStore.get(userId) || []
-    const cardIndex = cards.findIndex(c => c.id === cardId)
-    
-    if (cardIndex === -1) {
-      return NextResponse.json({
-        success: false,
-        error: 'Card not found'
-      }, { status: 404 })
+    if (typeof updates.onlineEnabled === 'boolean') data.onlineEnabled = updates.onlineEnabled
+    if (typeof updates.contactlessEnabled === 'boolean') data.contactlessEnabled = updates.contactlessEnabled
+    if (typeof updates.atmEnabled === 'boolean') data.atmEnabled = updates.atmEnabled
+    if (typeof updates.internationalEnabled === 'boolean') data.internationalEnabled = updates.internationalEnabled
+    if (updates.monthlyLimitCents !== undefined) {
+      data.spendingLimitMonthly = parseMoney(updates.monthlyLimitCents as string | number)
     }
-    
-    // Update allowed fields
-    const allowedUpdates = ['status', 'onlineEnabled', 'contactlessEnabled', 'internationalEnabled', 'atmEnabled', 'monthlyLimitCents', 'dailyLimitCents']
-    
-    for (const key of allowedUpdates) {
-      if (updates[key] !== undefined) {
-        cards[cardIndex][key] = updates[key]
-      }
+    if (updates.dailyLimitCents !== undefined) {
+      data.spendingLimitDaily = parseMoney(updates.dailyLimitCents as string | number)
     }
-    
-    cardsStore.set(userId, cards)
-    
-    return NextResponse.json({
-      success: true,
-      data: cards[cardIndex],
-      message: 'Card updated successfully'
+    if (typeof updates.cardholderName === 'string') {
+      data.cardholderName = updates.cardholderName.toUpperCase()
+    }
+
+    const updated = await db.consumerCard.update({
+      where: { id: cardId },
+      data: { ...data, updatedAt: new Date() },
     })
-  } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to update card'
-    }, { status: 500 })
+
+    return ok({ success: true, data: updated, message: 'Card updated successfully' })
+  } catch (err) {
+    console.error('Update card error:', err)
+    return error('Failed to update card', 500)
   }
 }
 
-// DELETE /api/consumer/cards - Delete/terminate a card
+// DELETE /api/consumer/cards - soft-delete by setting status to 'cancelled'
 export async function DELETE(request: NextRequest) {
   try {
-    // Get authenticated context
-    const context = await getAuthContext(request)
-    if (!context) {
-      return unauthorizedResponse()
-    }
-    
+    const userId = getUserId(request)
     const { searchParams } = new URL(request.url)
-    
-    // Get userId from params or context
-    const userIdResult = getUserId(searchParams, context)
-    if (userIdResult instanceof NextResponse) {
-      return userIdResult
-    }
-    const userId = userIdResult
-    
     const cardId = searchParams.get('cardId')
-    
+
     if (!cardId) {
-      return NextResponse.json({
-        success: false,
-        error: 'Card ID required'
-      }, { status: 400 })
+      return error('Card ID required')
     }
-    
-    let cards = cardsStore.get(userId) || []
-    const cardIndex = cards.findIndex(c => c.id === cardId)
-    
-    if (cardIndex === -1) {
-      return NextResponse.json({
-        success: false,
-        error: 'Card not found'
-      }, { status: 404 })
+
+    const existing = await db.consumerCard.findUnique({ where: { id: cardId } })
+    if (!existing || existing.userId !== userId) {
+      return error('Card not found', 404)
     }
-    
-    // Mark as terminated instead of removing
-    cards[cardIndex].status = 'terminated'
-    cards[cardIndex].terminatedAt = new Date().toISOString()
-    
-    cardsStore.set(userId, cards)
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Card terminated successfully'
+
+    const updated = await db.consumerCard.update({
+      where: { id: cardId },
+      data: {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        cancelledReason: 'User requested cancellation',
+        updatedAt: new Date(),
+      },
     })
-  } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to terminate card'
-    }, { status: 500 })
+
+    return ok({ success: true, data: updated, message: 'Card terminated successfully' })
+  } catch (err) {
+    console.error('Delete card error:', err)
+    return error('Failed to terminate card', 500)
   }
 }
 
-function generateCardNumber(type: string): string {
-  if (type === 'visa') {
-    return '4' + Array(15).fill(0).map(() => Math.floor(Math.random() * 10)).join('')
-  } else if (type === 'mastercard') {
+// --- Card number generation helpers -------------------------------------
+
+function generatePan(type: string): string {
+  if (type === 'mastercard') {
     const prefix = ['51', '52', '53', '54', '55'][Math.floor(Math.random() * 5)]
-    return prefix + Array(14).fill(0).map(() => Math.floor(Math.random() * 10)).join('')
+    return prefix + Array.from({ length: 14 }, () => Math.floor(Math.random() * 10)).join('')
   }
-  return '4' + Array(15).fill(0).map(() => Math.floor(Math.random() * 10)).join('')
+  // Default to Visa-style PAN
+  return '4' + Array.from({ length: 15 }, () => Math.floor(Math.random() * 10)).join('')
 }
 
-function generateCVV(): string {
+function generateCvv(): string {
   return String(Math.floor(Math.random() * 900) + 100)
 }

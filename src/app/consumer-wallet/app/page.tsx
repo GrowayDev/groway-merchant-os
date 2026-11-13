@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { HomeTab } from '@/components/wallet/HomeTab'
 import { ServicesTab } from '@/components/wallet/ServicesTab'
 import { WalletCard, type CardData } from '@/components/wallet/WalletCard'
@@ -26,6 +26,7 @@ import { TransactionHistoryModal } from '@/components/wallet/modals/TransactionH
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { apiGet, apiPut } from '@/components/wallet/lib/api'
 import {
   Home,
   Grid3X3,
@@ -37,29 +38,51 @@ import {
   Shield,
   HelpCircle,
   ChevronRight,
-  LogOut
+  LogOut,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
 
-// Mock card data
-const mockCard: CardData = {
-  cardId: 'card_demo_001',
-  merchantId: 'merchant_demo',
-  network: 'visa',
-  tier: 'business',
-  formFactor: 'virtual',
-  status: 'active',
-  cardholderName: 'T. MOKOENA',
-  lastFour: '4567',
-  maskedNumber: '4716 •••• •••• 4567',
-  expiryDisplay: '09 / 28',
-  nfcEnabled: true,
-  dailyLimitCents: 10000000,
-  issuedAt: '2024-01-01',
-  expiresAt: '2028-09-30',
+/**
+ * Map a card record from `/api/consumer/cards` (which uses snake-ish fields
+ * like `lastFour`, `expiryMonth`, `cardType`, `type`) to the `CardData` shape
+ * expected by the `WalletCard` component.
+ */
+function mapApiCardToCardData(card: Record<string, unknown>): CardData {
+  const lastFour = String(card.lastFour ?? '0000')
+  const network = (card.type === 'mastercard' ? 'mastercard' : 'visa') as CardData['network']
+  const cardType = (card.cardType ?? 'virtual') as CardData['formFactor']
+  const expiryMonth = String(card.expiryMonth ?? '12').padStart(2, '0')
+  const expiryYear = String(card.expiryYear ?? '28')
+  const statusRaw = String(card.status ?? 'active')
+  const status = (statusRaw === 'frozen' ? 'frozen' : statusRaw === 'terminated' ? 'cancelled' : statusRaw === 'pending' ? 'pending' : 'active') as CardData['status']
+
+  return {
+    cardId: String(card.id ?? ''),
+    merchantId: String(card.merchantId ?? 'groway'),
+    network,
+    tier: (card.tier ?? 'business') as CardData['tier'],
+    formFactor: cardType,
+    status,
+    cardholderName: String(card.cardholderName ?? 'GROWAY USER'),
+    lastFour,
+    maskedNumber: `•••• •••• •••• ${lastFour}`,
+    expiryDisplay: `${expiryMonth} / ${expiryYear}`,
+    nfcEnabled: Boolean(card.contactlessEnabled ?? true),
+    dailyLimitCents: Number(card.dailyLimitCents ?? 20000),
+    issuedAt: String(card.createdAt ?? new Date().toISOString()),
+    expiresAt: String(card.expiresAt ?? `${new Date().getFullYear() + 4}-12-31`),
+  }
 }
 
 export default function ConsumerWalletPage() {
   const [activeTab, setActiveTab] = useState<'home' | 'services' | 'pay' | 'cards' | 'profile'>('home')
+
+  // Card data fetched from the backend
+  const [card, setCard] = useState<CardData | null>(null)
+  const [cardLoading, setCardLoading] = useState(true)
+  const [cardError, setCardError] = useState<string | null>(null)
+  const [cardFreezing, setCardFreezing] = useState(false)
 
   // Modal states
   const [payPlusOpen, setPayPlusOpen] = useState(false)
@@ -82,6 +105,37 @@ export default function ConsumerWalletPage() {
   const [remittanceOpen, setRemittanceOpen] = useState(false)
   const [transactionHistoryOpen, setTransactionHistoryOpen] = useState(false)
 
+  // Fetch the user's primary card on mount
+  useEffect(() => {
+    let cancelled = false
+    async function loadCard() {
+      setCardLoading(true)
+      setCardError(null)
+      try {
+        const res = await apiGet<{ success?: boolean; data?: Record<string, unknown>[] }>('/cards')
+        if (cancelled) return
+        const cards = Array.isArray(res?.data) ? res.data : []
+        const first = cards.find((c) => c && c.status !== 'terminated') ?? cards[0]
+        if (!first) {
+          setCard(null)
+        } else {
+          setCard(mapApiCardToCardData(first))
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setCardError(err instanceof Error ? err.message : 'Failed to load card')
+          setCard(null)
+        }
+      } finally {
+        if (!cancelled) setCardLoading(false)
+      }
+    }
+    loadCard()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const navItems = [
     { id: 'home', icon: Home, label: 'Home' },
     { id: 'services', icon: Grid3X3, label: 'Services' },
@@ -90,11 +144,27 @@ export default function ConsumerWalletPage() {
     { id: 'profile', icon: User, label: 'Profile' },
   ]
 
-  // Handle card freeze
-  const handleFreezeCard = async (cardId: string) => {
-    console.log('Freeze card:', cardId)
-    // API call would go here
-  }
+  // Toggle card freeze state via the consumer cards API
+  const handleFreezeCard = useCallback(
+    async (cardId: string) => {
+      if (!card) return
+      const currentlyFrozen = card.status === 'frozen'
+      setCardFreezing(true)
+      try {
+        await apiPut('/cards', { cardId, frozen: !currentlyFrozen })
+        setCard((prev) =>
+          prev ? { ...prev, status: currentlyFrozen ? 'active' : 'frozen' } : prev
+        )
+      } catch (err) {
+        // Surface the error in the console so the operator can see the API
+        // response without disrupting the UI flow.
+        console.error('Freeze card failed:', err)
+      } finally {
+        setCardFreezing(false)
+      }
+    },
+    [card]
+  )
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
@@ -190,10 +260,31 @@ export default function ConsumerWalletPage() {
 
               {/* Virtual Card */}
               <div className="mb-4">
-                <WalletCard
-                  card={mockCard}
-                  onFreeze={handleFreezeCard}
-                />
+                {cardLoading ? (
+                  <div className="w-full max-w-[340px] mx-auto h-[214px] rounded-xl bg-gray-100 animate-pulse flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 text-[#00897B] animate-spin" />
+                  </div>
+                ) : cardError ? (
+                  <div className="w-full max-w-[340px] mx-auto rounded-xl border border-red-200 bg-red-50 p-4 text-center">
+                    <AlertCircle className="h-6 w-6 text-red-500 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-red-700">{cardError}</p>
+                    <p className="text-xs text-red-500 mt-1">Could not load your wallet card.</p>
+                  </div>
+                ) : card ? (
+                  <WalletCard
+                    card={card}
+                    onFreeze={handleFreezeCard}
+                  />
+                ) : (
+                  <div className="w-full max-w-[340px] mx-auto rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+                    <CreditCard className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-[#1A1A1A]">No wallet card yet</p>
+                    <p className="text-xs text-[#757575] mt-1">Issue a virtual card to start spending.</p>
+                    <Button className="mt-3 bg-[#00897B] hover:bg-[#00695C]" disabled={cardFreezing}>
+                      <CreditCard className="h-4 w-4 mr-2" /> Issue Virtual Card
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Card Tiers */}

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiGet, apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
@@ -14,7 +15,8 @@ import {
   Ticket,
   Film,
   Music,
-  Users
+  Users,
+  AlertCircle
 } from 'lucide-react'
 
 interface EventsModalProps {
@@ -48,20 +50,70 @@ export function EventsModal({ open, onOpenChange }: EventsModalProps) {
   const [ticketCount, setTicketCount] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [bookingId, setBookingId] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [events, setEvents] = useState<Event[]>(mockEvents)
+  const [eventsLoading, setEventsLoading] = useState(false)
+
+  // Fetch events list when modal opens
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    async function loadEvents() {
+      setEventsLoading(true)
+      try {
+        const res = await apiGet<{ success?: boolean; data?: { events?: Event[] } | Event[] }>('/events')
+        if (cancelled) return
+        const raw = res?.data
+        const list: Event[] = Array.isArray(raw)
+          ? raw
+          : raw && Array.isArray((raw as any).events)
+          ? (raw as any).events
+          : []
+        if (list.length > 0) setEvents(list)
+      } catch {
+        // keep fallback events
+      } finally {
+        if (!cancelled) setEventsLoading(false)
+      }
+    }
+    loadEvents()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   const handleBook = useCallback(async () => {
     if (!selectedEvent) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setBookingId(`EVT${Date.now().toString(36).toUpperCase()}`)
-    setStep('success')
-    setIsLoading(false)
-  }, [selectedEvent])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/events', {
+        eventId: selectedEvent.id,
+        eventTitle: selectedEvent.title,
+        ticketCount,
+        amountCents: Math.round(selectedEvent.price * ticketCount * 100),
+        currency: 'ZAR',
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Booking failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setBookingId(String(data.id || data.bookingId || data.reference || `EVT${Date.now().toString(36).toUpperCase()}`))
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Booking failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedEvent, ticketCount])
 
   const handleClose = useCallback(() => {
     setStep('list')
     setSelectedEvent(null)
     setTicketCount(1)
+    setError(null)
+    setBookingId('')
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -88,7 +140,12 @@ export function EventsModal({ open, onOpenChange }: EventsModalProps) {
               </div>
 
               <div className="space-y-3">
-                {mockEvents.map((event) => (
+                {eventsLoading && (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 text-[#00897B] animate-spin" />
+                  </div>
+                )}
+                {!eventsLoading && events.map((event) => (
                   <button
                     key={event.id}
                     onClick={() => {
@@ -119,6 +176,9 @@ export function EventsModal({ open, onOpenChange }: EventsModalProps) {
                     </div>
                   </button>
                 ))}
+                {!eventsLoading && events.length === 0 && (
+                  <p className="text-sm text-[#757575] text-center py-4">No events available</p>
+                )}
               </div>
             </div>
           )}
@@ -219,6 +279,13 @@ export function EventsModal({ open, onOpenChange }: EventsModalProps) {
                 </p>
                 <p className="text-sm text-[#757575]">{ticketCount} ticket{ticketCount > 1 ? 's' : ''} • {selectedEvent.title}</p>
               </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
 
               <Button
                 onClick={handleBook}

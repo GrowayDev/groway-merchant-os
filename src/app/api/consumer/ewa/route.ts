@@ -1,230 +1,183 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getAuthContext, getUserId, unauthorizedResponse, badRequestResponse } from '@/lib/auth-context'
+import { NextRequest } from 'next/server'
+import { randomBytes } from 'crypto'
+import { db } from '@/lib/db'
+import { getUserId, ok, error } from '../_lib/helpers'
 
-// In-memory storage for EWA (Earned Wage Access)
-const ewaStore: Map<string, any> = new Map()
+/**
+ * /api/consumer/ewa
+ *
+ * Replaces the previous in-memory ewaStore Map with Prisma ConsumerEWA
+ * and ConsumerEWATransaction records.
+ *
+ * Money in the EWA model is stored as Float (ZAR, not cents) per the
+ * Prisma schema, so no BigInt conversion is needed here.
+ */
 
-// GET /api/consumer/ewa - Get EWA status and eligibility
+// GET /api/consumer/ewa - fetch or create the user's EWA account
 export async function GET(request: NextRequest) {
-  // Get authenticated context
-  const context = await getAuthContext(request)
-  if (!context) {
-    return unauthorizedResponse()
-  }
-  
-  const { searchParams } = new URL(request.url)
-  
-  // Get userId from params or context
-  const userIdResult = getUserId(searchParams, context)
-  if (userIdResult instanceof NextResponse) {
-    return userIdResult
-  }
-  const userId = userIdResult
-  
-  // Get or create EWA data
-  let ewaData = ewaStore.get(userId)
-  
-  if (!ewaData) {
-    // Demo EWA data
-    ewaData = {
-      userId,
-      employerId: 'employer-001',
-      employerName: 'ACME Corp (Pty) Ltd',
-      employerLogo: null,
-      syncStatus: 'synced',
-      lastSync: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      
-      // Monthly earnings
-      monthlySalaryCents: 2500000, // R25,000
-      accruedThisMonthCents: 1083300, // R10,833 (earned so far)
-      availablePercentage: 60,
-      availableCents: 650000, // R6,500 (60% of accrued)
-      withdrawnThisMonthCents: 96600, // R966 already withdrawn
-      
-      // Work days
-      totalWorkDaysThisMonth: 28,
-      daysWorked: 18,
-      daysRemaining: 10,
-      
-      // Plan
-      plan: 'pay_per_use', // 'pay_per_use' or 'unlimited'
-      planFee: 0,
-      withdrawalFeePercent: 3, // 3% for pay_per_use
-      
-      // History
-      withdrawalHistory: [
-        {
-          id: 'ewa-wd-1',
-          amountCents: 250000,
-          feeCents: 7500,
-          netAmountCents: 242500,
-          reason: 'Emergency expense',
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'completed'
-        },
-        {
-          id: 'ewa-wd-2',
-          amountCents: 100000,
-          feeCents: 3000,
-          netAmountCents: 97000,
-          reason: 'Groceries',
-          createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'completed'
-        }
-      ],
-      
-      // Weekly breakdown
-      weeklyBreakdown: [
-        { week: 1, daysWorked: 5, hoursWorked: 40, earnedCents: 416700 },
-        { week: 2, daysWorked: 5, hoursWorked: 40, earnedCents: 416700 },
-        { week: 3, daysWorked: 5, hoursWorked: 40, earnedCents: 250000 },
-      ],
-      
-      createdAt: new Date().toISOString()
+  try {
+    const userId = getUserId(request)
+
+    const user = await db.consumerUser.findUnique({ where: { id: userId }, select: { id: true } })
+    if (!user) {
+      return error('User not found', 404)
     }
-    ewaStore.set(userId, ewaData)
+
+    let ewa = await db.consumerEWA.findUnique({
+      where: { userId },
+      include: {
+        ConsumerEWATransaction: {
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        },
+      },
+    })
+
+    // If the user has no EWA account yet, create one with mock employer data.
+    if (!ewa) {
+      ewa = await db.consumerEWA.create({
+        data: {
+          id: `ewa-${randomBytes(8).toString('hex')}`,
+          userId,
+          employeeId: `emp-${randomBytes(6).toString('hex')}`,
+          employer: 'ACME Corp (Pty) Ltd',
+          monthlySalary: 25000, // R25,000
+          payDay: 25,
+          accruedSalary: 10833, // earned so far this month
+          availableAdvance: 6500, // R6,500
+          usedThisMonth: 966,
+          limit: 15000,
+          eligible: true,
+          nextPayDay: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+          updatedAt: new Date(),
+        },
+        include: {
+          ConsumerEWATransaction: true,
+        },
+      })
+    }
+
+    return ok({ success: true, data: ewa })
+  } catch (err) {
+    console.error('Get EWA error:', err)
+    return error('Failed to fetch EWA account', 500)
   }
-  
-  return NextResponse.json({
-    success: true,
-    data: ewaData
-  })
 }
 
-// POST /api/consumer/ewa - Request wage withdrawal
+// POST /api/consumer/ewa - request a wage advance
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated context
-    const context = await getAuthContext(request)
-    if (!context) {
-      return unauthorizedResponse()
+    const userId = getUserId(request)
+    const body = await request.json().catch(() => ({} as Record<string, unknown>))
+
+    const amount = Number(body.amount ?? body.amountCents ?? 0)
+    const reason = (body.reason as string | undefined) || 'Wage access'
+
+    if (!amount || amount <= 0) {
+      return error('Amount must be greater than 0')
     }
-    
-    const body = await request.json()
-    const { userId: bodyUserId, amountCents, reason } = body
-    
-    // Validate userId - use body param or context
-    let userId = bodyUserId
-    if (!userId) {
-      userId = context.userId
+
+    const ewa = await db.consumerEWA.findUnique({ where: { userId } })
+    if (!ewa) {
+      return error('EWA not set up for this user', 400)
     }
-    
-    // Security check: ensure user can only access their own data
-    if (userId !== context.userId) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied' },
-        { status: 403 }
-      )
+    if (!ewa.eligible) {
+      return error('User is not eligible for EWA advances', 403)
     }
-    
-    let ewaData = ewaStore.get(userId)
-    if (!ewaData) {
-      return NextResponse.json({
-        success: false,
-        error: 'EWA not set up for this user'
-      }, { status: 400 })
+    if (amount > ewa.availableAdvance) {
+      return error('Amount exceeds available balance', 400)
     }
-    
-    // Check eligibility
-    const availableAmount = ewaData.accruedThisMonthCents * (ewaData.availablePercentage / 100) - ewaData.withdrawnThisMonthCents
-    if (amountCents > availableAmount) {
-      return NextResponse.json({
-        success: false,
-        error: 'Amount exceeds available balance'
-      }, { status: 400 })
-    }
-    
-    // Calculate fee
-    const feeCents = Math.round(amountCents * (ewaData.withdrawalFeePercent / 100))
-    const netAmountCents = amountCents - feeCents
-    
-    // Create withdrawal record
-    const withdrawal = {
-      id: `ewa-wd-${Date.now()}`,
-      amountCents,
-      feeCents,
-      netAmountCents,
-      reason: reason || 'Wage access',
-      createdAt: new Date().toISOString(),
-      status: 'completed'
-    }
-    
-    // Update EWA data
-    ewaData.withdrawnThisMonthCents += amountCents
-    ewaData.availableCents = ewaData.accruedThisMonthCents * (ewaData.availablePercentage / 100) - ewaData.withdrawnThisMonthCents
-    ewaData.withdrawalHistory.unshift(withdrawal)
-    ewaStore.set(userId, ewaData)
-    
-    return NextResponse.json({
+
+    // Flat 3% fee for pay-per-use plan (simplified).
+    const feeRate = 0.03
+    const fee = Math.round(amount * feeRate * 100) / 100
+    const netAmount = Math.round((amount - fee) * 100) / 100
+
+    const [tx, updated] = await db.$transaction([
+      db.consumerEWATransaction.create({
+        data: {
+          id: `ewa-tx-${randomBytes(8).toString('hex')}`,
+          userId,
+          amount,
+          fee,
+          netAmount,
+          reason,
+          status: 'settled',
+          requestedAt: new Date(),
+          settledAt: new Date(),
+          updatedAt: new Date(),
+        },
+      }),
+      db.consumerEWA.update({
+        where: { userId },
+        data: {
+          availableAdvance: ewa.availableAdvance - amount,
+          usedThisMonth: ewa.usedThisMonth + amount,
+          updatedAt: new Date(),
+        },
+      }),
+    ])
+
+    return ok({
       success: true,
       data: {
-        withdrawal,
-        newAvailableCents: ewaData.availableCents,
-        message: `R ${(amountCents / 100).toLocaleString('en-ZA')} withdrawn successfully. Fee: R ${(feeCents / 100).toLocaleString('en-ZA')}`
-      }
+        transaction: tx,
+        newAvailableAdvance: updated.availableAdvance,
+        message: `R ${amount.toLocaleString('en-ZA')} withdrawn successfully. Fee: R ${fee.toLocaleString('en-ZA')}`,
+      },
     })
-  } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to process withdrawal'
-    }, { status: 500 })
+  } catch (err) {
+    console.error('EWA advance error:', err)
+    return error('Failed to process withdrawal', 500)
   }
 }
 
-// PATCH /api/consumer/ewa - Update EWA plan
+// PATCH /api/consumer/ewa - mark an EWA transaction as settled (employer repayment)
+// or update the EWA plan.
 export async function PATCH(request: NextRequest) {
   try {
-    // Get authenticated context
-    const context = await getAuthContext(request)
-    if (!context) {
-      return unauthorizedResponse()
+    const userId = getUserId(request)
+    const body = await request.json().catch(() => ({} as Record<string, unknown>))
+
+    // Action 1: settle a specific transaction (employer repayment)
+    const transactionId = body.transactionId as string | undefined
+    if (transactionId) {
+      const tx = await db.consumerEWATransaction.findUnique({ where: { id: transactionId } })
+      if (!tx || tx.userId !== userId) {
+        return error('EWA transaction not found', 404)
+      }
+      if (tx.status === 'settled') {
+        return error('Transaction is already settled', 400)
+      }
+
+      const updated = await db.consumerEWATransaction.update({
+        where: { id: transactionId },
+        data: {
+          status: 'settled',
+          settledAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
+
+      return ok({ success: true, data: updated, message: 'EWA transaction settled' })
     }
-    
-    const body = await request.json()
-    const { userId: bodyUserId, plan } = body
-    
-    // Validate userId - use body param or context
-    let userId = bodyUserId
-    if (!userId) {
-      userId = context.userId
-    }
-    
-    // Security check: ensure user can only access their own data
-    if (userId !== context.userId) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied' },
-        { status: 403 }
-      )
-    }
-    
-    let ewaData = ewaStore.get(userId)
-    if (!ewaData) {
-      return NextResponse.json({
-        success: false,
-        error: 'EWA not set up for this user'
-      }, { status: 400 })
-    }
-    
-    ewaData.plan = plan
-    if (plan === 'unlimited') {
-      ewaData.planFee = 9900 // R99/month
-      ewaData.withdrawalFeePercent = 0
-    } else {
-      ewaData.planFee = 0
-      ewaData.withdrawalFeePercent = 3
-    }
-    
-    ewaStore.set(userId, ewaData)
-    
-    return NextResponse.json({
-      success: true,
-      data: ewaData,
-      message: `Plan updated to ${plan === 'unlimited' ? 'Unlimited' : 'Pay Per Use'}`
+
+    // Action 2: update the EWA account (eligibility, employer info, etc.)
+    const data: Record<string, unknown> = { updatedAt: new Date() }
+    if (typeof body.eligible === 'boolean') data.eligible = body.eligible
+    if (typeof body.employer === 'string') data.employer = body.employer
+    if (typeof body.employeeId === 'string') data.employeeId = body.employeeId
+    if (typeof body.monthlySalary === 'number') data.monthlySalary = body.monthlySalary
+    if (typeof body.limit === 'number') data.limit = body.limit
+
+    const updated = await db.consumerEWA.update({
+      where: { userId },
+      data,
     })
-  } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to update plan'
-    }, { status: 500 })
+
+    return ok({ success: true, data: updated, message: 'EWA account updated' })
+  } catch (err) {
+    console.error('Update EWA error:', err)
+    return error('Failed to update EWA', 500)
   }
 }

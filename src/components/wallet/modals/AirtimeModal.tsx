@@ -4,12 +4,14 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
   Loader2,
   ChevronRight,
-  Smartphone
+  Smartphone,
+  AlertCircle
 } from 'lucide-react'
 
 interface AirtimeModalProps {
@@ -62,6 +64,7 @@ export function AirtimeModal({ open, onOpenChange }: AirtimeModalProps) {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [amount, setAmount] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [transaction, setTransaction] = useState<TransactionRecord | null>(null)
 
   const generateToken = () => {
@@ -77,74 +80,36 @@ export function AirtimeModal({ open, onOpenChange }: AirtimeModalProps) {
 
   const handleBuy = useCallback(async () => {
     setIsLoading(true)
-    
+    setError(null)
+
     try {
       // Call the actual backend API for airtime purchase
-      const response = await fetch('/api/wallet/airtime', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'purchase',
-          userId: 'demo_user_001', // Demo user ID
-          phone: phoneNumber,
-          productId: `${selectedNetwork?.id}_${Math.floor(amount)}`,
-          amountCents: Math.round(amount * 100),
-          providerId: selectedNetwork?.id,
-        })
+      const result = await apiPost<{ success?: boolean; data?: any; error?: string }>('/airtime', {
+        action: 'purchase',
+        phone: phoneNumber,
+        productId: `${selectedNetwork?.id}_${Math.floor(amount)}`,
+        amountCents: Math.round(amount * 100),
+        providerId: selectedNetwork?.id,
+        bundleType,
       })
 
-      const result = await response.json()
-
-      if (result.success && result.data) {
-        // Create transaction record from API response
-        const newTransaction: TransactionRecord = {
-          id: result.data.id || `TXN${Date.now().toString(36).toUpperCase()}`,
-          type: bundleType as 'airtime' | 'data' | 'voice' | 'sms',
-          network: result.data.network || selectedNetwork?.name || '',
-          phoneNumber: phoneNumber,
-          amount: amount,
-          token: result.data.voucherPin || generateToken(),
-          reference: result.data.reference || `AIR${Date.now().toString(36).toUpperCase()}`,
-          timestamp: new Date(),
-          status: 'completed'
-        }
-
-        setTransaction(newTransaction)
-        setStep('success')
-      } else {
-        // API returned an error
-        console.error('Airtime purchase failed:', result.error)
-        // Still show success for demo purposes but with warning
-        const newTransaction: TransactionRecord = {
-          id: `TXN${Date.now().toString(36).toUpperCase()}`,
-          type: bundleType as 'airtime' | 'data' | 'voice' | 'sms',
-          network: selectedNetwork?.name || '',
-          phoneNumber: phoneNumber,
-          amount: amount,
-          token: generateToken(),
-          reference: `AIR${Date.now().toString(36).toUpperCase()}`,
-          timestamp: new Date(),
-          status: 'completed'
-        }
-        setTransaction(newTransaction)
-        setStep('success')
-      }
-    } catch (error) {
-      console.error('Airtime purchase error:', error)
-      // Fallback to simulated transaction for demo
+      const data = result?.data ?? result
       const newTransaction: TransactionRecord = {
-        id: `TXN${Date.now().toString(36).toUpperCase()}`,
+        id: data.id || `TXN${Date.now().toString(36).toUpperCase()}`,
         type: bundleType as 'airtime' | 'data' | 'voice' | 'sms',
-        network: selectedNetwork?.name || '',
+        network: data.network || selectedNetwork?.name || '',
         phoneNumber: phoneNumber,
         amount: amount,
-        token: generateToken(),
-        reference: `AIR${Date.now().toString(36).toUpperCase()}`,
+        token: data.voucherPin || data.token || generateToken(),
+        reference: data.reference || `AIR${Date.now().toString(36).toUpperCase()}`,
         timestamp: new Date(),
         status: 'completed'
       }
+
       setTransaction(newTransaction)
       setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Airtime purchase failed')
     } finally {
       setIsLoading(false)
     }
@@ -345,6 +310,13 @@ export function AirtimeModal({ open, onOpenChange }: AirtimeModalProps) {
               >
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Buy Now'}
               </Button>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
 
               <Button variant="outline" onClick={() => setStep('details')} className="w-full">
                 Back

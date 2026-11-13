@@ -1,7 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import ZAI from 'z-ai-web-dev-sdk'
 
-// Store conversations in memory (in production, use a database)
+// ============================================================================
+// SESSION-SCOPED IN-MEMORY STORE (intentional)
+// ----------------------------------------------------------------------------
+// GroAI conversations are kept in-memory by design. There is no dedicated
+// Prisma model for chat history, and the chat context is intrinsically
+// ephemeral: each sessionId maps to a transient conversation that should
+// not survive a server restart. Persisting every chat turn as a
+// ConsumerTransaction would pollute the wallet ledger, so we deliberately
+// keep this Map session-scoped.
+//
+// Implications:
+//   - Conversations are lost when the dev server restarts or when the
+//     in-memory Map is garbage-collected.
+//   - The `GET ?action=history` endpoint only returns messages from the
+//     current server process.
+//   - For multi-instance production deployments, replace this with Redis
+//     or add a dedicated Prisma model. Until then, do NOT migrate this
+//     store to ConsumerTransaction.
+// ============================================================================
 const conversations = new Map<string, Array<{ role: string; content: string }>>()
 
 // Initialize ZAI instance

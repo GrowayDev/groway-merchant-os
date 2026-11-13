@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiGet, apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
@@ -14,7 +15,8 @@ import {
   Building2,
   Car,
   ChevronRight,
-  Search
+  Search,
+  AlertCircle
 } from 'lucide-react'
 
 interface BillsModalProps {
@@ -30,7 +32,12 @@ interface BillCategory {
   icon: typeof Zap
   color: string
   bg: string
-  providers: string[]
+}
+
+interface BillProvider {
+  id: string
+  name: string
+  category?: string
 }
 
 interface BillTransaction {
@@ -48,76 +55,125 @@ interface BillTransaction {
 }
 
 const billCategories: BillCategory[] = [
-  { id: 'electricity', name: 'Electricity', icon: Zap, color: '#FFC107', bg: '#FFF8E1', providers: ['Eskom', 'City Power', 'Prepaid'] },
-  { id: 'water', name: 'Water', icon: Droplets, color: '#2196F3', bg: '#E3F2FD', providers: ['Johannesburg Water', 'City of Cape Town'] },
-  { id: 'dstv', name: 'DStv', icon: Tv, color: '#00897B', bg: '#E0F2F1', providers: ['MultiChoice'] },
-  { id: 'municipal', name: 'Municipal', icon: Building2, color: '#607D8B', bg: '#ECEFF1', providers: ['City of Joburg', 'City of Tshwane'] },
-  { id: 'traffic', name: 'Traffic Fines', icon: Car, color: '#F44336', bg: '#FFEBEE', providers: ['AARTO', 'Metro Police'] },
+  { id: 'electricity', name: 'Electricity', icon: Zap, color: '#FFC107', bg: '#FFF8E1' },
+  { id: 'water', name: 'Water', icon: Droplets, color: '#2196F3', bg: '#E3F2FD' },
+  { id: 'tv', name: 'DStv', icon: Tv, color: '#00897B', bg: '#E0F2F1' },
+  { id: 'municipal', name: 'Municipal', icon: Building2, color: '#607D8B', bg: '#ECEFF1' },
+  { id: 'traffic', name: 'Traffic Fines', icon: Car, color: '#F44336', bg: '#FFEBEE' },
 ]
+
+// Fallback providers per category, used until the API responds.
+const FALLBACK_PROVIDERS: Record<string, string[]> = {
+  electricity: ['City Power', 'Eskom', 'Prepaid'],
+  water: ['Johannesburg Water', 'City of Cape Town'],
+  tv: ['MultiChoice'],
+  municipal: ['City of Joburg', 'City of Tshwane'],
+  traffic: ['AARTO', 'Metro Police'],
+}
 
 export function BillsModal({ open, onOpenChange }: BillsModalProps) {
   const [step, setStep] = useState<Step>('categories')
   const [selectedCategory, setSelectedCategory] = useState<BillCategory | null>(null)
-  const [selectedProvider, setSelectedProvider] = useState<string>('')
+  const [selectedProvider, setSelectedProvider] = useState<BillProvider | null>(null)
+  const [providers, setProviders] = useState<BillProvider[]>([])
+  const [providersLoading, setProvidersLoading] = useState(false)
+  const [providersError, setProvidersError] = useState<string | null>(null)
   const [accountNumber, setAccountNumber] = useState('')
   const [amount, setAmount] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(false)
   const [accountInfo, setAccountInfo] = useState<{ name: string; balance: number } | null>(null)
   const [transaction, setTransaction] = useState<BillTransaction | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const generateToken = () => {
-    // Generate a realistic-looking prepaid electricity token
-    const digits = '0123456789'
-    let token = ''
-    for (let i = 0; i < 20; i++) {
-      if (i > 0 && i % 4 === 0) token += ' '
-      token += digits.charAt(Math.floor(Math.random() * digits.length))
+  // Fetch providers for a given category when the user picks one.
+  const loadProviders = useCallback(async (categoryId: string) => {
+    setProvidersLoading(true)
+    setProvidersError(null)
+    try {
+      const res = await apiGet<{ success?: boolean; data?: { providers?: BillProvider[] | Record<string, BillProvider[]> } }>(`/bills?category=${categoryId}`)
+      const raw = res?.data?.providers
+      const flat: BillProvider[] = Array.isArray(raw)
+        ? raw
+        : raw && typeof raw === 'object'
+        ? Object.values(raw).flat()
+        : []
+      setProviders(flat.length > 0 ? flat : FALLBACK_PROVIDERS[categoryId]?.map((name) => ({ id: name, name })) ?? [])
+    } catch (err) {
+      setProvidersError(err instanceof Error ? err.message : 'Failed to load providers')
+      setProviders(FALLBACK_PROVIDERS[categoryId]?.map((name) => ({ id: name, name })) ?? [])
+    } finally {
+      setProvidersLoading(false)
     }
-    return token
-  }
+  }, [])
 
   const handleLookupAccount = useCallback(async () => {
     if (!accountNumber.trim()) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setAccountInfo({ name: 'J. Mokoena', balance: 1250.50 })
-    setAmount(1250.50)
-    setIsLoading(false)
+    try {
+      // No dedicated lookup endpoint exists in the consumer API yet; we just
+      // clear any prior mock balance and let the user enter the amount.
+      setAccountInfo(null)
+    } finally {
+      setIsLoading(false)
+    }
   }, [accountNumber])
 
   const handlePay = useCallback(async () => {
+    if (!selectedProvider || !selectedCategory) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/bills', {
+        providerId: selectedProvider.id,
+        providerName: selectedProvider.name,
+        accountNumber,
+        accountName: accountInfo?.name,
+        amountCents: Math.round(amount * 100),
+        category: selectedCategory.id,
+        currency: 'ZAR',
+      })
 
-    // Create transaction record with token for prepaid services
-    const isPrepaid = selectedCategory?.id === 'electricity' || selectedCategory?.id === 'water'
-    const newTransaction: BillTransaction = {
-      id: `TXN${Date.now().toString(36).toUpperCase()}`,
-      category: selectedCategory?.name || '',
-      provider: selectedProvider,
-      accountNumber: accountNumber,
-      amount: amount,
-      token: isPrepaid ? generateToken() : undefined,
-      receiptNumber: `RCP${Date.now().toString(36).toUpperCase()}`,
-      reference: `BIL${Date.now().toString(36).toUpperCase()}`,
-      timestamp: new Date(),
-      status: 'completed',
-      accountHolder: accountInfo?.name
+      if (res?.success === false) {
+        setError(res.error || 'Payment failed')
+        return
+      }
+
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      const isPrepaid = selectedCategory.id === 'electricity' || selectedCategory.id === 'water'
+      const newTransaction: BillTransaction = {
+        id: String(data.id || `TXN${Date.now().toString(36).toUpperCase()}`),
+        category: selectedCategory.name,
+        provider: selectedProvider.name,
+        accountNumber: accountNumber,
+        amount: amount,
+        token: isPrepaid ? String(data.token || data.prepaidToken || '') : undefined,
+        receiptNumber: String(data.receiptNumber || `RCP${Date.now().toString(36).toUpperCase()}`),
+        reference: String(data.reference || `BIL${Date.now().toString(36).toUpperCase()}`),
+        timestamp: new Date(),
+        status: 'completed',
+        accountHolder: accountInfo?.name
+      }
+
+      setTransaction(newTransaction)
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed')
+    } finally {
+      setIsLoading(false)
     }
-
-    setTransaction(newTransaction)
-    setStep('success')
-    setIsLoading(false)
-  }, [selectedCategory, selectedProvider, accountNumber, amount, accountInfo])
+  }, [selectedProvider, selectedCategory, accountNumber, amount, accountInfo])
 
   const handleClose = useCallback(() => {
     setStep('categories')
     setSelectedCategory(null)
-    setSelectedProvider('')
+    setSelectedProvider(null)
+    setProviders([])
+    setProvidersError(null)
     setAccountNumber('')
     setAmount(0)
     setAccountInfo(null)
     setTransaction(null)
+    setError(null)
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -146,6 +202,10 @@ export function BillsModal({ open, onOpenChange }: BillsModalProps) {
                       key={category.id}
                       onClick={() => {
                         setSelectedCategory(category)
+                        setSelectedProvider(null)
+                        setProviders([])
+                        setProvidersError(null)
+                        loadProviders(category.id)
                         setStep('provider')
                       }}
                       className="p-4 rounded-xl border border-gray-200 hover:border-[#00897B] transition-all text-left"
@@ -189,17 +249,30 @@ export function BillsModal({ open, onOpenChange }: BillsModalProps) {
 
               <h3 className="text-sm font-semibold text-[#1A1A1A]">Select Provider</h3>
 
+              {providersLoading && (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 text-[#00897B] animate-spin" />
+                </div>
+              )}
+
+              {providersError && !providersLoading && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{providersError}</p>
+                </div>
+              )}
+
               <div className="space-y-2">
-                {selectedCategory.providers.map((provider) => (
+                {providers.map((provider) => (
                   <button
-                    key={provider}
+                    key={provider.id}
                     onClick={() => {
                       setSelectedProvider(provider)
                       setStep('details')
                     }}
                     className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100"
                   >
-                    <span className="text-sm font-medium text-[#1A1A1A]">{provider}</span>
+                    <span className="text-sm font-medium text-[#1A1A1A]">{provider.name}</span>
                     <ChevronRight className="h-5 w-5 text-gray-400" />
                   </button>
                 ))}
@@ -207,7 +280,7 @@ export function BillsModal({ open, onOpenChange }: BillsModalProps) {
             </div>
           )}
 
-          {step === 'details' && selectedCategory && (
+          {step === 'details' && selectedCategory && selectedProvider && (
             <div className="space-y-4">
               <button onClick={() => setStep('provider')} className="text-sm text-[#00897B]">
                 ← Back to providers
@@ -215,7 +288,7 @@ export function BillsModal({ open, onOpenChange }: BillsModalProps) {
 
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-[#757575]">Provider</p>
-                <p className="text-sm font-bold text-[#1A1A1A]">{selectedProvider}</p>
+                <p className="text-sm font-bold text-[#1A1A1A]">{selectedProvider.name}</p>
               </div>
 
               <div className="space-y-3">
@@ -281,11 +354,11 @@ export function BillsModal({ open, onOpenChange }: BillsModalProps) {
             </div>
           )}
 
-          {step === 'confirm' && selectedCategory && (
+          {step === 'confirm' && selectedCategory && selectedProvider && (
             <div className="space-y-4">
               <div className="text-center mb-4">
                 <p className="text-3xl font-bold text-[#1A1A1A]">R {amount.toFixed(2)}</p>
-                <p className="text-sm text-[#757575]">{selectedProvider} • {selectedCategory.name}</p>
+                <p className="text-sm text-[#757575]">{selectedProvider.name} • {selectedCategory.name}</p>
               </div>
 
               <div className="bg-gray-50 rounded-xl p-4 space-y-2">
@@ -304,6 +377,13 @@ export function BillsModal({ open, onOpenChange }: BillsModalProps) {
                   <span className="text-sm font-medium text-[#4CAF50]">FREE</span>
                 </div>
               </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
 
               <Button
                 onClick={handlePay}

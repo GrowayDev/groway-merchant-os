@@ -1,14 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getAuthContext, unauthorizedResponse, badRequestResponse } from '@/lib/auth-context'
+import { NextRequest } from 'next/server'
+import { randomBytes } from 'crypto'
+import { db } from '@/lib/db'
+import { getUserId, ok, error, parseMoney } from '../_lib/helpers'
 
-// ============================================
-// MERCHANT OFFERS API
-// Discounts, deals, and promotions
-// SECURITY: All endpoints require authentication
-// ============================================
+/**
+ * /api/consumer/offers
+ *
+ * There is no dedicated Prisma model for merchant offers, so we keep a
+ * static catalogue of available offers (read-only reference data) and
+ * persist "clip" / "redeem" actions as ConsumerTransaction rows:
+ *   - transactionType = 'offer_redemption'
+ *   - direction = 'credit' (cashback) or 'debit' (payment)
+ *   - counterpartyId = offer id
+ *   - counterpartyName = merchant name
+ *   - description = offer title
+ *   - reference = offer code
+ *
+ * Clipping state stays in-memory because it is ephemeral UI state — once
+ * a user redeems, the DB transaction is the source of truth.
+ */
 
-// Sample offers data
-const offersData = [
+// Static catalogue of available offers
+const OFFERS_CATALOGUE = [
   {
     id: 'offer-1',
     merchantId: 'java-jungle',
@@ -16,7 +29,7 @@ const offersData = [
     merchantInitials: 'JJ',
     merchantColor: '#8B4513',
     title: 'Morning Brew Special',
-    description: 'Get 20% off any coffee beverage before 10am. Start your day with premium brews at a discount!',
+    description: 'Get 20% off any coffee beverage before 10am.',
     discountType: 'percentage',
     discountValue: 20,
     originalPrice: null,
@@ -24,14 +37,11 @@ const offersData = [
     category: 'food',
     tags: ['coffee', 'breakfast', 'morning'],
     distance: 0.3,
-    expiresIn: '2h 30m',
     expiresAt: new Date(Date.now() + 2.5 * 60 * 60 * 1000).toISOString(),
-    terms: 'Valid before 10am only. Not combinable with other offers. Single use per customer.',
+    terms: 'Valid before 10am only. Not combinable with other offers.',
     code: 'MORNING20',
     isActive: true,
     isFlash: false,
-    clipped: false,
-    redeemed: false,
   },
   {
     id: 'offer-2',
@@ -40,22 +50,19 @@ const offersData = [
     merchantInitials: 'US',
     merchantColor: '#E91E63',
     title: 'Flash Sale - 50% Off',
-    description: 'Limited time flash sale! 50% off selected items. Grab the latest fashion trends at half price.',
+    description: 'Limited time flash sale! 50% off selected items.',
     discountType: 'percentage',
     discountValue: 50,
-    originalPrice: 599,
-    discountedPrice: 299,
+    originalPrice: 59900,
+    discountedPrice: 29900,
     category: 'shopping',
     tags: ['fashion', 'clothing', 'sale'],
     distance: 0.8,
-    expiresIn: '3h',
     expiresAt: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-    terms: 'Selected items only. While stocks last. No exchanges on sale items.',
+    terms: 'Selected items only. While stocks last.',
     code: 'FLASH50',
     isActive: true,
     isFlash: true,
-    clipped: false,
-    redeemed: false,
   },
   {
     id: 'offer-3',
@@ -64,7 +71,7 @@ const offersData = [
     merchantInitials: 'BG',
     merchantColor: '#FF5722',
     title: 'Buy 1 Get 1 Free',
-    description: 'BOGO special on all main courses! Bring a friend and enjoy our legendary braai together.',
+    description: 'BOGO special on all main courses!',
     discountType: 'bogo',
     discountValue: 100,
     originalPrice: null,
@@ -72,14 +79,11 @@ const offersData = [
     category: 'food',
     tags: ['restaurant', 'braai', 'dinner'],
     distance: 1.2,
-    expiresIn: 'Today',
     expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-    terms: 'Dine-in only. Equal or lesser value item free. Valid today only.',
+    terms: 'Dine-in only. Equal or lesser value item free.',
     code: 'BOGO24',
     isActive: true,
     isFlash: false,
-    clipped: false,
-    redeemed: false,
   },
   {
     id: 'offer-4',
@@ -88,22 +92,19 @@ const offersData = [
     merchantInitials: 'TZ',
     merchantColor: '#2196F3',
     title: 'R500 Off Smartphones',
-    description: 'Get R500 off any smartphone purchase over R5000. Upgrade your device today!',
+    description: 'Get R500 off any smartphone purchase over R5000.',
     discountType: 'fixed',
-    discountValue: 500,
-    originalPrice: 6999,
-    discountedPrice: 6499,
+    discountValue: 50000,
+    originalPrice: 699900,
+    discountedPrice: 649900,
     category: 'shopping',
     tags: ['electronics', 'phones', 'tech'],
     distance: 2.1,
-    expiresIn: '5 days',
     expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    terms: 'Minimum purchase R5000. One per customer. Cannot be combined with other offers.',
+    terms: 'Minimum purchase R5000. One per customer.',
     code: 'TECH500',
     isActive: true,
     isFlash: false,
-    clipped: false,
-    redeemed: false,
   },
   {
     id: 'offer-5',
@@ -112,7 +113,7 @@ const offersData = [
     merchantInitials: 'FM',
     merchantColor: '#4CAF50',
     title: 'Double Cashback Weekend',
-    description: 'Earn 2X cashback on all grocery purchases this weekend. Stock up and save more!',
+    description: 'Earn 2X cashback on all grocery purchases this weekend.',
     discountType: 'cashback',
     discountValue: 2,
     originalPrice: null,
@@ -120,14 +121,11 @@ const offersData = [
     category: 'food',
     tags: ['groceries', 'cashback', 'weekend'],
     distance: 0.5,
-    expiresIn: '2 days',
     expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    terms: 'Cashback credited to Groway wallet. Valid Saturday & Sunday only. Max R200 cashback.',
+    terms: 'Cashback credited to Groway wallet. Max R200 cashback.',
     code: '2XCASH',
     isActive: true,
     isFlash: false,
-    clipped: false,
-    redeemed: false,
   },
   {
     id: 'offer-6',
@@ -136,22 +134,19 @@ const offersData = [
     merchantInitials: 'SHL',
     merchantColor: '#FBCE07',
     title: 'R2/L Off Fuel',
-    description: 'Save R2 per liter on all fuel purchases. Fill up and save big on your commute!',
+    description: 'Save R2 per liter on all fuel purchases.',
     discountType: 'fixed',
-    discountValue: 2,
+    discountValue: 200,
     originalPrice: null,
     discountedPrice: null,
     category: 'fuel',
     tags: ['fuel', 'automotive', 'travel'],
     distance: 1.8,
-    expiresIn: '6 hours',
     expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
-    terms: 'Maximum 100 liters. Valid today only. Groway wallet payment required.',
+    terms: 'Maximum 100 liters. Groway wallet payment required.',
     code: 'FUEL2',
     isActive: true,
     isFlash: true,
-    clipped: false,
-    redeemed: false,
   },
   {
     id: 'offer-7',
@@ -160,7 +155,7 @@ const offersData = [
     merchantInitials: 'CLK',
     merchantColor: '#00897B',
     title: '30% Off Skincare',
-    description: 'Get 30% off all skincare products this week. Pamper yourself for less!',
+    description: 'Get 30% off all skincare products this week.',
     discountType: 'percentage',
     discountValue: 30,
     originalPrice: null,
@@ -168,14 +163,11 @@ const offersData = [
     category: 'beauty',
     tags: ['beauty', 'skincare', 'health'],
     distance: 0.4,
-    expiresIn: '4 days',
     expiresAt: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-    terms: 'Valid on selected brands. ClubCard members get additional 5% off.',
+    terms: 'Valid on selected brands.',
     code: 'GLOW30',
     isActive: true,
     isFlash: false,
-    clipped: false,
-    redeemed: false,
   },
   {
     id: 'offer-8',
@@ -184,236 +176,212 @@ const offersData = [
     merchantInitials: 'NAN',
     merchantColor: '#E31837',
     title: 'Free Chicken Wing Bucket',
-    description: 'Order any full platter and get a free 6-piece chicken wing bucket on the house!',
+    description: 'Order any full platter and get a free 6-piece wing bucket.',
     discountType: 'freebie',
-    discountValue: 89,
-    originalPrice: 89,
+    discountValue: 8900,
+    originalPrice: 8900,
     discountedPrice: 0,
     category: 'food',
     tags: ['restaurant', 'chicken', 'portuguese'],
     distance: 0.7,
-    expiresIn: '3 days',
     expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    terms: 'Dine-in or takeout. Must order full platter. While stocks last.',
+    terms: 'Dine-in or takeout. Must order full platter.',
     code: 'WINGME',
     isActive: true,
     isFlash: false,
-    clipped: false,
-    redeemed: false,
   },
+] as const
+
+const CATEGORIES = [
+  { id: 'all', name: 'All Offers', icon: 'tag' },
+  { id: 'food', name: 'Food & Dining', icon: 'utensils' },
+  { id: 'shopping', name: 'Shopping', icon: 'shopping-bag' },
+  { id: 'fuel', name: 'Fuel', icon: 'fuel' },
+  { id: 'beauty', name: 'Beauty & Health', icon: 'heart' },
+  { id: 'entertainment', name: 'Entertainment', icon: 'film' },
 ]
 
-// User clipped offers (in-memory store - use database in production)
-const userClippedOffers = new Map<string, Set<string>>()
+// Ephemeral, session-scoped store of which offers the user has clipped.
+// Redemption is persisted as a ConsumerTransaction, so this Map is only
+// used to drive UI state for clipped offers that have not yet been used.
+const clippedOffers = new Map<string, Set<string>>()
 
-/**
- * GET /api/consumer/offers
- * 
- * SECURITY: Requires authentication
- * - userId is extracted from authenticated context, NOT from query params
- * - This prevents IDOR attacks where users could access other users' clipped offers
- */
+// GET /api/consumer/offers
 export async function GET(request: NextRequest) {
-  // Authentication check
-  const context = await getAuthContext(request)
-  if (!context) {
-    return unauthorizedResponse('Authentication required to access offers')
-  }
-
-  // Get userId from authenticated context - NO HARDCODED DEFAULTS
-  const userId = context.userId
-  
-  const { searchParams } = new URL(request.url)
-  const action = searchParams.get('action')
-  const category = searchParams.get('category')
-  const offerId = searchParams.get('offerId')
-
-  if (action === 'offers') {
-    let offers = offersData
-    const clippedIds = userClippedOffers.get(userId) || new Set()
-    
-    // Add clipped status for this user
-    offers = offers.map(o => ({ ...o, clipped: clippedIds.has(o.id) }))
-    
-    // Filter by category
-    if (category && category !== 'all') {
-      offers = offers.filter(o => o.category === category)
-    }
-    
-    return NextResponse.json({
-      success: true,
-      offers,
-      categories: [
-        { id: 'all', name: 'All Offers', icon: '🏷️' },
-        { id: 'food', name: 'Food & Dining', icon: '🍔' },
-        { id: 'shopping', name: 'Shopping', icon: '🛍️' },
-        { id: 'fuel', name: 'Fuel', icon: '⛽' },
-        { id: 'beauty', name: 'Beauty & Health', icon: '💄' },
-        { id: 'entertainment', name: 'Entertainment', icon: '🎬' },
-      ]
-    })
-  }
-
-  if (action === 'offer' && offerId) {
-    const offer = offersData.find(o => o.id === offerId)
-    if (!offer) {
-      return NextResponse.json({ success: false, error: 'Offer not found' }, { status: 404 })
-    }
-    const clippedIds = userClippedOffers.get(userId) || new Set()
-    return NextResponse.json({
-      success: true,
-      offer: { ...offer, clipped: clippedIds.has(offer.id) }
-    })
-  }
-
-  if (action === 'clipped') {
-    // Return offers clipped by the authenticated user
-    const clippedIds = userClippedOffers.get(userId) || new Set()
-    const clippedOffers = offersData
-      .filter(o => clippedIds.has(o.id))
-      .map(o => ({ ...o, clipped: true }))
-    
-    return NextResponse.json({
-      success: true,
-      offers: clippedOffers,
-      count: clippedOffers.length,
-      userId // Return userId so client knows whose offers these are
-    })
-  }
-
-  if (action === 'nearby') {
-    const lat = parseFloat(searchParams.get('lat') || '-26.2041')
-    const lng = parseFloat(searchParams.get('lng') || '28.0473')
+  try {
+    const userId = getUserId(request)
+    const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
+    const category = searchParams.get('category')
+    const offerId = searchParams.get('offerId')
     const radius = parseFloat(searchParams.get('radius') || '5')
-    
-    // Filter by distance (simplified)
-    const nearbyOffers = offersData.filter(o => o.distance <= radius)
-    
-    return NextResponse.json({
-      success: true,
-      offers: nearbyOffers,
-      location: { lat, lng },
-      radius
-    })
-  }
 
-  if (action === 'flash') {
-    const flashOffers = offersData.filter(o => o.isFlash && o.isActive)
-    return NextResponse.json({
-      success: true,
-      offers: flashOffers
-    })
-  }
+    if (action === 'categories') {
+      return ok({ success: true, categories: CATEGORIES })
+    }
 
-  if (action === 'categories') {
-    return NextResponse.json({
-      success: true,
-      categories: [
-        { id: 'all', name: 'All Offers', icon: '🏷️' },
-        { id: 'food', name: 'Food & Dining', icon: '🍔' },
-        { id: 'shopping', name: 'Shopping', icon: '🛍️' },
-        { id: 'fuel', name: 'Fuel', icon: '⛽' },
-        { id: 'beauty', name: 'Beauty & Health', icon: '💄' },
-        { id: 'entertainment', name: 'Entertainment', icon: '🎬' },
-      ]
-    })
-  }
+    if (action === 'offer' && offerId) {
+      const offer = OFFERS_CATALOGUE.find((o) => o.id === offerId)
+      if (!offer) return error('Offer not found', 404)
+      const clippedIds = clippedOffers.get(userId) || new Set<string>()
+      return ok({ success: true, offer: { ...offer, clipped: clippedIds.has(offer.id) } })
+    }
 
-  return NextResponse.json({
-    success: true,
-    message: 'Offers API running',
-    endpoints: ['offers', 'offer', 'clipped', 'nearby', 'flash', 'categories']
-  })
+    if (action === 'clipped') {
+      const clippedIds = clippedOffers.get(userId) || new Set<string>()
+      const offers = OFFERS_CATALOGUE.filter((o) => clippedIds.has(o.id)).map((o) => ({
+        ...o,
+        clipped: true,
+      }))
+      return ok({ success: true, offers, count: offers.length, userId })
+    }
+
+    if (action === 'nearby') {
+      const offers = OFFERS_CATALOGUE.filter((o) => o.distance <= radius)
+      return ok({
+        success: true,
+        offers,
+        location: {
+          lat: parseFloat(searchParams.get('lat') || '-26.2041'),
+          lng: parseFloat(searchParams.get('lng') || '28.0473'),
+        },
+        radius,
+      })
+    }
+
+    if (action === 'flash') {
+      const offers = OFFERS_CATALOGUE.filter((o) => o.isFlash && o.isActive)
+      return ok({ success: true, offers })
+    }
+
+    if (action === 'redemptions') {
+      // Return previously redeemed offers for this user from the DB
+      const txs = await db.consumerTransaction.findMany({
+        where: { userId, transactionType: 'offer_redemption' },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      })
+      return ok({ success: true, redemptions: txs, userId })
+    }
+
+    // Default: return the catalogue (optionally filtered by category)
+    const clippedIds = clippedOffers.get(userId) || new Set<string>()
+    let offers = OFFERS_CATALOGUE.map((o) => ({ ...o, clipped: clippedIds.has(o.id) }))
+    if (category && category !== 'all') {
+      offers = offers.filter((o) => o.category === category)
+    }
+    return ok({ success: true, offers, categories: CATEGORIES })
+  } catch (err) {
+    console.error('Offers GET error:', err)
+    return error('Failed to fetch offers', 500)
+  }
 }
 
-/**
- * POST /api/consumer/offers
- * 
- * SECURITY: Requires authentication
- * - userId is extracted from authenticated context, NOT from request body
- * - This prevents users from clipping offers for other users
- */
+// POST /api/consumer/offers - clip / unclip / redeem
 export async function POST(request: NextRequest) {
-  // Authentication check
-  const context = await getAuthContext(request)
-  if (!context) {
-    return unauthorizedResponse('Authentication required to manage offers')
-  }
-
-  // Get userId from authenticated context - NO HARDCODED DEFAULTS
-  const userId = context.userId
-  
   try {
-    const body = await request.json()
-    const { action, offerId } = body
+    const userId = getUserId(request)
+    const body = await request.json().catch(() => ({} as Record<string, unknown>))
+    const action = body.action as string | undefined
+    const offerId = body.offerId as string | undefined
+    const purchaseAmountInput = body.purchaseAmountCents ?? body.amountCents
 
-    // Validate required parameters
-    if (!action) {
-      return badRequestResponse('Action is required')
-    }
-    if (!offerId && action !== 'list') {
-      return badRequestResponse('Offer ID is required')
-    }
+    if (!action) return error('action is required')
+    if (!offerId && action !== 'list') return error('offerId is required')
+
+    const offer = OFFERS_CATALOGUE.find((o) => o.id === offerId)
+    if (action !== 'list' && !offer) return error('Offer not found', 404)
 
     if (action === 'clip') {
-      const offer = offersData.find(o => o.id === offerId)
-      if (!offer) {
-        return NextResponse.json({ success: false, error: 'Offer not found' }, { status: 404 })
-      }
-
-      const clippedIds = userClippedOffers.get(userId) || new Set()
-      clippedIds.add(offerId)
-      userClippedOffers.set(userId, clippedIds)
-
-      return NextResponse.json({
+      const set = clippedOffers.get(userId) || new Set<string>()
+      set.add(offerId as string)
+      clippedOffers.set(userId, set)
+      return ok({
         success: true,
-        message: `Offer "${offer.title}" clipped successfully!`,
-        clippedCount: clippedIds.size,
-        userId // Confirm which user this was clipped for
+        message: `Offer "${offer!.title}" clipped successfully!`,
+        clippedCount: set.size,
+        userId,
       })
     }
 
     if (action === 'unclip') {
-      const clippedIds = userClippedOffers.get(userId)
-      if (clippedIds) {
-        clippedIds.delete(offerId)
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: 'Offer removed from your wallet',
-        userId
-      })
+      const set = clippedOffers.get(userId)
+      if (set) set.delete(offerId as string)
+      return ok({ success: true, message: 'Offer removed from your wallet', userId })
     }
 
     if (action === 'redeem') {
-      const clippedIds = userClippedOffers.get(userId)
-      if (!clippedIds || !clippedIds.has(offerId)) {
-        return NextResponse.json({ success: false, error: 'Offer not clipped' }, { status: 400 })
+      const set = clippedOffers.get(userId)
+      if (!set || !set.has(offerId as string)) {
+        return error('Offer not clipped', 400)
       }
 
-      const offer = offersData.find(o => o.id === offerId)
-      if (!offer) {
-        return NextResponse.json({ success: false, error: 'Offer not found' }, { status: 404 })
+      // Persist the redemption as a ConsumerTransaction.
+      const purchaseAmount = parseMoney((purchaseAmountInput ?? 0) as string | number)
+      let cashbackCents = BigInt(0)
+      if (offer!.discountType === 'cashback') {
+        // 2X cashback == 2% of purchase
+        cashbackCents = BigInt(Math.round(Number(purchaseAmount) * (offer!.discountValue / 100)))
+      } else if (offer!.discountType === 'fixed') {
+        cashbackCents = BigInt(offer!.discountValue)
       }
 
-      // Remove from clipped
-      clippedIds.delete(offerId)
+      const tx = await db.consumerTransaction.create({
+        data: {
+          id: `tx-${randomBytes(8).toString('hex')}`,
+          idempotencyKey: randomBytes(16).toString('hex'),
+          userId,
+          transactionType: 'offer_redemption',
+          direction: cashbackCents > 0 ? 'credit' : 'debit',
+          amountCents: purchaseAmount > 0 ? purchaseAmount : BigInt(offer!.discountValue),
+          feeCents: BigInt(0),
+          netAmountCents: cashbackCents > 0 ? cashbackCents : BigInt(offer!.discountValue),
+          currency: 'ZAR',
+          status: 'completed',
+          description: `Offer redeemed: ${offer!.title}`,
+          reference: offer!.code,
+          category: offer!.category,
+          counterpartyId: offer!.merchantId,
+          counterpartyName: offer!.merchantName,
+          counterpartyType: 'merchant',
+          paymentMethod: 'wallet_balance',
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
 
-      return NextResponse.json({
+      // If cashback > 0, credit the user's wallet.
+      if (cashbackCents > 0) {
+        const wallet = await db.consumerWallet.findUnique({ where: { userId } })
+        if (wallet) {
+          await db.consumerWallet.update({
+            where: { userId },
+            data: {
+              balanceCents: { increment: cashbackCents },
+              totalReceivedCents: { increment: cashbackCents },
+              updatedAt: new Date(),
+            },
+          })
+        }
+      }
+
+      set!.delete(offerId as string)
+
+      return ok({
         success: true,
-        message: `Offer "${offer.title}" redeemed!`,
-        code: offer.code,
-        discount: offer.discountValue,
-        discountType: offer.discountType,
-        userId
+        message: `Offer "${offer!.title}" redeemed!`,
+        code: offer!.code,
+        discount: offer!.discountValue,
+        discountType: offer!.discountType,
+        transactionId: tx.id,
+        cashbackCents,
+        userId,
       })
     }
 
-    return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 })
-
-  } catch (error) {
-    console.error('Error processing offer:', error)
-    return NextResponse.json({ success: false, error: 'Failed to process offer' }, { status: 500 })
+    return error('Invalid action. Use clip, unclip, or redeem', 400)
+  } catch (err) {
+    console.error('Offers POST error:', err)
+    return error('Failed to process offer', 500)
   }
 }

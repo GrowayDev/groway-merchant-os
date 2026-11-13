@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { apiPost } from '@/components/wallet/lib/api'
 import {
   Users,
   CheckCircle2,
@@ -19,7 +20,8 @@ import {
   Phone,
   ChevronRight,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
 
 interface GrantPlusModalProps {
@@ -39,6 +41,9 @@ const GRANT_TYPES = [
 
 export function GrantPlusModal({ open, onOpenChange }: GrantPlusModalProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'actions'>('overview')
+  const [earlyAccessLoading, setEarlyAccessLoading] = useState(false)
+  const [earlyAccessError, setEarlyAccessError] = useState<string | null>(null)
+  const [earlyAccessSuccess, setEarlyAccessSuccess] = useState<string | null>(null)
 
   // Mock data for user's grant
   const userGrant = {
@@ -63,6 +68,33 @@ export function GrantPlusModal({ open, onOpenChange }: GrantPlusModalProps) {
   const nextPayment = new Date(userGrant.nextPaymentDate)
   const today = new Date()
   const daysUntil = Math.ceil((nextPayment.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  // Trigger an early-access grant payout via the payments send endpoint with
+  // type=grant so the backend can record a SASSA advance transaction.
+  const handleEarlyAccess = useCallback(async () => {
+    setEarlyAccessLoading(true)
+    setEarlyAccessError(null)
+    setEarlyAccessSuccess(null)
+    try {
+      const earlyAmount = Math.round((userGrant.nextPaymentAmount * 0.6) * 100)
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/payments/send', {
+        type: 'grant',
+        recipientPhone: 'self',
+        amountCents: earlyAmount,
+        note: 'Grant+ early access',
+        currency: 'ZAR',
+      })
+      if (res?.success === false) {
+        setEarlyAccessError(res.error || 'Early access failed')
+        return
+      }
+      setEarlyAccessSuccess('Early grant payout initiated. Funds will reflect shortly.')
+    } catch (err) {
+      setEarlyAccessError(err instanceof Error ? err.message : 'Early access failed')
+    } finally {
+      setEarlyAccessLoading(false)
+    }
+  }, [userGrant.nextPaymentAmount])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -154,9 +186,32 @@ export function GrantPlusModal({ open, onOpenChange }: GrantPlusModalProps) {
                     <p className="text-xs text-blue-600 mt-1">
                       Get up to 60% of your grant early (3% fee applies)
                     </p>
-                    <Button size="sm" className="mt-2 bg-blue-500 hover:bg-blue-600">
-                      Learn More
+                    <Button
+                      size="sm"
+                      className="mt-2 bg-blue-500 hover:bg-blue-600"
+                      onClick={handleEarlyAccess}
+                      disabled={earlyAccessLoading}
+                    >
+                      {earlyAccessLoading ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Processing...
+                        </>
+                      ) : (
+                        'Access Now'
+                      )}
                     </Button>
+                    {earlyAccessError && (
+                      <div className="flex items-center gap-2 mt-2 p-2 bg-red-50 rounded-lg">
+                        <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                        <p className="text-xs text-red-600">{earlyAccessError}</p>
+                      </div>
+                    )}
+                    {earlyAccessSuccess && (
+                      <div className="flex items-center gap-2 mt-2 p-2 bg-green-50 rounded-lg">
+                        <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+                        <p className="text-xs text-green-700">{earlyAccessSuccess}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

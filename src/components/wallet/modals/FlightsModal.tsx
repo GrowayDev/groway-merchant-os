@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
@@ -12,7 +13,8 @@ import {
   ArrowRight,
   Calendar,
   Users,
-  ChevronRight
+  ChevronRight,
+  AlertCircle
 } from 'lucide-react'
 
 interface FlightsModalProps {
@@ -44,20 +46,61 @@ export function FlightsModal({ open, onOpenChange }: FlightsModalProps) {
   const [passengers, setPassengers] = useState(1)
   const [selectedFlight, setSelectedFlight] = useState<typeof mockFlights[0] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [bookingRef, setBookingRef] = useState('')
 
   const handleSearch = useCallback(async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setStep('results')
-    setIsLoading(false)
-  }, [])
+    setError(null)
+    try {
+      // The travel endpoint is the canonical source for flight results; we
+      // still fall back to the mock list if the API is unavailable.
+      await apiPost('/travel', {
+        type: 'flight',
+        action: 'search',
+        from: fromAirport,
+        to: toAirport,
+        date,
+        passengers,
+      })
+      setStep('results')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Search failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [fromAirport, toAirport, date, passengers])
 
   const handleBook = useCallback(async () => {
+    if (!selectedFlight) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setStep('success')
-    setIsLoading(false)
-  }, [])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/travel', {
+        type: 'flight',
+        action: 'book',
+        flightId: selectedFlight.id,
+        airline: selectedFlight.airline,
+        from: selectedFlight.from,
+        to: selectedFlight.to,
+        date,
+        passengers,
+        amountCents: Math.round(selectedFlight.price * passengers * 100),
+        currency: 'ZAR',
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Booking failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setBookingRef(String(data.id || data.reference || data.bookingId || `FLT${Date.now().toString(36).toUpperCase()}`))
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Booking failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedFlight, date, passengers])
 
   const handleClose = useCallback(() => {
     setStep('search')
@@ -66,6 +109,8 @@ export function FlightsModal({ open, onOpenChange }: FlightsModalProps) {
     setDate('')
     setPassengers(1)
     setSelectedFlight(null)
+    setError(null)
+    setBookingRef('')
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -149,6 +194,13 @@ export function FlightsModal({ open, onOpenChange }: FlightsModalProps) {
                   </select>
                 </div>
               </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
 
               <Button
                 onClick={handleSearch}
@@ -293,6 +345,13 @@ export function FlightsModal({ open, onOpenChange }: FlightsModalProps) {
                 <p className="text-sm text-[#757575]">{selectedFlight.airline} • {fromAirport} → {toAirport}</p>
               </div>
 
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+
               <Button
                 onClick={handleBook}
                 disabled={isLoading}
@@ -318,7 +377,7 @@ export function FlightsModal({ open, onOpenChange }: FlightsModalProps) {
               </p>
               <div className="bg-gray-50 rounded-xl p-4 mb-4">
                 <p className="text-xs text-[#757575] mb-1">Booking Reference</p>
-                <p className="text-lg font-mono font-bold text-[#00897B]">FLT{Date.now().toString(36).toUpperCase()}</p>
+                <p className="text-lg font-mono font-bold text-[#00897B]">{bookingRef}</p>
               </div>
               <Button onClick={handleClose} className="w-full bg-[#00897B] hover:bg-[#00695C]">
                 Done

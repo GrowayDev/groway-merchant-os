@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
+import { apiGet } from '@/components/wallet/lib/api'
 import {
   X,
   ArrowUpRight,
@@ -22,7 +23,9 @@ import {
   Copy,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  Loader2,
+  AlertCircle
 } from 'lucide-react'
 
 interface TransactionHistoryModalProps {
@@ -202,6 +205,58 @@ export function TransactionHistoryModal({ open, onOpenChange }: TransactionHisto
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch real transaction history from the consumer wallet transactions API
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    async function loadTransactions() {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await apiGet<{ success?: boolean; data?: { transactions?: any[] } | any[] }>('/wallet/transactions')
+        if (cancelled) return
+        const raw = res?.data
+        const list: any[] = Array.isArray(raw)
+          ? raw
+          : raw && Array.isArray((raw as any).transactions)
+          ? (raw as any).transactions
+          : []
+        const mapped: Transaction[] = list.map((tx) => {
+          const direction = tx.direction === 'credit' ? 'credit' : 'debit'
+          const typeRaw = String(tx.type || tx.transactionType || 'send')
+          const type = (['airtime','electricity','water','dstv','voucher','laybye','bnpl','send','receive'].includes(typeRaw) ? typeRaw : 'send') as Transaction['type']
+          const amountCents = Number(tx.amount ?? tx.amountCents ?? 0)
+          return {
+            id: String(tx.id || tx.reference || `TXN${Date.now()}`),
+            type,
+            description: String(tx.description || tx.counterparty?.name || 'Transaction'),
+            amount: amountCents / 100,
+            direction,
+            timestamp: new Date(tx.createdAt || tx.completedAt || Date.now()),
+            status: (tx.status === 'pending' ? 'pending' : tx.status === 'failed' ? 'failed' : 'completed') as Transaction['status'],
+            token: tx.token ? String(tx.token) : undefined,
+            reference: String(tx.reference || tx.id || ''),
+            provider: tx.counterparty?.name || tx.provider ? String(tx.counterparty?.name ?? tx.provider) : undefined,
+            details: tx.details || (tx.counterparty ? { counterparty: tx.counterparty.name, phone: tx.counterparty.phone } : undefined),
+          }
+        })
+        setTransactions(mapped)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load transactions')
+        setTransactions([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    loadTransactions()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   const filters = [
     { id: 'all', label: 'All' },
@@ -212,7 +267,7 @@ export function TransactionHistoryModal({ open, onOpenChange }: TransactionHisto
     { id: 'send', label: 'Transfers' },
   ]
 
-  const filteredTransactions = mockTransactions.filter(tx => {
+  const filteredTransactions = transactions.filter(tx => {
     const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tx.reference.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesFilter = selectedFilter === 'all' || tx.type === selectedFilter
@@ -294,13 +349,24 @@ export function TransactionHistoryModal({ open, onOpenChange }: TransactionHisto
 
               {/* Transaction List */}
               <div className="space-y-2">
-                {filteredTransactions.length === 0 ? (
+                {loading && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 text-[#00897B] animate-spin" />
+                  </div>
+                )}
+                {!loading && error && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                    <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+                {!loading && !error && filteredTransactions.length === 0 && (
                   <div className="text-center py-8">
                     <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                     <p className="text-sm text-[#757575]">No transactions found</p>
                   </div>
-                ) : (
-                  filteredTransactions.map((tx) => {
+                )}
+                {!loading && !error && filteredTransactions.map((tx) => {
                     const Icon = transactionIcons[tx.type] || Smartphone
                     return (
                       <button
@@ -342,7 +408,7 @@ export function TransactionHistoryModal({ open, onOpenChange }: TransactionHisto
                       </button>
                     )
                   })
-                )}
+                }
               </div>
             </div>
           ) : (

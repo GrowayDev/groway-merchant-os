@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { apiPost } from '@/components/wallet/lib/api'
 import {
   Zap,
   CheckCircle2,
@@ -32,6 +33,7 @@ export function PayPlusModal({ open, onOpenChange }: PayPlusModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<'payperuse' | 'unlimited'>('payperuse')
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const availableWage = 5536
   const daysWorked = 18
@@ -42,16 +44,35 @@ export function PayPlusModal({ open, onOpenChange }: PayPlusModalProps) {
 
   const handleWithdraw = () => {
     if (withdrawAmount > 0 && withdrawAmount <= availableWage) {
+      setError(null)
       setStep('confirm')
     }
   }
 
   const processWithdrawal = async () => {
     setIsProcessing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setIsProcessing(false)
-    setStep('success')
+    setError(null)
+    try {
+      // PayPlus is wired to the PayShap payment endpoint (variant) so the
+      // withdrawal is recorded as an instant PayShap credit to the user.
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/payments/payshap', {
+        type: 'payplus',
+        action: 'withdraw',
+        amountCents: Math.round(withdrawAmount * 100),
+        feeCents: Math.round(fee * 100),
+        plan: selectedPlan,
+        currency: 'ZAR',
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Withdrawal failed')
+        return
+      }
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Withdrawal failed')
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const fee = selectedPlan === 'payperuse' ? withdrawAmount * 0.03 : 0
@@ -275,6 +296,13 @@ export function PayPlusModal({ open, onOpenChange }: PayPlusModalProps) {
                 )}
               </Button>
             </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
           </div>
         )}
 

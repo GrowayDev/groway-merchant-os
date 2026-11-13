@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   User,
@@ -15,7 +16,8 @@ import {
   Check,
   Loader2,
   ArrowRight,
-  Contact
+  Contact,
+  AlertCircle
 } from 'lucide-react'
 
 interface SendMoneyModalProps {
@@ -100,33 +102,30 @@ export function SendMoneyModal({ open, onOpenChange }: SendMoneyModalProps) {
 
   const handleConfirmSend = useCallback(async () => {
     setIsLoading(true)
+    setError('')
 
     try {
-      // API call to send money
-      const response = await fetch('/api/wallet/send-money', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: 'user_demo',
-          recipientType,
-          recipientIdentifier: recipient?.identifier,
-          amountCents: Math.round(amount * 100),
-          note,
-        }),
+      const data = await apiPost<{ success?: boolean; data?: any; transaction?: { id?: string }; error?: string }>('/payments/send', {
+        recipientType,
+        // /api/consumer/payments/send requires a phone recipient; pass the
+        // raw identifier the user entered (phone, email-as-alias, etc.) so
+        // the backend can resolve the recipient.
+        recipientPhone: recipient?.identifier,
+        recipientName: recipient?.name,
+        amountCents: Math.round(amount * 100),
+        note,
+        currency: 'ZAR',
       })
 
-      const data = await response.json()
-
-      if (data.success) {
-        setTransactionId(data.transaction?.id || `TXN${Date.now()}`)
-        setStep('success')
-      } else {
+      const tx = data?.transaction ?? data?.data
+      if (data?.success === false) {
         setError(data.error || 'Transaction failed')
+        return
       }
-    } catch (err) {
-      // For demo, show success anyway
-      setTransactionId(`TXN${Date.now()}`)
+      setTransactionId(tx?.id || tx?.transactionId || `TXN${Date.now()}`)
       setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Transaction failed')
     } finally {
       setIsLoading(false)
     }

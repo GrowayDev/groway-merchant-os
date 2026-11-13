@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiGet, apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
@@ -14,7 +15,8 @@ import {
   User,
   ChevronRight,
   Star,
-  Umbrella
+  Umbrella,
+  AlertCircle
 } from 'lucide-react'
 
 interface InsuranceModalProps {
@@ -62,27 +64,88 @@ export function InsuranceModal({ open, onOpenChange }: InsuranceModalProps) {
   const [selectedProvider, setSelectedProvider] = useState<InsuranceProvider | null>(null)
   const [coverAmount, setCoverAmount] = useState<number>(50000)
   const [isLoading, setIsLoading] = useState(false)
+  const [providersList, setProvidersList] = useState<InsuranceProvider[]>(providers)
+  const [providersLoading, setProvidersLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [reference, setReference] = useState<string>('')
+
+  // Load insurance products when the modal opens or when a type is chosen.
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    async function loadProducts() {
+      setProvidersLoading(true)
+      try {
+        const res = await apiGet<{ success?: boolean; data?: { products?: InsuranceProvider[] } | InsuranceProvider[] }>('/insurance')
+        if (cancelled) return
+        const raw = res?.data
+        const list: InsuranceProvider[] = Array.isArray(raw)
+          ? raw
+          : raw && Array.isArray((raw as any).products)
+          ? (raw as any).products
+          : []
+        if (list.length > 0) setProvidersList(list)
+      } catch {
+        // keep fallback
+      } finally {
+        if (!cancelled) setProvidersLoading(false)
+      }
+    }
+    loadProducts()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   const handleGetQuote = useCallback(async () => {
     if (!selectedType) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setStep('compare')
-    setIsLoading(false)
+    setError(null)
+    try {
+      // Optional: ask backend for a quote. Even if it returns nothing useful,
+      // we move to the compare step using the static provider list.
+      await apiGet(`/insurance?category=${selectedType.id}`)
+      setStep('compare')
+    } catch {
+      // Continue to compare with fallback providers if quote endpoint fails.
+      setStep('compare')
+    } finally {
+      setIsLoading(false)
+    }
   }, [selectedType])
 
   const handleApply = useCallback(async () => {
-    if (!selectedProvider) return
+    if (!selectedProvider || !selectedType) return
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setStep('success')
-    setIsLoading(false)
-  }, [selectedProvider])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/insurance', {
+        productId: selectedProvider.id,
+        providerName: selectedProvider.name,
+        category: selectedType.id,
+        coverAmount,
+        monthlyPremiumCents: Math.round(selectedProvider.monthlyPremium * 100),
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Application failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setReference(String(data.reference || data.id || `INS${Date.now().toString(36).toUpperCase()}`))
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Application failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedProvider, selectedType, coverAmount])
 
   const handleClose = useCallback(() => {
     setStep('types')
     setSelectedType(null)
     setSelectedProvider(null)
+    setError(null)
+    setReference('')
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -196,7 +259,12 @@ export function InsuranceModal({ open, onOpenChange }: InsuranceModalProps) {
               <h3 className="text-sm font-semibold text-[#1A1A1A]">Compare Providers</h3>
 
               <div className="space-y-3">
-                {providers.map((provider) => (
+                {providersLoading && (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 text-[#00897B] animate-spin" />
+                  </div>
+                )}
+                {!providersLoading && providersList.map((provider) => (
                   <button
                     key={provider.id}
                     onClick={() => setSelectedProvider(provider)}
@@ -285,6 +353,13 @@ export function InsuranceModal({ open, onOpenChange }: InsuranceModalProps) {
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
                 </Button>
               </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -299,7 +374,7 @@ export function InsuranceModal({ open, onOpenChange }: InsuranceModalProps) {
               </p>
               <div className="bg-gray-50 rounded-xl p-4 mb-4">
                 <p className="text-xs text-[#757575] mb-1">Reference</p>
-                <p className="text-sm font-mono font-medium text-[#1A1A1A]">INS{Date.now().toString(36).toUpperCase()}</p>
+                <p className="text-sm font-mono font-medium text-[#1A1A1A]">{reference}</p>
               </div>
               <Button onClick={handleClose} className="w-full bg-[#00897B] hover:bg-[#00695C]">
                 Done

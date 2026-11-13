@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiGet, apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   QrCode,
@@ -12,7 +13,8 @@ import {
   Loader2,
   Copy,
   Share2,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from 'lucide-react'
 
 interface QRPayModalProps {
@@ -29,29 +31,83 @@ export function QRPayModal({ open, onOpenChange }: QRPayModalProps) {
   const [amount, setAmount] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(false)
   const [scannedData, setScannedData] = useState<string | null>(null)
+  const [scannedMerchant, setScannedMerchant] = useState<string>('Merchant')
   const [transactionId, setTransactionId] = useState('')
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [myQrPayload, setMyQrPayload] = useState<string | null>(null)
+  const [qrLoading, setQrLoading] = useState(false)
 
   const growayId = 'GW-THABO-8472'
-  const qrData = JSON.stringify({ userId: 'user_demo', growayId })
+
+  // Generate (or fetch) the user's own QR payload when they switch to My QR tab.
+  useEffect(() => {
+    if (!open || mode !== 'generate') return
+    let cancelled = false
+    async function loadMyQr() {
+      setQrLoading(true)
+      try {
+        const res = await apiGet<{ success?: boolean; data?: Record<string, unknown> }>('/payments/qr')
+        if (cancelled) return
+        const data = (res?.data ?? {}) as Record<string, unknown>
+        setMyQrPayload(String(data.payload || data.qrPayload || JSON.stringify({ userId: 'user-001', growayId })))
+      } catch {
+        if (!cancelled) {
+          setMyQrPayload(JSON.stringify({ userId: 'user-001', growayId }))
+        }
+      } finally {
+        if (!cancelled) setQrLoading(false)
+      }
+    }
+    loadMyQr()
+    return () => {
+      cancelled = true
+    }
+  }, [open, mode])
 
   const handleScan = useCallback(async () => {
     setIsLoading(true)
-    // Simulate scanning
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setScannedData('Merchant: Shoprite #1234\nAmount: R 234.50')
-    setAmount(234.50)
-    setStep('confirm')
-    setIsLoading(false)
+    setError(null)
+    try {
+      // In a real native client this would come from the camera. We hit the
+      // QR endpoint to "decode" a simulated merchant payload + amount.
+      const res = await apiGet<{ success?: boolean; data?: Record<string, unknown> }>('/payments/qr?demo=1')
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      const merchant = String(data.merchantName || data.merchant || 'Shoprite #1234')
+      const scannedAmount = Number(data.amountCents ?? data.amount ?? 23450) / 100
+      setScannedMerchant(merchant)
+      setAmount(scannedAmount)
+      setScannedData(`Merchant: ${merchant}\nAmount: R ${scannedAmount.toFixed(2)}`)
+      setStep('confirm')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Scan failed')
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
 
   const handlePay = useCallback(async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setTransactionId(`QR${Date.now()}`)
-    setStep('success')
-    setIsLoading(false)
-  }, [])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/payments/qr', {
+        merchantName: scannedMerchant,
+        amountCents: Math.round(amount * 100),
+        currency: 'ZAR',
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Payment failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setTransactionId(String(data.id || data.transactionId || `QR${Date.now()}`))
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [scannedMerchant, amount])
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(growayId)
@@ -64,7 +120,9 @@ export function QRPayModal({ open, onOpenChange }: QRPayModalProps) {
     setStep('scan')
     setAmount(0)
     setScannedData(null)
+    setScannedMerchant('Merchant')
     setTransactionId('')
+    setError(null)
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -135,6 +193,13 @@ export function QRPayModal({ open, onOpenChange }: QRPayModalProps) {
                   >
                     {isLoading ? 'Scanning...' : 'Scan QR Code'}
                   </Button>
+
+                  {error && (
+                    <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                      <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                      <p className="text-sm text-red-600">{error}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -151,13 +216,20 @@ export function QRPayModal({ open, onOpenChange }: QRPayModalProps) {
                   <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm text-[#757575]">Merchant</span>
-                      <span className="text-sm font-medium text-[#1A1A1A]">Shoprite #1234</span>
+                      <span className="text-sm font-medium text-[#1A1A1A]">{scannedMerchant}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-[#757575]">Reference</span>
                       <span className="text-sm font-medium text-[#1A1A1A]">QR-{Date.now().toString(36).toUpperCase()}</span>
                     </div>
                   </div>
+
+                  {error && (
+                    <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                      <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                      <p className="text-sm text-red-600">{error}</p>
+                    </div>
+                  )}
 
                   <Button
                     onClick={handlePay}
@@ -182,7 +254,7 @@ export function QRPayModal({ open, onOpenChange }: QRPayModalProps) {
                   </div>
                   <h3 className="text-xl font-bold text-[#1A1A1A] mb-2">Payment Successful!</h3>
                   <p className="text-sm text-[#757575] mb-4">
-                    R {amount.toFixed(2)} paid to Shoprite #1234
+                    R {amount.toFixed(2)} paid to {scannedMerchant}
                   </p>
                   <div className="bg-gray-50 rounded-xl p-4 mb-4">
                     <p className="text-xs text-[#757575] mb-1">Transaction ID</p>
@@ -199,11 +271,17 @@ export function QRPayModal({ open, onOpenChange }: QRPayModalProps) {
           {/* Generate/My QR Mode */}
           {mode === 'generate' && (
             <div className="flex flex-col items-center py-6">
-              <div className="w-56 h-56 bg-white rounded-2xl shadow-lg p-4 mb-4 border border-gray-100">
-                <div className="w-full h-full bg-[#E0F2F1] rounded-xl flex items-center justify-center">
-                  <QrCode className="h-40 w-40 text-[#00897B]" />
+              {qrLoading ? (
+                <div className="w-56 h-56 bg-gray-100 rounded-2xl flex items-center justify-center mb-4 animate-pulse">
+                  <Loader2 className="h-8 w-8 text-[#00897B] animate-spin" />
                 </div>
-              </div>
+              ) : (
+                <div className="w-56 h-56 bg-white rounded-2xl shadow-lg p-4 mb-4 border border-gray-100">
+                  <div className="w-full h-full bg-[#E0F2F1] rounded-xl flex items-center justify-center">
+                    <QrCode className="h-40 w-40 text-[#00897B]" />
+                  </div>
+                </div>
+              )}
               <p className="text-lg font-bold text-[#1A1A1A] mb-1">Your QR Code</p>
               <p className="text-sm text-[#757575] mb-4">Scan to pay you</p>
 

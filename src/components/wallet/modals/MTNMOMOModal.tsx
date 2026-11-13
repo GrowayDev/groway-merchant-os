@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { apiPost } from '@/components/wallet/lib/api'
 import {
   Smartphone,
   ArrowUpRight,
@@ -19,7 +20,8 @@ import {
   Loader2,
   ChevronRight,
   Copy,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react'
 
 interface MTNMOMOModalProps {
@@ -35,16 +37,32 @@ export function MTNMOMOModal({ open, onOpenChange }: MTNMOMOModalProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [transactionId, setTransactionId] = useState('')
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const quickAmounts = [50, 100, 200, 500]
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setIsProcessing(true)
-    setTimeout(() => {
-      setIsProcessing(false)
-      setTransactionId(`MTN${Date.now().toString().slice(-8)}`)
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/payments/mtn-momo', {
+        direction,
+        phoneNumber: `+27${phoneNumber}`,
+        amountCents: Math.round(amount * 100),
+        currency: 'ZAR',
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Transaction failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setTransactionId(String(data.id || data.reference || data.transactionId || `MTN${Date.now().toString().slice(-8)}`))
       setStep(5)
-    }, 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Transaction failed')
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleCopy = () => {
@@ -59,6 +77,7 @@ export function MTNMOMOModal({ open, onOpenChange }: MTNMOMOModalProps) {
     setPhoneNumber('')
     setAmount(0)
     setTransactionId('')
+    setError(null)
   }
 
   return (
@@ -242,6 +261,13 @@ export function MTNMOMOModal({ open, onOpenChange }: MTNMOMOModalProps) {
                 )}
               </Button>
             </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
           </div>
         )}
 

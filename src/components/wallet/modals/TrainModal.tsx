@@ -4,13 +4,15 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { apiPost } from '@/components/wallet/lib/api'
 import {
   X,
   Check,
   Loader2,
   Train as TrainIcon,
   ChevronRight,
-  Ticket
+  Ticket,
+  AlertCircle
 } from 'lucide-react'
 
 interface TrainModalProps {
@@ -49,16 +51,37 @@ export function TrainModal({ open, onOpenChange }: TrainModalProps) {
   const [selectedTicketType, setSelectedTicketType] = useState('single')
   const [isLoading, setIsLoading] = useState(false)
   const [ticketId, setTicketId] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   const price = trainSystem === 'gautrain' ? 65 : 35
 
   const handleBuy = useCallback(async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setTicketId(`TRN${Date.now().toString(36).toUpperCase()}`)
-    setStep('success')
-    setIsLoading(false)
-  }, [])
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/travel', {
+        type: 'train',
+        action: 'book',
+        trainSystem,
+        from: fromStation,
+        to: toStation,
+        ticketType: selectedTicketType,
+        amountCents: Math.round(price * 100),
+        currency: 'ZAR',
+      })
+      if (res?.success === false) {
+        setError(res.error || 'Booking failed')
+        return
+      }
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setTicketId(String(data.id || data.reference || data.ticketId || `TRN${Date.now().toString(36).toUpperCase()}`))
+      setStep('success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Booking failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [trainSystem, fromStation, toStation, selectedTicketType, price])
 
   const handleClose = useCallback(() => {
     setStep('type')
@@ -66,6 +89,8 @@ export function TrainModal({ open, onOpenChange }: TrainModalProps) {
     setFromStation('')
     setToStation('')
     setSelectedTicketType('single')
+    setError(null)
+    setTicketId('')
     onOpenChange(false)
   }, [onOpenChange])
 
@@ -247,6 +272,13 @@ export function TrainModal({ open, onOpenChange }: TrainModalProps) {
                   <span className="text-sm font-medium text-[#1A1A1A] capitalize">{selectedTicketType}</span>
                 </div>
               </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
 
               <Button
                 onClick={handleBuy}

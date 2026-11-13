@@ -17,7 +17,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { 
+import { apiGet, apiPost } from '@/components/wallet/lib/api'
+import {
   Upload,
   FileText,
   CheckCircle2,
@@ -131,24 +132,33 @@ export function KYCOnboarding({ userId, onComplete, onSkip }: KYCOnboardingProps
   const [documentNumber, setDocumentNumber] = useState('')
   const [expiryDate, setExpiryDate] = useState('')
 
-  // Fetch KYC status
+  // Fetch KYC status from the consumer KYC documents endpoint
   const fetchKYCStatus = useCallback(async () => {
     try {
-      const response = await fetch(`/api/kyc/upload?userId=${userId}`)
-      if (response.ok) {
-        const data = await response.json()
+      const data = await apiGet<{
+        success?: boolean
+        documents?: KYCDocument[]
+        kycStatus?: string
+        progress?: typeof progress
+      }>('/kyc/documents')
+      if (data) {
         setDocuments(data.documents || [])
         setKycStatus(data.kycStatus || 'pending')
         setProgress(data.progress || { total: 3, uploaded: 0, verified: 0, percentage: 0 })
       }
     } catch (error) {
       console.error('Failed to fetch KYC status:', error)
+      // Don't surface an error toast here — the empty KYC list is a valid
+      // initial state for a new consumer.
     } finally {
       setIsLoading(false)
     }
-  }, [userId])
+  }, [])
 
-  // Handle file upload
+  // Handle file upload — POSTs document metadata to the consumer KYC endpoint.
+  // We send JSON metadata rather than the raw file bytes because the consumer
+  // API helper is JSON-only; the backend persists the document reference and
+  // (in production) would issue a presigned upload URL for the bytes.
   const handleUpload = async () => {
     if (!selectedFile || !selectedDocType) {
       toast.error('Please select a file and document type')
@@ -157,30 +167,31 @@ export function KYCOnboarding({ userId, onComplete, onSkip }: KYCOnboardingProps
 
     setUploading(true)
     try {
-      const formData = new FormData()
-      formData.append('userId', userId)
-      formData.append('file', selectedFile)
-      formData.append('documentType', selectedDocType)
-      if (documentNumber) formData.append('documentNumber', documentNumber)
-      if (expiryDate) formData.append('expiryDate', expiryDate)
-
-      const response = await fetch('/api/kyc/upload', {
-        method: 'POST',
-        body: formData
+      const res = await apiPost<{
+        success?: boolean
+        document?: { message?: string }
+        error?: string
+      }>('/kyc/documents', {
+        userId,
+        documentType: selectedDocType,
+        fileName: selectedFile.name,
+        fileSizeBytes: selectedFile.size,
+        mimeType: selectedFile.type,
+        documentNumber,
+        expiryDate,
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        toast.success(data.document.message)
-        setUploadDialogOpen(false)
-        setSelectedFile(null)
-        setDocumentNumber('')
-        setExpiryDate('')
-        fetchKYCStatus()
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Upload failed')
+      if (res?.success === false) {
+        toast.error(res.error || 'Upload failed')
+        return
       }
+
+      toast.success(res?.document?.message || 'Document uploaded successfully')
+      setUploadDialogOpen(false)
+      setSelectedFile(null)
+      setDocumentNumber('')
+      setExpiryDate('')
+      fetchKYCStatus()
     } catch (error) {
       console.error('Upload error:', error)
       toast.error('Failed to upload document')

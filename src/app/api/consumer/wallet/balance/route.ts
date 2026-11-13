@@ -1,145 +1,86 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { db } from '@/lib/db'
+import { getUserId, ok, error, serialize } from '../../_lib/helpers'
 
-// Mock data for when database is unavailable
-const MOCK_WALLET_DATA = {
-  balanceCents: 1584750, // R 15,847.50
-  reservedCents: 0,
-  pendingCents: 25000, // R 250.00 pending
-  currency: 'ZAR',
-  dailySpendLimit: 500000, // R 5,000
-  dailySpentCents: 12500, // R 125.00
-  monthlySpendLimit: 1000000, // R 10,000
-  monthlySpentCents: 450000, // R 4,500
-  totalReceivedCents: 25000000,
-  totalSentCents: 12000000,
-  totalTopupsCents: 35000000,
-  totalWithdrawalsCents: 5000000
-}
-
-const MOCK_USER_DATA = {
-  id: 'user-001',
-  phone: '+27821234567',
-  firstName: 'Thabo',
-  lastName: 'Molefe',
-  kycLevel: 3,
-  accountStatus: 'active'
-}
-
+/**
+ * /api/consumer/wallet/balance
+ *
+ * Returns the user's wallet balance. Mock fallback removed: if there is
+ * no wallet in the DB, we return { balance: 0, currency: 'ZAR' }.
+ */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const userId = getUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'User ID is required' },
-        { status: 400 }
-      )
-    }
-
-    // Try database first, fall back to mock data
-    let wallet
-    try {
-      const { db } = await import('@/lib/db')
-      wallet = await db.consumerWallet.findUnique({
-        where: { userId },
-        include: {
-          user: {
-            select: {
-              id: true,
-              phone: true,
-              firstName: true,
-              lastName: true,
-              kycLevel: true,
-              accountStatus: true
-            }
-          }
-        }
-      })
-    } catch (dbError) {
-      // Database unavailable, use mock data
-      console.log('Database unavailable, using mock data')
-    }
+    const wallet = await db.consumerWallet.findUnique({
+      where: { userId },
+      include: {
+        ConsumerUser: {
+          select: {
+            id: true,
+            phone: true,
+            firstName: true,
+            lastName: true,
+            kycLevel: true,
+            accountStatus: true,
+          },
+        },
+      },
+    })
 
     if (!wallet) {
-      // Return mock data
-      return NextResponse.json({
+      return ok({
         success: true,
         data: {
           balance: {
-            available: MOCK_WALLET_DATA.balanceCents.toString(),
-            reserved: MOCK_WALLET_DATA.reservedCents.toString(),
-            pending: MOCK_WALLET_DATA.pendingCents.toString(),
-            currency: MOCK_WALLET_DATA.currency
+            available: '0',
+            reserved: '0',
+            pending: '0',
+            currency: 'ZAR',
           },
           limits: {
-            dailyLimit: MOCK_WALLET_DATA.dailySpendLimit.toString(),
-            dailySpent: MOCK_WALLET_DATA.dailySpentCents.toString(),
-            monthlyLimit: MOCK_WALLET_DATA.monthlySpendLimit.toString(),
-            monthlySpent: MOCK_WALLET_DATA.monthlySpentCents.toString()
+            dailyLimit: null,
+            dailySpent: '0',
+            monthlyLimit: null,
+            monthlySpent: '0',
           },
           totals: {
-            received: MOCK_WALLET_DATA.totalReceivedCents.toString(),
-            sent: MOCK_WALLET_DATA.totalSentCents.toString(),
-            topups: MOCK_WALLET_DATA.totalTopupsCents.toString(),
-            withdrawals: MOCK_WALLET_DATA.totalWithdrawalsCents.toString()
+            received: '0',
+            sent: '0',
+            topups: '0',
+            withdrawals: '0',
           },
-          user: MOCK_USER_DATA
-        }
+          user: null,
+        },
       })
     }
 
-    return NextResponse.json({
+    return ok({
       success: true,
-      data: {
+      data: serialize({
         balance: {
-          available: wallet.balanceCents.toString(),
-          reserved: wallet.reservedCents.toString(),
-          pending: wallet.pendingCents.toString(),
-          currency: wallet.currency
+          available: wallet.balanceCents,
+          reserved: wallet.reservedCents,
+          pending: wallet.pendingCents,
+          currency: wallet.currency,
         },
         limits: {
-          dailyLimit: wallet.dailySpendLimit?.toString() || null,
-          dailySpent: wallet.dailySpentCents.toString(),
-          monthlyLimit: wallet.monthlySpendLimit?.toString() || null,
-          monthlySpent: wallet.monthlySpentCents.toString()
+          dailyLimit: wallet.dailySpendLimit,
+          dailySpent: wallet.dailySpentCents,
+          monthlyLimit: wallet.monthlySpendLimit,
+          monthlySpent: wallet.monthlySpentCents,
         },
         totals: {
-          received: wallet.totalReceivedCents.toString(),
-          sent: wallet.totalSentCents.toString(),
-          topups: wallet.totalTopupsCents.toString(),
-          withdrawals: wallet.totalWithdrawalsCents.toString()
+          received: wallet.totalReceivedCents,
+          sent: wallet.totalSentCents,
+          topups: wallet.totalTopupsCents,
+          withdrawals: wallet.totalWithdrawalsCents,
         },
-        user: wallet.user
-      }
+        user: wallet.ConsumerUser,
+      }),
     })
-
-  } catch (error) {
-    console.error('Get wallet error:', error)
-    // Return mock data on any error
-    return NextResponse.json({
-      success: true,
-      data: {
-        balance: {
-          available: MOCK_WALLET_DATA.balanceCents.toString(),
-          reserved: MOCK_WALLET_DATA.reservedCents.toString(),
-          pending: MOCK_WALLET_DATA.pendingCents.toString(),
-          currency: MOCK_WALLET_DATA.currency
-        },
-        limits: {
-          dailyLimit: MOCK_WALLET_DATA.dailySpendLimit.toString(),
-          dailySpent: MOCK_WALLET_DATA.dailySpentCents.toString(),
-          monthlyLimit: MOCK_WALLET_DATA.monthlySpendLimit.toString(),
-          monthlySpent: MOCK_WALLET_DATA.monthlySpentCents.toString()
-        },
-        totals: {
-          received: MOCK_WALLET_DATA.totalReceivedCents.toString(),
-          sent: MOCK_WALLET_DATA.totalSentCents.toString(),
-          topups: MOCK_WALLET_DATA.totalTopupsCents.toString(),
-          withdrawals: MOCK_WALLET_DATA.totalWithdrawalsCents.toString()
-        },
-        user: MOCK_USER_DATA
-      }
-    })
+  } catch (err) {
+    console.error('Get wallet balance error:', err)
+    return error('Failed to fetch wallet balance', 500)
   }
 }

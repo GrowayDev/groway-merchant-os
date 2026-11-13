@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { apiGet, apiPost } from '@/components/wallet/lib/api'
 import {
   ShoppingBag,
   CheckCircle2,
@@ -28,70 +29,117 @@ interface LaybyeModalProps {
   onOpenChange: (open: boolean) => void
 }
 
+interface Laybye {
+  id: string
+  item: string
+  totalAmountCents: number | string
+  paidAmountCents: number | string
+  depositCents?: number | string
+  weeklyPaymentCents?: number | string
+  nextPaymentDate?: string
+  status: string
+  weeksRemaining?: number
+}
+
+const popularItems = [
+  'Samsung TV',
+  'iPhone 15',
+  'Nike Sneakers',
+  'HP Laptop',
+  'DSTV Decoder',
+  'Furniture',
+]
+
+function toRand(cents: number | string | undefined): number {
+  if (cents == null) return 0
+  const n = typeof cents === 'string' ? Number(cents) : cents
+  return Number(n) / 100
+}
+
 export function LaybyeModal({ open, onOpenChange }: LaybyeModalProps) {
   const [activeView, setActiveView] = useState<'list' | 'detail' | 'new' | 'payment' | 'success'>('list')
-  const [selectedLaybye, setSelectedLaybye] = useState<number | null>(null)
+  const [selectedLaybye, setSelectedLaybye] = useState<string | null>(null)
   const [newLaybyeStep, setNewLaybyeStep] = useState(1)
   const [paymentAmount, setPaymentAmount] = useState<number>(0)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [loadingList, setLoadingList] = useState(false)
+  const [activeLaybyes, setActiveLaybyes] = useState<Laybye[]>([])
+  const [completedLaybyes, setCompletedLaybyes] = useState<Laybye[]>([])
 
-  // Mock laybye data
-  const activeLaybyes = [
-    {
-      id: 1,
-      item: 'Samsung 32" Smart TV',
-      totalAmount: 4500,
-      paidAmount: 2700,
-      deposit: 450,
-      weeklyPayment: 225,
-      nextPaymentDate: '2025-04-07',
-      status: 'active',
-      weeksRemaining: 8,
-    },
-    {
-      id: 2,
-      item: 'Nike Air Max Sneakers',
-      totalAmount: 2200,
-      paidAmount: 1100,
-      deposit: 220,
-      weeklyPayment: 110,
-      nextPaymentDate: '2025-04-08',
-      status: 'active',
-      weeksRemaining: 10,
-    },
-  ]
-
-  const completedLaybyes = [
-    {
-      id: 3,
-      item: 'Apple AirPods Pro',
-      totalAmount: 3500,
-      paidAmount: 3500,
-      completedDate: '2025-03-15',
-      status: 'completed',
-    },
-  ]
-
-  const popularItems = [
-    'Samsung TV',
-    'iPhone 15',
-    'Nike Sneakers',
-    'HP Laptop',
-    'DSTV Decoder',
-    'Furniture',
-  ]
-
-  const handleNewPayment = () => {
-    if (paymentAmount > 0) {
-      setIsProcessing(true)
-      setTimeout(() => {
-        setIsProcessing(false)
-        setActiveView('success')
-      }, 2000)
+  // Fetch active + completed laybyes via the transactions endpoint with a
+  // type filter. Falls back to an empty list if the API is unavailable.
+  const loadLaybyes = useCallback(async () => {
+    setLoadingList(true)
+    setError(null)
+    try {
+      const res = await apiGet<{ success?: boolean; data?: { transactions?: Laybye[] } | Laybye[] }>('/transactions?type=laybye')
+      const raw = res?.data
+      const list: Laybye[] = Array.isArray(raw)
+        ? raw
+        : raw && Array.isArray((raw as any).transactions)
+        ? (raw as any).transactions
+        : []
+      const active = list.filter((l) => l.status === 'active' || l.status === 'pending')
+      const completed = list.filter((l) => l.status === 'completed')
+      setActiveLaybyes(active)
+      setCompletedLaybyes(completed)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load laybyes')
+    } finally {
+      setLoadingList(false)
     }
-  }
+  }, [])
 
-  const selectedLaybyeData = activeLaybyes.find(l => l.id === selectedLaybye)
+  useEffect(() => {
+    if (!open) return
+    loadLaybyes()
+  }, [open, loadLaybyes])
+
+  const handleNewPayment = useCallback(async () => {
+    if (!selectedLaybye || paymentAmount <= 0) return
+    setIsProcessing(true)
+    setError(null)
+    try {
+      await apiPost('/transactions', {
+        type: 'laybye',
+        action: 'payment',
+        laybyeId: selectedLaybye,
+        amountCents: Math.round(paymentAmount * 100),
+        currency: 'ZAR',
+      })
+      setActiveView('success')
+      // Refresh list after the payment is recorded.
+      loadLaybyes()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed')
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [selectedLaybye, paymentAmount, loadLaybyes])
+
+  const handleStartLaybye = useCallback(async () => {
+    setIsProcessing(true)
+    setError(null)
+    try {
+      await apiPost('/transactions', {
+        type: 'laybye',
+        action: 'create',
+        item: 'Selected Item',
+        amountCents: 200000,
+        depositCents: 20000,
+        currency: 'ZAR',
+      })
+      setActiveView('success')
+      loadLaybyes()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start laybye')
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [loadLaybyes])
+
+  const selectedLaybyeData = activeLaybyes.find((l) => l.id === selectedLaybye)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -108,35 +156,50 @@ export function LaybyeModal({ open, onOpenChange }: LaybyeModalProps) {
             {/* Active Laybyes */}
             <div>
               <p className="text-sm font-medium text-[#1A1A1A] mb-2">Active Laybyes</p>
-              {activeLaybyes.length === 0 ? (
+              {loadingList ? (
+                <div className="flex items-center justify-center py-6 bg-gray-50 rounded-xl">
+                  <Loader2 className="h-5 w-5 text-[#00897B] animate-spin" />
+                </div>
+              ) : activeLaybyes.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 rounded-xl">
                   <ShoppingBag className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-sm text-[#757575]">No active laybyes</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {activeLaybyes.map((laybye) => (
-                    <button
-                      key={laybye.id}
-                      onClick={() => {
-                        setSelectedLaybye(laybye.id)
-                        setActiveView('detail')
-                      }}
-                      className="w-full p-3 bg-white rounded-xl border border-gray-200 text-left active:scale-[0.98] transition-transform"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-[#1A1A1A]">{laybye.item}</span>
-                        <Badge className="bg-green-100 text-green-700 border-0 text-xs">
-                          Active
-                        </Badge>
-                      </div>
-                      <Progress value={(laybye.paidAmount / laybye.totalAmount) * 100} className="h-2 mb-1" />
-                      <div className="flex justify-between text-xs text-[#757575]">
-                        <span>R {laybye.paidAmount.toLocaleString()} paid</span>
-                        <span>R {laybye.totalAmount.toLocaleString()} total</span>
-                      </div>
-                    </button>
-                  ))}
+                  {activeLaybyes.map((laybye) => {
+                    const total = toRand(laybye.totalAmountCents)
+                    const paid = toRand(laybye.paidAmountCents)
+                    const pct = total > 0 ? (paid / total) * 100 : 0
+                    return (
+                      <button
+                        key={laybye.id}
+                        onClick={() => {
+                          setSelectedLaybye(laybye.id)
+                          setActiveView('detail')
+                        }}
+                        className="w-full p-3 bg-white rounded-xl border border-gray-200 text-left active:scale-[0.98] transition-transform"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-[#1A1A1A]">{laybye.item}</span>
+                          <Badge className="bg-green-100 text-green-700 border-0 text-xs">
+                            Active
+                          </Badge>
+                        </div>
+                        <Progress value={pct} className="h-2 mb-1" />
+                        <div className="flex justify-between text-xs text-[#757575]">
+                          <span>R {paid.toLocaleString()} paid</span>
+                          <span>R {total.toLocaleString()} total</span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg mt-2">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{error}</p>
                 </div>
               )}
             </div>
@@ -186,14 +249,14 @@ export function LaybyeModal({ open, onOpenChange }: LaybyeModalProps) {
             <Card className="bg-gradient-to-r from-[#FF5722] to-[#E64A19] text-white">
               <CardContent className="p-4">
                 <p className="text-white/70 text-xs mb-1">{selectedLaybyeData.item}</p>
-                <p className="text-2xl font-bold mb-2">R {selectedLaybyeData.totalAmount.toLocaleString()}</p>
+                <p className="text-2xl font-bold mb-2">R {toRand(selectedLaybyeData.totalAmountCents).toLocaleString()}</p>
                 <Progress
-                  value={(selectedLaybyeData.paidAmount / selectedLaybyeData.totalAmount) * 100}
+                  value={toRand(selectedLaybyeData.totalAmountCents) > 0 ? (toRand(selectedLaybyeData.paidAmountCents) / toRand(selectedLaybyeData.totalAmountCents)) * 100 : 0}
                   className="h-3 bg-white/30"
                 />
                 <div className="flex justify-between text-sm text-white/80 mt-1">
-                  <span>R {selectedLaybyeData.paidAmount.toLocaleString()} paid</span>
-                  <span>R {(selectedLaybyeData.totalAmount - selectedLaybyeData.paidAmount).toLocaleString()} remaining</span>
+                  <span>R {toRand(selectedLaybyeData.paidAmountCents).toLocaleString()} paid</span>
+                  <span>R {(toRand(selectedLaybyeData.totalAmountCents) - toRand(selectedLaybyeData.paidAmountCents)).toLocaleString()} remaining</span>
                 </div>
               </CardContent>
             </Card>
@@ -202,23 +265,25 @@ export function LaybyeModal({ open, onOpenChange }: LaybyeModalProps) {
               <Card>
                 <CardContent className="p-3">
                   <p className="text-xs text-[#757575]">Weekly Payment</p>
-                  <p className="text-lg font-bold text-[#1A1A1A]">R {selectedLaybyeData.weeklyPayment}</p>
+                  <p className="text-lg font-bold text-[#1A1A1A]">R {toRand(selectedLaybyeData.weeklyPaymentCents)}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-3">
                   <p className="text-xs text-[#757575]">Weeks Left</p>
-                  <p className="text-lg font-bold text-[#1A1A1A]">{selectedLaybyeData.weeksRemaining}</p>
+                  <p className="text-lg font-bold text-[#1A1A1A]">{selectedLaybyeData.weeksRemaining ?? '—'}</p>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg">
-              <Calendar className="h-4 w-4 text-yellow-600" />
-              <p className="text-sm text-yellow-700">
-                Next payment: {new Date(selectedLaybyeData.nextPaymentDate).toLocaleDateString('en-ZA')}
-              </p>
-            </div>
+            {selectedLaybyeData.nextPaymentDate && (
+              <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg">
+                <Calendar className="h-4 w-4 text-yellow-600" />
+                <p className="text-sm text-yellow-700">
+                  Next payment: {new Date(selectedLaybyeData.nextPaymentDate).toLocaleDateString('en-ZA')}
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2">
               <Button
@@ -325,17 +390,26 @@ export function LaybyeModal({ open, onOpenChange }: LaybyeModalProps) {
                   </CardContent>
                 </Card>
                 <Button
-                  onClick={() => {
-                    setActiveView('success')
-                    setTimeout(() => {
-                      setActiveView('list')
-                      setNewLaybyeStep(1)
-                    }, 2000)
-                  }}
+                  onClick={handleStartLaybye}
+                  disabled={isProcessing}
                   className="w-full bg-[#00897B] hover:bg-[#00695C]"
                 >
-                  Start Laybye
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Start Laybye'
+                  )}
                 </Button>
+
+                {error && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                    <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -390,6 +464,13 @@ export function LaybyeModal({ open, onOpenChange }: LaybyeModalProps) {
                 'Pay Now'
               )}
             </Button>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
           </div>
         )}
 
