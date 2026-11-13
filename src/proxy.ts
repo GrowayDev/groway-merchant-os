@@ -339,6 +339,10 @@ export default function proxy(request: NextRequest) {
   
   // Allow public routes
   if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))) {
+    // GroCore app is public (uses x-tenant-id header, not session auth)
+    if (pathname === '/grocore/app' || pathname.startsWith('/grocore/app/')) {
+      return response
+    }
     // Check if trying to access protected sub-route
     const isProtectedSubRoute = publicRoutes.some(route => 
       pathname.startsWith(route + '/app') || 
