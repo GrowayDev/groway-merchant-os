@@ -6999,3 +6999,248 @@ model LivestockAlert {
   @@index([farmId, status, dueDate])
   @@index([alertType, status])
 }
+
+// ============================================
+// GroCore - Financial Services Engine
+// ============================================
+
+model GroCoreAccount {
+  id String @id @default(cuid())
+  tenantId String
+  code String
+  name String
+  kind String
+  subKind String
+  currency String
+  active Boolean @default(true)
+  metaJson String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lines GroCoreLine[]
+  @@unique([tenantId, code])
+  @@index([tenantId, kind])
+}
+
+model GroCoreEntry {
+  id String @id @default(cuid())
+  tenantId String
+  entryId String
+  sourceType String
+  sourceId String
+  description String
+  currency String @default("ZAR")
+  postedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  lines GroCoreLine[]
+  @@unique([tenantId, entryId])
+  @@index([tenantId, sourceType, sourceId])
+}
+
+model GroCoreLine {
+  id String @id @default(cuid())
+  tenantId String
+  entryId String
+  entry GroCoreEntry @relation(fields: [entryId], references: [id])
+  accountId String
+  account GroCoreAccount @relation(fields: [accountId], references: [id])
+  amountCents BigInt
+  currency String
+  createdAt DateTime @default(now())
+  @@index([tenantId, accountId])
+}
+
+model GroCoreConsent {
+  id String @id @default(cuid())
+  tenantId String
+  subjectId String
+  subjectType String
+  purpose String
+  status String @default("active")
+  grantedAt DateTime @default(now())
+  revokedAt DateTime?
+  expiresAt DateTime?
+  policyVersion String
+  evidence String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([tenantId, subjectId, purpose])
+  @@index([tenantId, status])
+}
+
+model GroCoreDecision {
+  id String @id @default(cuid())
+  tenantId String
+  subjectId String
+  subjectType String
+  product String
+  amountCents BigInt
+  currency String
+  outcome String
+  approvedLimitCents BigInt?
+  reasonCodes String
+  counterfactual String?
+  traceJson String
+  policyVersion String
+  modelVersion String
+  createdAt DateTime @default(now())
+  @@index([tenantId, subjectId, product])
+}
+
+model GroCoreAdvance {
+  id String @id @default(cuid())
+  tenantId String
+  subjectId String
+  product String
+  principalCents BigInt
+  feeCents BigInt
+  totalDueCents BigInt
+  paidCents BigInt @default(0)
+  currency String
+  status String @default("open")
+  dueAt DateTime
+  recoveredAt DateTime?
+  writtenOffAt DateTime?
+  decisionId String?
+  voucherSerial String?
+  deliveryMethod String?
+  metaJson String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  recoveries GroCoreRecovery[]
+  @@index([tenantId, subjectId, status])
+  @@index([tenantId, product, status])
+}
+
+model GroCoreRecovery {
+  id String @id @default(cuid())
+  tenantId String
+  advanceId String
+  advance GroCoreAdvance @relation(fields: [advanceId], references: [id])
+  amountCents BigInt
+  passedThroughCents BigInt
+  currency String
+  source String
+  idempotencyKey String
+  createdAt DateTime @default(now())
+  @@unique([tenantId, idempotencyKey])
+  @@index([advanceId])
+}
+
+model GroCoreGoPaySettlement {
+  id String @id @default(cuid())
+  tenantId String
+  merchantId String
+  batchId String @unique
+  captureCount Int @default(0)
+  grossCents BigInt
+  feeCents BigInt
+  repaymentCents BigInt @default(0)
+  netCents BigInt
+  currency String
+  status String @default("pending")
+  scheduledAt DateTime
+  processedAt DateTime?
+  bankReference String?
+  metaJson String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([tenantId, merchantId, status])
+}
+
+model GroCoreGoPayCapture {
+  id String @id @default(cuid())
+  tenantId String
+  merchantId String
+  captureId String @unique
+  amountCents BigInt
+  feeCents BigInt
+  currency String
+  paymentMethod String
+  settlementId String?
+  status String @default("captured")
+  liveMode Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([tenantId, merchantId, status])
+}
+
+model GroCoreCapitalSource {
+  id String @id @default(cuid())
+  tenantId String
+  name String
+  type String
+  currency String
+  committedCents BigInt
+  deployedCents BigInt @default(0)
+  availableCents BigInt
+  costRateBps Int @default(0)
+  status String @default("active")
+  startDate DateTime
+  endDate DateTime?
+  metaJson String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([tenantId, status])
+}
+
+model GroCoreVoucher {
+  id String @id @default(cuid())
+  tenantId String
+  serial String @unique
+  product String
+  supplier String
+  faceValueCents BigInt
+  costCents BigInt
+  currency String
+  recipientMsisdn String?
+  meterNumber String?
+  status String @default("issued")
+  deliveryMethod String @default("direct_recharge")
+  redeemedAt DateTime?
+  advanceId String?
+  qrPayload String?
+  pin String?
+  metaJson String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([tenantId, product, status])
+  @@index([recipientMsisdn])
+}
+
+model GroCoreDeviceContract {
+  id String @id @default(cuid())
+  tenantId String
+  customerId String
+  productId String
+  deviceName String
+  deviceImei String?
+  principalCents BigInt
+  paidCents BigInt @default(0)
+  dailyPaymentCents BigInt
+  currency String
+  totalDays Int
+  daysPaid Int @default(0)
+  status String @default("active")
+  locked Boolean @default(true)
+  unlockedAt DateTime?
+  dueAt DateTime?
+  metaJson String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  payments GroCoreDevicePayment[]
+  @@index([tenantId, customerId, status])
+}
+
+model GroCoreDevicePayment {
+  id String @id @default(cuid())
+  tenantId String
+  contractId String
+  contract GroCoreDeviceContract @relation(fields: [contractId], references: [id])
+  amountCents BigInt
+  currency String
+  dayNumber Int
+  idempotencyKey String
+  createdAt DateTime @default(now())
+  @@unique([tenantId, idempotencyKey])
+  @@index([contractId])
+}
