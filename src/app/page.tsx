@@ -38,6 +38,7 @@ import {
   Briefcase,
   BarChart3,
   PiggyBank,
+  Landmark,
   Gift,
   UserPlus,
   Download,
@@ -147,6 +148,18 @@ const applications = [
     cta: 'Integrate Now',
     color: '#9C27B0',
     mockupScreens: ['dashboard', 'transactions', 'devices', 'analytics'],
+  },
+  {
+    id: 'grocore',
+    name: 'GroCore',
+    tagline: 'The Financial Core Powering Township Lending',
+    description: 'Double-entry ledger, consent-aware decisioning, capital grid, GoPay settlement, e-vouchers and device finance — the embedded finance engine for the spaza economy.',
+    icon: Landmark,
+    features: ['Double-Entry Ledger', 'Consent Decisioning', 'Capital Grid', 'Device Finance'],
+    users: 'R 4.2B+ deployed',
+    cta: 'Launch GroCore',
+    color: '#0F766E',
+    mockupScreens: ['dashboard', 'ledger', 'decisioning', 'vouchers'],
   },
   {
     id: 'enterprise',
@@ -272,6 +285,8 @@ function PhoneMockup({ app, isActive }: { app: typeof applications[0]; isActive:
         return <GroSupplyScreen screen={app.mockupScreens[currentScreen]} />
       case 'gopay':
         return <GoPayScreen screen={app.mockupScreens[currentScreen]} />
+      case 'grocore':
+        return <GroCoreScreen screen={app.mockupScreens[currentScreen]} />
       default:
         return <GenericScreen appName={app.name} screen={app.mockupScreens[currentScreen]} color={app.color} />
     }
@@ -631,6 +646,83 @@ function GoPayScreen({ screen }: { screen: string }) {
       </div>
     </div>
   )
+}
+
+// GroCore Screen - Financial core engine mockup
+function GroCoreScreen({ screen }: { screen: string }) {
+  switch (screen) {
+    case 'dashboard':
+      return (
+        <div className="p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-gray-900">GroCore</p>
+            <div className="w-7 h-7 rounded-full bg-[#0F766E] flex items-center justify-center"><Landmark className="w-3.5 h-3.5 text-white" /></div>
+          </div>
+          <div className="bg-gradient-to-br from-[#0F766E] to-[#134E4A] rounded-xl p-3 text-white">
+            <p className="text-[8px] opacity-80">Capital Deployed</p>
+            <p className="text-lg font-bold">R 4,218,500</p>
+            <p className="text-[8px] opacity-80">1,247 active borrowers · +12.4%</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-gray-50 rounded-xl p-2.5"><p className="text-[8px] text-gray-500">Decisioning</p><p className="text-sm font-bold text-gray-900">98.2%</p><p className="text-[8px] text-green-600">auto-approve</p></div>
+            <div className="bg-gray-50 rounded-xl p-2.5"><p className="text-[8px] text-gray-500">NPL Ratio</p><p className="text-sm font-bold text-gray-900">3.1%</p><p className="text-[8px] text-green-600">below target</p></div>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold text-gray-900 mb-1.5">Capital Sources</p>
+            {[{n:'GroCore Fund I',d:'R 2.1M'},{n:'DFI Catalytic',d:'R 1.4M'},{n:'Wholesale Credit',d:'R 0.7M'}].map((s,i)=>(
+              <div key={i} className="flex items-center justify-between bg-white rounded-lg p-2 border border-gray-100 mb-1"><p className="text-[9px] font-medium">{s.n}</p><p className="text-[9px] font-bold">{s.d}</p></div>
+            ))}
+          </div>
+        </div>
+      )
+    case 'ledger':
+      return (
+        <div className="p-3 space-y-2">
+          <div className="flex items-center justify-between"><p className="text-sm font-bold text-gray-900">Double-Entry Ledger</p><Badge className="text-[8px] h-4 bg-[#0F766E]">Balanced</Badge></div>
+          <div className="bg-gray-50 rounded-lg p-2">
+            <p className="text-[8px] text-gray-500">Entry JE-00482</p>
+            <div className="space-y-1 mt-1">
+              <div className="flex items-center justify-between bg-white rounded px-1.5 py-1"><div className="flex items-center gap-1"><span className="text-[7px] font-bold text-gray-400 w-4">Dr</span><span className="text-[8px]">1000 Cash at Bank</span></div><span className="text-[8px] font-medium">R 5,000.00</span></div>
+              <div className="flex items-center justify-between bg-white rounded px-1.5 py-1"><div className="flex items-center gap-1"><span className="text-[7px] font-bold text-gray-400 w-4">Cr</span><span className="text-[8px]">2100 Loan Payable</span></div><span className="text-[8px] font-medium">R 5,000.00</span></div>
+            </div>
+            <p className="text-[7px] text-gray-400 mt-1">Trial balance: R 0.00</p>
+          </div>
+        </div>
+      )
+    case 'decisioning':
+      return (
+        <div className="p-3 space-y-2">
+          <div className="flex items-center justify-between"><p className="text-sm font-bold text-gray-900">Consent Decisioning</p><Badge className="text-[8px] h-4 bg-green-600">Live</Badge></div>
+          <div className="bg-gradient-to-br from-[#0F766E] to-[#134E4A] rounded-xl p-3 text-white">
+            <p className="text-[8px] opacity-80">Application APP-9821</p>
+            <p className="text-xs font-bold mt-0.5">Spaza Grocery · R 15,000</p>
+            <p className="text-[9px] mt-1">✓ Approved · 19.5% APR</p>
+          </div>
+          {['POPIA consent captured','Credit bureau pull (XDS)','Affordability: DTI 28%','NCR affordability check','AML screening clear'].map((l,i)=>(
+            <div key={i} className="flex items-center gap-1.5 bg-white rounded-lg p-1.5 border border-gray-100"><CheckCircle2 className="w-3 h-3 text-green-600" /><p className="text-[8px] text-gray-700">{l}</p></div>
+          ))}
+        </div>
+      )
+    case 'vouchers':
+      return (
+        <div className="p-3 space-y-2">
+          <div className="flex items-center justify-between"><p className="text-sm font-bold text-gray-900">E-Vouchers</p><Badge className="text-[8px] h-4 bg-[#0F766E]">29 vendors</Badge></div>
+          <div className="grid grid-cols-2 gap-2">
+            {[{n:'Vodacom Airtime',a:'R 10',e:'📱'},{n:'MTN Data 1GB',a:'R 25',e:'📶'},{n:'Eskom Prepaid',a:'R 50',e:'⚡'},{n:'City Power',a:'R 100',e:'🔌'}].map((v,i)=>(
+              <div key={i} className="bg-white rounded-lg p-2 border border-gray-100"><div className="text-base">{v.e}</div><p className="text-[8px] font-medium mt-0.5">{v.n}</p><p className="text-[9px] font-bold text-[#0F766E]">{v.a}</p></div>
+            ))}
+          </div>
+          <div className="bg-gray-50 rounded-lg p-2">
+            <p className="text-[8px] font-semibold">Device Finance · M-KOPA mode</p>
+            <div className="flex items-center justify-between mt-1"><p className="text-[8px] text-gray-600">Solar Home System</p><p className="text-[8px] font-bold">R 35/day</p></div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-1"><div className="bg-[#0F766E] h-1 rounded-full" style={{ width: '62%' }} /></div>
+            <p className="text-[7px] text-gray-500 mt-0.5">62% paid · 38 days remaining</p>
+          </div>
+        </div>
+      )
+    default:
+      return <GenericScreen appName="GroCore" screen={screen} color="#0F766E" />
+  }
 }
 
 // Generic Screen for other apps
@@ -1650,6 +1742,7 @@ export default function GrowayLandingPage() {
               <h4 className="text-sm font-semibold mb-4">More</h4>
               <ul className="space-y-2">
                 <li><Link href="/gopay" className="text-sm text-gray-400 hover:text-white transition-colors">GoPay</Link></li>
+                <li><Link href="/grocore" className="text-sm text-gray-400 hover:text-white transition-colors">GroCore</Link></li>
                 <li><Link href="/enterprise" className="text-sm text-gray-400 hover:text-white transition-colors">Enterprise</Link></li>
                 <li><Link href="/admin-console" className="text-sm text-gray-400 hover:text-white transition-colors">Admin Console</Link></li>
                 <li><Link href="/salesforce" className="text-sm text-gray-400 hover:text-white transition-colors">Field Salesforce</Link></li>
