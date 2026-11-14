@@ -1,0 +1,93 @@
+{
+  "design": {
+    "title": "Groway Merchant OS — Investor & Partner Proposal (SSSF/NEF)",
+    "style_name": "Groway Brand — clean emerald business register",
+    "palette": { "background": "#FDFDFB", "primary": "#0B6B5D", "accent": "#D97706" },
+    "typography": { "heading": "Space Grotesk", "body": "Inter", "numeric": "IBM Plex Mono" },
+    "reference": "Stripe deck clarity × YC pitch directness; generous whitespace, card-based grids"
+  },
+  "global_css_path": "/home/z/my-project/download/slides/global.css",
+  "slides_dir": "/home/z/my-project/download/slides",
+  "language": "en",
+  "speaker_notes": "none",
+  "slides": [
+    {
+      "title": "Cover",
+      "layout": "cover",
+      "output_path": "/home/z/my-project/download/slides/slide_01.html",
+      "task_brief": "Cover slide, left-aligned hero. Kicker line: 'INVESTOR & PARTNER PROPOSAL · SSSF / NEF APPLICATION'. Main title: 'Groway Merchant OS'. Subtitle: 'Empowering Africa's informal retail economy with digital commerce infrastructure — now hardened against the R360 billion counterfeit trade.' Bottom row of three small stat chips: '685 API endpoints shipped', '16-model provenance database', 'POS verification < 500ms'. Footer line: 'Groway Technologies · 2026 · Confidential'. Use a large deep-emerald panel on the right third with a subtle chain-of-custody motif built from .chain-dot circles connected by thin lines (CSS only, no SVG)."
+    },
+    {
+      "title": "The Problem",
+      "layout": "key message + stats band",
+      "output_path": "/home/z/my-project/download/slides/slide_02.html",
+      "task_brief": "Headline: 'Africa's retail gap — and the fake goods filling it'. Lead paragraph: Over 90% of retail in Sub-Saharan Africa runs through informal channels, yet these merchants lack basic digital tools — and their customers receive an estimated 1 in 3 products that is substandard or falsified. Three stat cards: '$240B informal retail market size annually (industry estimates)', '50M+ informal merchants across Africa', 'R360B estimated annual value of counterfeit goods in SA-Kenya-Nigeria corridors (industry estimates)'. Below, four challenge chips in a 2x2 grid: 'No digital payments — cash-only operations limit growth and create security risks', 'Manual inventory — no stock visibility, leading to lost sales', 'Financial exclusion — no credit, insurance, or business banking', 'Counterfeit exposure — merchants unknowingly stock fake stock; consumers carry the health risk'. Footnote: 'Market-size and counterfeit figures are industry estimates; company traction figures on later slides are pilot targets.'"
+    },
+    {
+      "title": "Our Solution",
+      "layout": "numbered verticals",
+      "output_path": "/home/z/my-project/download/slides/slide_03.html",
+      "task_brief": "Headline: 'One platform, four layers of value'. Three numbered blocks side by side: 1 'All-in-One Digital Platform' — Point of Sale, inventory management, payments processing, and business analytics in a single mobile-first platform designed for the informal market. 2 'Financial Services Integration' — Built-in access to mobile money, airtime, bill payments, and credit facilities; merchants become financial service agents in their communities. 3 'Trust Infrastructure (SAPE)' — The SPZABOX Authentication & Provenance Engine: every unit serialised to GS1 standards, custody hash-anchored, verified at the till in under 500ms, and checkable by any consumer with a phone. Bottom strip: 'Works offline, scales online — offline-first architecture syncs automatically when connectivity returns.'"
+    },
+    {
+      "title": "Product Features",
+      "layout": "bento grid",
+      "output_path": "/home/z/my-project/download/slides/slide_04.html",
+      "task_brief": "Headline: 'Product: the daily operating system for a spaza or tavern'. Bento grid of 8 feature tiles, each with a two-to-four-letter tag and one-line description: 'POS — Smart point of sale: fast checkout, barcode scanning, receipt printing, customer management', 'INV — Inventory control: real-time stock tracking, low-stock alerts, supplier management', 'PAY — Payments hub: mobile money, card, QR, buy-now-pay-later', 'ANA — Business analytics: sales reports, profit margins, trends, actionable insights', 'SAPE — Anti-counterfeit engine: GS1 serialisation, chain-of-custody, consumer verification (highlight this tile in primary-soft background)', 'Digi — Digital services: airtime, electricity tokens, water bills, TV subscriptions', 'CRD — Credit & financing: merchant cash advances, inventory financing, microloans', 'LOY — Loyalty: customer rewards and retention tools'."
+    },
+    {
+      "title": "Market Opportunity",
+      "layout": "TAM/SAM/SOM stats",
+      "output_path": "/home/z/my-project/download/slides/slide_05.html",
+      "task_brief": "Headline: 'Market opportunity'. Left: three nested stat blocks: 'TAM $240B — total African informal retail market', 'SAM $48B — addressable digital commerce', 'SOM $4.8B — initial target markets (5 years)'. Right column 'Beachhead markets' with four rows: 'South Africa — $18B retail market · launch market', 'Nigeria — $52B retail market · phase 2', 'Kenya — $22B retail market · phase 2', 'Ghana — $12B retail market · phase 3'. Footnote: 'Figures are top-down industry estimates for sizing context only.'"
+    },
+    {
+      "title": "Section — SAPE",
+      "layout": "section header",
+      "output_path": "/home/z/my-project/download/slides/slide_06.html",
+      "task_brief": "Section header on a full deep-emerald background. Chapter number: '01 / 02'. Title: 'SAPE — SPZABOX Authentication & Provenance Engine'. Tagline: 'A six-layer anti-counterfeit stack built into the till, the supply chain, and the consumer's pocket.' Small white chain-dots motif across the middle (CSS circles + connecting lines)."
+    },
+    {
+      "title": "The Counterfeit Crisis",
+      "layout": "split stats + narrative",
+      "output_path": "/home/z/my-project/download/slides/slide_07.html",
+      "task_brief": "Headline: 'Counterfeiting is a public-health emergency for our market'. Left narrative: Fake food, falsified medicine and substandard alcohol flow through the same informal channels Merchant OS serves. Regulators (SAHPRA, NCC, SARS, SAPS) lack unit-level visibility; honest spaza shop owners compete against counterfeiters with 400-1,000% margins. Right: four stat cards: '1 in 3 — products in some African corridors estimated substandard or falsified (industry estimates)', '400-1,000% — typical counterfeit margin on fast-moving goods', 'Oct 2027 — SAHPRA deadline: GTIN + batch + expiry on regulated imports (GS1)', 'Oct 2029 — SAHPRA deadline: unit-level serialisation of regulated products (GS1)'. Bottom accent strip: 'SAPE turns a compliance burden into a merchant acquisition engine: verification is free marketing for honest traders.'"
+    },
+    {
+      "title": "SAPE Six-Layer Architecture",
+      "layout": "numbered layer stack",
+      "output_path": "/home/z/my-project/download/slides/slide_08.html",
+      "task_brief": "Headline: 'Six layers, one provenance chain'. Six numbered layer cards in two rows of three: L1 'Supplier verification — credentialed registry with risk scoring (CIPC registration, SAHPRA licences, NCC accreditation)'; L2 'GS1 DataMatrix serialisation — AI(01) GTIN, AI(10) batch, AI(17) expiry, AI(21) serial; HMAC-signed payloads'; L3 'Blockchain-anchored custody — every handover hash-chained and merkle-anchored to an append-only block chain'; L4 'POS verification < 500ms — cashier scans at the till; registry, signature and anomaly checks (duplicate sale, scan velocity, recalled batch) fire inline'; L5 'Consumer QR verification — any customer can check authenticity, see origin and custody journey, and report fakes anonymously'; L6 'Authority feeds — structured notifications to SAHPRA, NCC, SARS and SAPS on a 1-hour SLA, plus an anonymous tip-off line'. Footer note: 'Live in production today: 16-model provenance database, 9 API endpoints, merchant console and public verify page.'"
+    },
+    {
+      "title": "SAPE Rollout & Compliance Timeline",
+      "layout": "timeline",
+      "output_path": "/home/z/my-project/download/slides/slide_09.html",
+      "task_brief": "Headline: 'From pilot to regulator-grade in four phases'. Horizontal four-phase timeline (CSS cards in a row with connecting line, no SVG): Phase 1 'Q3 2026 — Pilot: 50 merchants, 10 SKUs serialised end-to-end, consumer verify page live'; Phase 2 'Q1 2027 — GroSupply integration: purchase orders authenticated at source (GroSupplyOrderAuth), supplier risk scoring in production'; Phase 3 'Oct 2027 — SAHPRA import readiness: GTIN + batch + expiry enforcement for regulated categories (food-adjacent OTC, supplements)'; Phase 4 'Oct 2029 — Unit-level serialisation: full AI(21) serial coverage for regulated products, authority feed SLAs contractual'. Under the timeline, three mini-stats: '<500ms verification SLA', '1h authority notification SLA', 'GS1-ready from day one'."
+    },
+    {
+      "title": "Business Model",
+      "layout": "four-stream pricing grid",
+      "output_path": "/home/z/my-project/download/slides/slide_10.html",
+      "task_brief": "Headline: 'Business model: four recurring streams'. Four pricing cards: 'Transaction fees — commission on every digital transaction processed through the platform · 1.5-3% per transaction'; 'Subscription plans — tiered SaaS pricing for premium features and advanced analytics · $5-50 per month'; 'Financial services — revenue share on airtime, bill payments, insurance, and credit products · 5-15% commission'; 'Trust & compliance (SAPE) — serialisation and verification bundled per unit for regulated categories · volume-priced, flagged as pipeline (new stream added 2026)'. Bottom band: 'Multiple recurring revenue streams compound with SAPE: verified stock commands premium shelf placement and unlocks regulator-driven demand.'"
+    },
+    {
+      "title": "Traction & Milestones",
+      "layout": "stats + honest-labelling",
+      "output_path": "/home/z/my-project/download/slides/slide_11.html",
+      "task_brief": "Headline: 'Traction: pilot programme and what we must prove'. Left: three stat cards explicitly labelled 'Pilot targets (12-month plan)': '12K merchants onboarded across 3 cities', 'R8.5M GMV processed through digital rails', '85% merchant retention target'. Right column 'Platform shipped (verifiable today)': '685 API endpoints across POS, payments, credit, provenance', '16 SAPE provenance models live with hash-anchored custody', 'Public consumer verification page in production'. Bottom honest-labelling note in small text: 'Traction figures are forward-looking pilot targets, not historical audited results; platform capability figures are verifiable in the deployed codebase.'"
+    },
+    {
+      "title": "Competitive Advantage",
+      "layout": "comparison + moat",
+      "output_path": "/home/z/my-project/download/slides/slide_12.html",
+      "task_brief": "Headline: 'Why we win'. Left three moat cards: 'Offline-first architecture — works without internet, essential for rural and peri-urban trade'; 'Built for the informal market — 12 African languages planned, voice-guided tutorials, spaza-grade hardware tolerance'; 'SAPE trust layer — no competitor offers unit-level anti-counterfeit verification at the informal-retail till'. Right: competitive landscape table with three rows and threat labels: 'Traditional banks — Low threat: high barriers, do not serve informal sector'; 'Global POS vendors — Medium threat: expensive, not designed for informal retail'; 'Local fintechs — Direct competition: single-feature apps lack an integrated solution and have no provenance layer'."
+    },
+    {
+      "title": "Closing — The Ask",
+      "layout": "closing",
+      "output_path": "/home/z/my-project/download/slides/slide_13.html",
+      "task_brief": "Closing slide, deep-emerald background, white text. Title: 'Join us in building Africa's trusted retail layer'. Three ask cards in white-on-emerald: 'Grant funding (SSSF/NEF) — product hardening, security audit remediation, pilot merchant onboarding'; 'Strategic partners — GS1 South Africa, mobile network operators, FMCG brand owners fighting counterfeits'; 'Regulatory engagement — SAHPRA and NCC pilot alignment ahead of the 2027/2029 serialisation deadlines'. Contact block: 'Groway Technologies · demo@groway.co.za · Live demo: Merchant OS + SAPE public verify page'. Footer: 'Thank you — Ndiyabulela · Ke a leboha · Siyabonga'. Chain-dots motif closing the loop (first dot connected to last)."
+    }
+  ]
+}

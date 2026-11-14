@@ -1,0 +1,843 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo } from 'react'
+     4→import { Button } from '@/components/ui/button'
+     5→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+     6→import { Badge } from '@/components/ui/badge'
+     7→import { Input } from '@/components/ui/input'
+     8→import { ScrollArea } from '@/components/ui/scroll-area'
+     9→import { Separator } from '@/components/ui/separator'
+    10→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    11→import {
+    12→  Dialog,
+    13→  DialogContent,
+    14→  DialogDescription,
+    15→  DialogFooter,
+    16→  DialogHeader,
+    17→  DialogTitle,
+    18→} from '@/components/ui/dialog'
+    19→import {
+    20→  Select,
+    21→  SelectContent,
+    22→  SelectItem,
+    23→  SelectTrigger,
+    24→  SelectValue,
+    25→} from '@/components/ui/select'
+    26→import { 
+    27→  Calendar,
+    28→  Clock,
+    29→  User,
+    30→  Users,
+    31→  Plus,
+    32→  Scissors,
+    33→  Search,
+    34→  ChevronLeft,
+    35→  ChevronRight,
+    36→  Phone,
+    37→  Mail,
+    38→  CheckCircle2,
+    39→  AlertCircle,
+    40→  Timer,
+    41→  Sparkles,
+    42→  MessageSquare,
+    43→  MoreHorizontal,
+    44→  X,
+    45→  Edit,
+    46→  Trash2,
+    47→  Eye,
+    48→} from 'lucide-react'
+    49→
+    50→// Types
+    51→interface Stylist {
+    52→  id: string
+    53→  name: string
+    54→  avatar: string
+    55→  specialties: string[]
+    56→  rating: number
+    57→  status: 'available' | 'busy' | 'break' | 'off'
+    58→  color: string
+    59→}
+    60→
+    61→interface Service {
+    62→  id: string
+    63→  name: string
+    64→  category: string
+    65→  duration: number // in minutes
+    66→  price: number
+    67→  description?: string
+    68→}
+    69→
+    70→interface Appointment {
+    71→  id: string
+    72→  customerId: string
+    73→  customerName: string
+    74→  customerPhone: string
+    75→  stylistId: string
+    76→  serviceId: string
+    77→  date: string
+    78→  time: string
+    79→  duration: number
+    80→  status: 'scheduled' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled' | 'no-show'
+    81→  notes?: string
+    82→  total: number
+    83→}
+    84→
+    85→interface WalkIn {
+    86→  id: string
+    87→  customerName: string
+    88→  phone?: string
+    89→  service: string
+    90→  stylistPreference?: string
+    91→  waitTime: number
+    92→  position: number
+    93→  status: 'waiting' | 'called' | 'seated'
+    94→}
+    95→
+    96→// Sample Data
+    97→const sampleStylists: Stylist[] = [
+    98→  { id: 's1', name: 'Nomsa Dlamini', avatar: '👩🏿', specialties: ['Haircut', 'Coloring', 'Braids'], rating: 4.9, status: 'available', color: '#00897B' },
+    99→  { id: 's2', name: 'Thabo Molefe', avatar: '👨🏿', specialties: ['Haircut', 'Fade', 'Beard'], rating: 4.8, status: 'busy', color: '#FF6B6B' },
+   100→  { id: 's3', name: 'Zanele Nkosi', avatar: '👩🏿', specialties: ['Nails', 'Manicure', 'Pedicure'], rating: 4.7, status: 'available', color: '#4ECDC4' },
+   101→  { id: 's4', name: 'Kagiso Mokoena', avatar: '👨🏿', specialties: ['Haircut', 'Styling', 'Treatment'], rating: 4.6, status: 'break', color: '#9B59B6' },
+   102→  { id: 's5', name: 'Lerato Sithole', avatar: '👩🏿', specialties: ['Makeup', 'Facial', 'Spa'], rating: 4.9, status: 'off', color: '#E74C3C' },
+   103→]
+   104→
+   105→const sampleServices: Service[] = [
+   106→  { id: 'sv1', name: 'Haircut - Ladies', category: 'Hair', duration: 45, price: 180, description: 'Wash, cut & style' },
+   107→  { id: 'sv2', name: 'Haircut - Gentlemen', category: 'Hair', duration: 30, price: 120, description: 'Cut & style' },
+   108→  { id: 'sv3', name: 'Fade Cut', category: 'Hair', duration: 35, price: 150, description: 'Precision fade' },
+   109→  { id: 'sv4', name: 'Hair Coloring', category: 'Hair', duration: 120, price: 650, description: 'Full color' },
+   110→  { id: 'sv5', name: 'Braids - Medium', category: 'Hair', duration: 240, price: 850, description: 'Medium box braids' },
+   111→  { id: 'sv6', name: 'Manicure', category: 'Nails', duration: 45, price: 180, description: 'File, shape & polish' },
+   112→  { id: 'sv7', name: 'Pedicure', category: 'Nails', duration: 60, price: 250, description: 'Soak, scrub & polish' },
+   113→  { id: 'sv8', name: 'Gel Nails', category: 'Nails', duration: 75, price: 350, description: 'Full set gel' },
+   114→  { id: 'sv9', name: 'Facial Treatment', category: 'Spa', duration: 60, price: 450, description: 'Deep cleanse facial' },
+   115→  { id: 'sv10', name: 'Beard Trim', category: 'Hair', duration: 20, price: 80, description: 'Shape & trim' },
+   116→  { id: 'sv11', name: 'Wash & Blow Dry', category: 'Hair', duration: 30, price: 150, description: 'Wash & style' },
+   117→  { id: 'sv12', name: 'Full Spa Package', category: 'Spa', duration: 180, price: 1200, description: 'Facial, massage & nails' },
+   118→]
+   119→
+   120→const sampleAppointments: Appointment[] = [
+   121→  { id: 'a1', customerId: 'c1', customerName: 'Precious Mokoena', customerPhone: '082 123 4567', stylistId: 's1', serviceId: 'sv1', date: '2026-02-20', time: '09:00', duration: 45, status: 'confirmed', total: 180 },
+   122→  { id: 'a2', customerId: 'c2', customerName: 'John Khumalo', customerPhone: '083 234 5678', stylistId: 's2', serviceId: 'sv3', date: '2026-02-20', time: '09:30', duration: 35, status: 'in-progress', total: 150 },
+   123→  { id: 'a3', customerId: 'c3', customerName: 'Dineo Tshabalala', customerPhone: '084 345 6789', stylistId: 's3', serviceId: 'sv6', date: '2026-02-20', time: '10:00', duration: 45, status: 'scheduled', total: 180 },
+   124→  { id: 'a4', customerId: 'c4', customerName: 'Sipho Ndaba', customerPhone: '085 456 7890', stylistId: 's1', serviceId: 'sv4', date: '2026-02-20', time: '11:00', duration: 120, status: 'scheduled', total: 650 },
+   125→  { id: 'a5', customerId: 'c5', customerName: 'Mpho Mokoena', customerPhone: '086 567 8901', stylistId: 's4', serviceId: 'sv2', date: '2026-02-20', time: '14:00', duration: 30, status: 'scheduled', total: 120 },
+   126→]
+   127→
+   128→const sampleWalkIns: WalkIn[] = [
+   129→  { id: 'w1', customerName: 'Walk-in Customer', phone: '', service: 'Haircut - Gentlemen', waitTime: 5, position: 1, status: 'waiting' },
+   130→  { id: 'w2', customerName: 'Siphiwe Mabaso', phone: '082 999 8888', service: 'Fade Cut', stylistPreference: 'Thabo', waitTime: 12, position: 2, status: 'waiting' },
+   131→]
+   132→
+   133→// Time slots for the day
+   134→const timeSlots = Array.from({ length: 22 }, (_, i) => {
+   135→  const hour = Math.floor(8 + i / 2)
+   136→  const minute = i % 2 === 0 ? '00' : '30'
+   137→  return `${hour.toString().padStart(2, '0')}:${minute}`
+   138→})
+   139→
+   140→export function BookingView() {
+   141→  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+   142→  const [selectedTab, setSelectedTab] = useState('calendar')
+   143→  const [selectedStylist, setSelectedStylist] = useState<string | null>(null)
+   144→  const [appointments, setAppointments] = useState<Appointment[]>(sampleAppointments)
+   145→  const [walkIns, setWalkIns] = useState<WalkIn[]>(sampleWalkIns)
+   146→  const [searchQuery, setSearchQuery] = useState('')
+   147→  
+   148→  // Dialog states
+   149→  const [newBookingOpen, setNewBookingOpen] = useState(false)
+   150→  const [appointmentDetailOpen, setAppointmentDetailOpen] = useState(false)
+   151→  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
+   152→  
+   153→  // New booking form
+   154→  const [newBooking, setNewBooking] = useState({
+   155→    customerName: '',
+   156→    customerPhone: '',
+   157→    stylistId: '',
+   158→    serviceId: '',
+   159→    date: selectedDate,
+   160→    time: '09:00',
+   161→    notes: '',
+   162→  })
+   163→
+   164→  // Get appointments for selected date
+   165→  const dayAppointments = useMemo(() => {
+   166→    return appointments.filter(a => a.date === selectedDate)
+   167→  }, [appointments, selectedDate])
+   168→
+   169→  // Stats
+   170→  const stats = useMemo(() => {
+   171→    const todayAppts = appointments.filter(a => a.date === selectedDate)
+   172→    const completed = todayAppts.filter(a => a.status === 'completed').length
+   173→    const scheduled = todayAppts.filter(a => a.status === 'scheduled' || a.status === 'confirmed').length
+   174→    const inProgress = todayAppts.filter(a => a.status === 'in-progress').length
+   175→    const totalRevenue = todayAppts.reduce((sum, a) => sum + a.total, 0)
+   176→    
+   177→    return { completed, scheduled, inProgress, total: todayAppts.length, totalRevenue, waiting: walkIns.length }
+   178→  }, [appointments, selectedDate, walkIns])
+   179→
+   180→  // Get service by ID
+   181→  const getService = (id: string) => sampleServices.find(s => s.id === id)
+   182→  const getStylist = (id: string) => sampleStylists.find(s => s.id === id)
+   183→
+   184→  // Navigate dates
+   185→  const navigateDate = (direction: 'prev' | 'next') => {
+   186→    const current = new Date(selectedDate)
+   187→    current.setDate(current.getDate() + (direction === 'next' ? 1 : -1))
+   188→    setSelectedDate(current.toISOString().split('T')[0])
+   189→  }
+   190→
+   191→  // Format date for display
+   192→  const formatDate = (dateStr: string) => {
+   193→    const date = new Date(dateStr)
+   194→    return date.toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+   195→  }
+   196→
+   197→  // Create new appointment
+   198→  const handleCreateBooking = () => {
+   199→    const service = getService(newBooking.serviceId)
+   200→    if (!service) return
+   201→
+   202→    const appointment: Appointment = {
+   203→      id: `a${Date.now()}`,
+   204→      customerId: `c${Date.now()}`,
+   205→      customerName: newBooking.customerName,
+   206→      customerPhone: newBooking.customerPhone,
+   207→      stylistId: newBooking.stylistId,
+   208→      serviceId: newBooking.serviceId,
+   209→      date: newBooking.date,
+   210→      time: newBooking.time,
+   211→      duration: service.duration,
+   212→      status: 'scheduled',
+   213→      notes: newBooking.notes,
+   214→      total: service.price,
+   215→    }
+   216→
+   217→    setAppointments(prev => [...prev, appointment])
+   218→    setNewBookingOpen(false)
+   219→    setNewBooking({
+   220→      customerName: '',
+   221→      customerPhone: '',
+   222→      stylistId: '',
+   223→      serviceId: '',
+   224→      date: selectedDate,
+   225→      time: '09:00',
+   226→      notes: '',
+   227→    })
+   228→  }
+   229→
+   230→  // Update appointment status
+   231→  const updateAppointmentStatus = (id: string, status: Appointment['status']) => {
+   232→    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a))
+   233→  }
+   234→
+   235→  // Call walk-in
+   236→  const callWalkIn = (id: string) => {
+   237→    setWalkIns(prev => prev.map(w => w.id === id ? { ...w, status: 'called' } : w))
+   238→  }
+   239→
+   240→  // Available time slots (not booked)
+   241→  const getAvailableSlots = (stylistId: string) => {
+   242→    const stylistAppts = dayAppointments.filter(a => a.stylistId === stylistId)
+   243→    const bookedTimes = stylistAppts.map(a => a.time)
+   244→    return timeSlots.filter(t => !bookedTimes.includes(t))
+   245→  }
+   246→
+   247→  // Render calendar grid
+   248→  const renderCalendarGrid = () => {
+   249→    const hours = Array.from({ length: 11 }, (_, i) => i + 8) // 8 AM to 6 PM
+   250→    
+   251→    return (
+   252→      <div className="relative overflow-auto">
+   253→        {/* Time column */}
+   254→        <div className="flex">
+   255→          <div className="w-16 flex-shrink-0 border-r border-gray-200">
+   256→            <div className="h-12 border-b border-gray-200 bg-gray-50" />
+   257→            {hours.map(hour => (
+   258→              <div key={hour} className="h-16 border-b border-gray-100 flex items-start justify-end pr-2 pt-1">
+   259→                <span className="text-xs text-gray-500">{hour.toString().padStart(2, '0')}:00</span>
+   260→              </div>
+   261→            ))}
+   262→          </div>
+   263→
+   264→          {/* Stylist columns */}
+   265→          <div className="flex-1 flex overflow-x-auto">
+   266→            {sampleStylists.filter(s => s.status !== 'off').map(stylist => (
+   267→              <div key={stylist.id} className="w-48 flex-shrink-0 border-r border-gray-200">
+   268→                {/* Stylist header */}
+   269→                <div 
+   270→                  className="h-12 border-b border-gray-200 p-2 flex items-center gap-2 cursor-pointer hover:bg-gray-50"
+   271→                  style={{ backgroundColor: stylist.status === 'available' ? `${stylist.color}10` : 'transparent' }}
+   272→                  onClick={() => setSelectedStylist(stylist.id)}
+   273→                >
+   274→                  <div 
+   275→                    className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
+   276→                    style={{ backgroundColor: stylist.color + '20' }}
+   277→                  >
+   278→                    {stylist.avatar}
+   279→                  </div>
+   280→                  <div className="flex-1 min-w-0">
+   281→                    <p className="text-xs font-medium text-[#1A1A1A] truncate">{stylist.name}</p>
+   282→                    <div className="flex items-center gap-1">
+   283→                      <span className={`w-1.5 h-1.5 rounded-full ${
+   284→                        stylist.status === 'available' ? 'bg-green-500' :
+   285→                        stylist.status === 'busy' ? 'bg-amber-500' :
+   286→                        stylist.status === 'break' ? 'bg-blue-500' : 'bg-gray-300'
+   287→                      }`} />
+   288→                      <span className="text-[9px] text-gray-500 capitalize">{stylist.status}</span>
+   289→                    </div>
+   290→                  </div>
+   291→                </div>
+   292→
+   293→                {/* Time slots */}
+   294→                <div className="relative">
+   295→                  {hours.map(hour => (
+   296→                    <div key={hour} className="h-16 border-b border-gray-100 hover:bg-gray-50" />
+   297→                  ))}
+   298→
+   299→                  {/* Appointments */}
+   300→                  {dayAppointments
+   301→                    .filter(a => a.stylistId === stylist.id)
+   302→                    .map(appointment => {
+   303→                      const service = getService(appointment.serviceId)
+   304→                      const startHour = parseInt(appointment.time.split(':')[0])
+   305→                      const startMinute = parseInt(appointment.time.split(':')[1])
+   306→                      const top = ((startHour - 8) * 64) + (startMinute / 60 * 64)
+   307→                      const height = (appointment.duration / 60) * 64
+   308→
+   309→                      return (
+   310→                        <div
+   311→                          key={appointment.id}
+   312→                          className={`absolute left-1 right-1 rounded-md p-1.5 cursor-pointer overflow-hidden ${
+   313→                            appointment.status === 'completed' ? 'bg-green-100 border border-green-200' :
+   314→                            appointment.status === 'in-progress' ? 'bg-blue-100 border border-blue-200' :
+   315→                            appointment.status === 'cancelled' ? 'bg-red-50 border border-red-200 opacity-50' :
+   316→                            'bg-[#00897B]/10 border border-[#00897B]/30'
+   317→                          }`}
+   318→                          style={{ top, height }}
+   319→                          onClick={() => {
+   320→                            setSelectedAppointment(appointment)
+   321→                            setAppointmentDetailOpen(true)
+   322→                          }}
+   323→                        >
+   324→                          <p className="text-[10px] font-medium text-[#1A1A1A] truncate">
+   325→                            {appointment.customerName}
+   326→                          </p>
+   327→                          <p className="text-[9px] text-gray-600 truncate">
+   328→                            {service?.name}
+   329→                          </p>
+   330→                          <p className="text-[9px] text-[#00897B] font-medium">
+   331→                            {appointment.time} ({appointment.duration}min)
+   332→                          </p>
+   333→                        </div>
+   334→                      )
+   335→                    })}
+   336→                </div>
+   337→              </div>
+   338→            ))}
+   339→          </div>
+   340→        </div>
+   341→      </div>
+   342→    )
+   343→  }
+   344→
+   345→  return (
+   346→    <div className="flex flex-col h-full bg-white">
+   347→      {/* Header */}
+   348→      <div className="border-b border-gray-200 px-6 py-4">
+   349→        <div className="flex items-center justify-between">
+   350→          <div>
+   351→            <h1 className="text-xl font-semibold text-[#1A1A1A] flex items-center gap-2">
+   352→              <Calendar className="h-5 w-5 text-[#00897B]" />
+   353→              Booking & Appointments
+   354→            </h1>
+   355→            <p className="text-sm text-[#757575]">Manage appointments, walk-ins, and stylist schedules</p>
+   356→          </div>
+   357→          <div className="flex items-center gap-3">
+   358→            <Button variant="outline" size="sm" className="gap-2">
+   359→              <Eye className="h-4 w-4" />
+   360→              Today
+   361→            </Button>
+   362→            <Button 
+   363→              className="bg-[#00897B] hover:bg-[#00695C] gap-2"
+   364→              onClick={() => setNewBookingOpen(true)}
+   365→            >
+   366→              <Plus className="h-4 w-4" />
+   367→              New Booking
+   368→            </Button>
+   369→          </div>
+   370→        </div>
+   371→      </div>
+   372→
+   373→      {/* Stats Row */}
+   374→      <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-gray-50 border-b border-gray-200">
+   375→        <Card className="p-3">
+   376→          <div className="flex items-center gap-2">
+   377→            <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+   378→              <Calendar className="h-4 w-4" />
+   379→            </div>
+   380→            <div>
+   381→              <p className="text-lg font-bold text-[#1A1A1A]">{stats.total}</p>
+   382→              <p className="text-[10px] text-[#757575]">Today's Bookings</p>
+   383→            </div>
+   384→          </div>
+   385→        </Card>
+   386→        <Card className="p-3">
+   387→          <div className="flex items-center gap-2">
+   388→            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+   389→              <Clock className="h-4 w-4" />
+   390→            </div>
+   391→            <div>
+   392→              <p className="text-lg font-bold text-[#1A1A1A]">{stats.scheduled}</p>
+   393→              <p className="text-[10px] text-[#757575]">Scheduled</p>
+   394→            </div>
+   395→          </div>
+   396→        </Card>
+   397→        <Card className="p-3">
+   398→          <div className="flex items-center gap-2">
+   399→            <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+   400→              <Timer className="h-4 w-4" />
+   401→            </div>
+   402→            <div>
+   403→              <p className="text-lg font-bold text-[#1A1A1A]">{stats.inProgress}</p>
+   404→              <p className="text-[10px] text-[#757575]">In Progress</p>
+   405→            </div>
+   406→          </div>
+   407→        </Card>
+   408→        <Card className="p-3">
+   409→          <div className="flex items-center gap-2">
+   410→            <div className="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
+   411→              <CheckCircle2 className="h-4 w-4" />
+   412→            </div>
+   413→            <div>
+   414→              <p className="text-lg font-bold text-[#1A1A1A]">{stats.completed}</p>
+   415→              <p className="text-[10px] text-[#757575]">Completed</p>
+   416→            </div>
+   417→          </div>
+   418→        </Card>
+   419→        <Card className="p-3">
+   420→          <div className="flex items-center gap-2">
+   421→            <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
+   422→              <Users className="h-4 w-4" />
+   423→            </div>
+   424→            <div>
+   425→              <p className="text-lg font-bold text-[#1A1A1A]">{stats.waiting}</p>
+   426→              <p className="text-[10px] text-[#757575]">Walk-ins Waiting</p>
+   427→            </div>
+   428→          </div>
+   429→        </Card>
+   430→        <Card className="p-3">
+   431→          <div className="flex items-center gap-2">
+   432→            <div className="w-8 h-8 rounded-lg bg-[#00897B]/10 text-[#00897B] flex items-center justify-center">
+   433→              <span className="text-sm font-bold">R</span>
+   434→            </div>
+   435→            <div>
+   436→              <p className="text-lg font-bold text-[#1A1A1A]">R{stats.totalRevenue.toLocaleString()}</p>
+   437→              <p className="text-[10px] text-[#757575]">Today's Revenue</p>
+   438→            </div>
+   439→          </div>
+   440→        </Card>
+   441→      </div>
+   442→
+   443→      {/* Main Content */}
+   444→      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="flex-1 flex flex-col">
+   445→        <div className="px-6 pt-4 border-b border-gray-200">
+   446→          <TabsList className="bg-transparent">
+   447→            <TabsTrigger value="calendar" className="data-[state=active]:bg-[#E0F2F1] data-[state=active]:text-[#00897B]">
+   448→              <Calendar className="h-4 w-4 mr-2" />
+   449→              Calendar View
+   450→            </TabsTrigger>
+   451→            <TabsTrigger value="list" className="data-[state=active]:bg-[#E0F2F1] data-[state=active]:text-[#00897B]">
+   452→              <Clock className="h-4 w-4 mr-2" />
+   453→              List View
+   454→            </TabsTrigger>
+   455→            <TabsTrigger value="walkins" className="data-[state=active]:bg-[#E0F2F1] data-[state=active]:text-[#00897B]">
+   456→              <Users className="h-4 w-4 mr-2" />
+   457→              Walk-in Queue
+   458→            </TabsTrigger>
+   459→            <TabsTrigger value="services" className="data-[state=active]:bg-[#E0F2F1] data-[state=active]:text-[#00897B]">
+   460→              <Scissors className="h-4 w-4 mr-2" />
+   461→              Services
+   462→            </TabsTrigger>
+   463→          </TabsList>
+   464→        </div>
+   465→
+   466→        <TabsContent value="calendar" className="flex-1 m-0 overflow-hidden">
+   467→          <div className="h-full flex flex-col">
+   468→            {/* Date Navigation */}
+   469→            <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200">
+   470→              <div className="flex items-center gap-3">
+   471→                <Button variant="outline" size="icon" onClick={() => navigateDate('prev')}>
+   472→                  <ChevronLeft className="h-4 w-4" />
+   473→                </Button>
+   474→                <div className="text-center">
+   475→                  <p className="text-sm font-medium text-[#1A1A1A]">{formatDate(selectedDate)}</p>
+   476→                </div>
+   477→                <Button variant="outline" size="icon" onClick={() => navigateDate('next')}>
+   478→                  <ChevronRight className="h-4 w-4" />
+   479→                </Button>
+   480→              </div>
+   481→              <div className="flex items-center gap-2">
+   482→                <input
+   483→                  type="date"
+   484→                  value={selectedDate}
+   485→                  onChange={(e) => setSelectedDate(e.target.value)}
+   486→                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+   487→                />
+   488→              </div>
+   489→            </div>
+   490→
+   491→            {/* Calendar Grid */}
+   492→            <div className="flex-1 overflow-auto">
+   493→              {renderCalendarGrid()}
+   494→            </div>
+   495→          </div>
+   496→        </TabsContent>
+   497→
+   498→        <TabsContent value="list" className="flex-1 m-0 overflow-auto p-6">
+   499→          <div className="space-y-3">
+   500→            {dayAppointments.map(appointment => {
+   501→              const stylist = getStylist(appointment.stylistId)
+   502→              const service = getService(appointment.serviceId)
+   503→              
+   504→              return (
+   505→                <Card key={appointment.id} className="cursor-pointer hover:border-[#00897B] transition-colors"
+   506→                  onClick={() => {
+   507→                    setSelectedAppointment(appointment)
+   508→                    setAppointmentDetailOpen(true)
+   509→                  }}
+   510→                >
+   511→                  <CardContent className="p-4">
+   512→                    <div className="flex items-center justify-between">
+   513→                      <div className="flex items-center gap-4">
+   514→                        <div className="w-12 h-12 rounded-lg bg-[#E0F2F1] text-[#00897B] flex items-center justify-center text-lg">
+   515→                          {stylist?.avatar}
+   516→                        </div>
+   517→                        <div>
+   518→                          <p className="font-medium text-[#1A1A1A]">{appointment.customerName}</p>
+   519→                          <p className="text-sm text-[#757575]">{service?.name} • {stylist?.name}</p>
+   520→                        </div>
+   521→                      </div>
+   522→                      <div className="flex items-center gap-4">
+   523→                        <div className="text-right">
+   524→                          <p className="font-medium text-[#1A1A1A]">{appointment.time}</p>
+   525→                          <p className="text-sm text-[#757575]">{appointment.duration} min</p>
+   526→                        </div>
+   527→                        <Badge className={
+   528→                          appointment.status === 'completed' ? 'bg-green-100 text-green-700' :
+   529→                          appointment.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
+   530→                          appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+   531→                          appointment.status === 'confirmed' ? 'bg-purple-100 text-purple-700' :
+   532→                          'bg-gray-100 text-gray-700'
+   533→                        }>
+   534→                          {appointment.status}
+   535→                        </Badge>
+   536→                        <p className="font-bold text-[#00897B]">R{appointment.total}</p>
+   537→                      </div>
+   538→                    </div>
+   539→                  </CardContent>
+   540→                </Card>
+   541→              )
+   542→            })}
+   543→          </div>
+   544→        </TabsContent>
+   545→
+   546→        <TabsContent value="walkins" className="flex-1 m-0 overflow-auto p-6">
+   547→          <div className="max-w-2xl mx-auto">
+   548→            <Card className="mb-6">
+   549→              <CardHeader>
+   550→                <CardTitle className="text-base flex items-center gap-2">
+   551→                  <Users className="h-4 w-4" />
+   552→                  Walk-in Queue
+   553→                </CardTitle>
+   554→                <CardDescription>
+   555→                  Customers waiting without appointments
+   556→                </CardDescription>
+   557→              </CardHeader>
+   558→              <CardContent>
+   559→                {walkIns.length === 0 ? (
+   560→                  <div className="text-center py-8">
+   561→                    <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-green-500" />
+   562→                    <p className="text-sm text-[#757575]">No walk-ins waiting</p>
+   563→                  </div>
+   564→                ) : (
+   565→                  <div className="space-y-3">
+   566→                    {walkIns.map((walkIn, index) => (
+   567→                      <div key={walkIn.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+   568→                        <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+   569→                          #{walkIn.position}
+   570→                        </div>
+   571→                        <div className="flex-1">
+   572→                          <p className="font-medium text-[#1A1A1A]">{walkIn.customerName || 'Walk-in Customer'}</p>
+   573→                          <p className="text-sm text-[#757575]">{walkIn.service}</p>
+   574→                          {walkIn.stylistPreference && (
+   575→                            <p className="text-xs text-[#00897B]">Prefers: {walkIn.stylistPreference}</p>
+   576→                          )}
+   577→                        </div>
+   578→                        <div className="text-right">
+   579→                          <p className="text-sm text-[#757575]">Waiting: {walkIn.waitTime} min</p>
+   580→                          <Badge className={walkIn.status === 'waiting' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}>
+   581→                            {walkIn.status}
+   582→                          </Badge>
+   583→                        </div>
+   584→                        {walkIn.status === 'waiting' && (
+   585→                          <Button size="sm" className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => callWalkIn(walkIn.id)}>
+   586→                            Call
+   587→                          </Button>
+   588→                        )}
+   589→                      </div>
+   590→                    ))}
+   591→                  </div>
+   592→                )}
+   593→              </CardContent>
+   594→            </Card>
+   595→
+   596→            <Button className="w-full" variant="outline" onClick={() => {
+   597→              setNewBooking({ ...newBooking, customerName: 'Walk-in Customer' })
+   598→              setNewBookingOpen(true)
+   599→            }}>
+   600→              <Plus className="h-4 w-4 mr-2" />
+   601→              Add Walk-in
+   602→            </Button>
+   603→          </div>
+   604→        </TabsContent>
+   605→
+   606→        <TabsContent value="services" className="flex-1 m-0 overflow-auto p-6">
+   607→          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   608→            {Object.entries(
+   609→              sampleServices.reduce((acc, service) => {
+   610→                if (!acc[service.category]) acc[service.category] = []
+   611→                acc[service.category].push(service)
+   612→                return acc
+   613→              }, {} as Record<string, Service[]>)
+   614→            ).map(([category, services]) => (
+   615→              <Card key={category}>
+   616→                <CardHeader className="pb-2">
+   617→                  <CardTitle className="text-sm">{category}</CardTitle>
+   618→                </CardHeader>
+   619→                <CardContent>
+   620→                  <div className="space-y-2">
+   621→                    {services.map(service => (
+   622→                      <div key={service.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+   623→                        <div>
+   624→                          <p className="text-sm font-medium text-[#1A1A1A]">{service.name}</p>
+   625→                          <p className="text-xs text-[#757575]">{service.duration} min</p>
+   626→                        </div>
+   627→                        <p className="font-bold text-[#00897B]">R{service.price}</p>
+   628→                      </div>
+   629→                    ))}
+   630→                  </div>
+   631→                </CardContent>
+   632→              </Card>
+   633→            ))}
+   634→          </div>
+   635→        </TabsContent>
+   636→      </Tabs>
+   637→
+   638→      {/* New Booking Dialog */}
+   639→      <Dialog open={newBookingOpen} onOpenChange={setNewBookingOpen}>
+   640→        <DialogContent className="sm:max-w-lg">
+   641→          <DialogHeader>
+   642→            <DialogTitle>Create New Booking</DialogTitle>
+   643→            <DialogDescription>
+   644→              Schedule an appointment for a customer
+   645→            </DialogDescription>
+   646→          </DialogHeader>
+   647→          <div className="space-y-4 py-4">
+   648→            <div className="grid grid-cols-2 gap-4">
+   649→              <div>
+   650→                <label className="text-sm font-medium text-[#1A1A1A] mb-1 block">Customer Name</label>
+   651→                <Input 
+   652→                  value={newBooking.customerName}
+   653→                  onChange={(e) => setNewBooking(prev => ({ ...prev, customerName: e.target.value }))}
+   654→                  placeholder="Enter name"
+   655→                />
+   656→              </div>
+   657→              <div>
+   658→                <label className="text-sm font-medium text-[#1A1A1A] mb-1 block">Phone</label>
+   659→                <Input 
+   660→                  value={newBooking.customerPhone}
+   661→                  onChange={(e) => setNewBooking(prev => ({ ...prev, customerPhone: e.target.value }))}
+   662→                  placeholder="082 123 4567"
+   663→                />
+   664→              </div>
+   665→            </div>
+   666→            <div className="grid grid-cols-2 gap-4">
+   667→              <div>
+   668→                <label className="text-sm font-medium text-[#1A1A1A] mb-1 block">Service</label>
+   669→                <Select value={newBooking.serviceId} onValueChange={(v) => setNewBooking(prev => ({ ...prev, serviceId: v }))}>
+   670→                  <SelectTrigger>
+   671→                    <SelectValue placeholder="Select service" />
+   672→                  </SelectTrigger>
+   673→                  <SelectContent>
+   674→                    {sampleServices.map(service => (
+   675→                      <SelectItem key={service.id} value={service.id}>
+   676→                        {service.name} - R{service.price} ({service.duration}min)
+   677→                      </SelectItem>
+   678→                    ))}
+   679→                  </SelectContent>
+   680→                </Select>
+   681→              </div>
+   682→              <div>
+   683→                <label className="text-sm font-medium text-[#1A1A1A] mb-1 block">Stylist</label>
+   684→                <Select value={newBooking.stylistId} onValueChange={(v) => setNewBooking(prev => ({ ...prev, stylistId: v }))}>
+   685→                  <SelectTrigger>
+   686→                    <SelectValue placeholder="Select stylist" />
+   687→                  </SelectTrigger>
+   688→                  <SelectContent>
+   689→                    {sampleStylists.filter(s => s.status !== 'off').map(stylist => (
+   690→                      <SelectItem key={stylist.id} value={stylist.id}>
+   691→                        {stylist.name} ({stylist.specialties.slice(0, 2).join(', ')})
+   692→                      </SelectItem>
+   693→                    ))}
+   694→                  </SelectContent>
+   695→                </Select>
+   696→              </div>
+   697→            </div>
+   698→            <div className="grid grid-cols-2 gap-4">
+   699→              <div>
+   700→                <label className="text-sm font-medium text-[#1A1A1A] mb-1 block">Date</label>
+   701→                <Input 
+   702→                  type="date"
+   703→                  value={newBooking.date}
+   704→                  onChange={(e) => setNewBooking(prev => ({ ...prev, date: e.target.value }))}
+   705→                />
+   706→              </div>
+   707→              <div>
+   708→                <label className="text-sm font-medium text-[#1A1A1A] mb-1 block">Time</label>
+   709→                <Select value={newBooking.time} onValueChange={(v) => setNewBooking(prev => ({ ...prev, time: v }))}>
+   710→                  <SelectTrigger>
+   711→                    <SelectValue placeholder="Select time" />
+   712→                  </SelectTrigger>
+   713→                  <SelectContent>
+   714→                    {timeSlots.slice(0, 20).map(slot => (
+   715→                      <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+   716→                    ))}
+   717→                  </SelectContent>
+   718→                </Select>
+   719→              </div>
+   720→            </div>
+   721→            <div>
+   722→              <label className="text-sm font-medium text-[#1A1A1A] mb-1 block">Notes</label>
+   723→              <Input 
+   724→                value={newBooking.notes}
+   725→                onChange={(e) => setNewBooking(prev => ({ ...prev, notes: e.target.value }))}
+   726→                placeholder="Special requests..."
+   727→              />
+   728→            </div>
+   729→          </div>
+   730→          <DialogFooter>
+   731→            <Button variant="outline" onClick={() => setNewBookingOpen(false)}>Cancel</Button>
+   732→            <Button 
+   733→              className="bg-[#00897B] hover:bg-[#00695C]"
+   734→              disabled={!newBooking.customerName || !newBooking.serviceId || !newBooking.stylistId}
+   735→              onClick={handleCreateBooking}
+   736→            >
+   737→              Create Booking
+   738→            </Button>
+   739→          </DialogFooter>
+   740→        </DialogContent>
+   741→      </Dialog>
+   742→
+   743→      {/* Appointment Detail Dialog */}
+   744→      <Dialog open={appointmentDetailOpen} onOpenChange={setAppointmentDetailOpen}>
+   745→        <DialogContent className="sm:max-w-md">
+   746→          {selectedAppointment && (
+   747→            <>
+   748→              <DialogHeader>
+   749→                <DialogTitle>Appointment Details</DialogTitle>
+   750→              </DialogHeader>
+   751→              <div className="space-y-4 py-4">
+   752→                <div className="flex items-center gap-4">
+   753→                  <div className="w-14 h-14 rounded-lg bg-[#E0F2F1] text-[#00897B] flex items-center justify-center text-2xl">
+   754→                    {getStylist(selectedAppointment.stylistId)?.avatar}
+   755→                  </div>
+   756→                  <div>
+   757→                    <p className="font-semibold text-lg text-[#1A1A1A]">{selectedAppointment.customerName}</p>
+   758→                    <p className="text-sm text-[#757575]">{selectedAppointment.customerPhone}</p>
+   759→                  </div>
+   760→                </div>
+   761→                
+   762→                <Separator />
+   763→                
+   764→                <div className="grid grid-cols-2 gap-4 text-sm">
+   765→                  <div>
+   766→                    <p className="text-[#757575]">Service</p>
+   767→                    <p className="font-medium text-[#1A1A1A]">{getService(selectedAppointment.serviceId)?.name}</p>
+   768→                  </div>
+   769→                  <div>
+   770→                    <p className="text-[#757575]">Stylist</p>
+   771→                    <p className="font-medium text-[#1A1A1A]">{getStylist(selectedAppointment.stylistId)?.name}</p>
+   772→                  </div>
+   773→                  <div>
+   774→                    <p className="text-[#757575]">Date & Time</p>
+   775→                    <p className="font-medium text-[#1A1A1A]">{selectedAppointment.time} ({selectedAppointment.duration}min)</p>
+   776→                  </div>
+   777→                  <div>
+   778→                    <p className="text-[#757575]">Status</p>
+   779→                    <Badge className={
+   780→                      selectedAppointment.status === 'completed' ? 'bg-green-100 text-green-700' :
+   781→                      selectedAppointment.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
+   782→                      'bg-gray-100 text-gray-700'
+   783→                    }>
+   784→                      {selectedAppointment.status}
+   785→                    </Badge>
+   786→                  </div>
+   787→                </div>
+   788→
+   789→                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+   790→                  <span className="text-[#757575]">Total</span>
+   791→                  <span className="text-lg font-bold text-[#00897B]">R{selectedAppointment.total}</span>
+   792→                </div>
+   793→              </div>
+   794→              <DialogFooter className="flex-col gap-2">
+   795→                <div className="flex gap-2 w-full">
+   796→                  {selectedAppointment.status === 'scheduled' && (
+   797→                    <>
+   798→                      <Button variant="outline" className="flex-1" onClick={() => {
+   799→                        updateAppointmentStatus(selectedAppointment.id, 'confirmed')
+   800→                        setAppointmentDetailOpen(false)
+   801→                      }}>
+   802→                        Confirm
+   803→                      </Button>
+   804→                      <Button className="flex-1 bg-[#00897B] hover:bg-[#00695C]" onClick={() => {
+   805→                        updateAppointmentStatus(selectedAppointment.id, 'in-progress')
+   806→                        setAppointmentDetailOpen(false)
+   807→                      }}>
+   808→                        Start Service
+   809→                      </Button>
+   810→                    </>
+   811→                  )}
+   812→                  {selectedAppointment.status === 'confirmed' && (
+   813→                    <Button className="w-full bg-[#00897B] hover:bg-[#00695C]" onClick={() => {
+   814→                      updateAppointmentStatus(selectedAppointment.id, 'in-progress')
+   815→                      setAppointmentDetailOpen(false)
+   816→                    }}>
+   817→                      Start Service
+   818→                    </Button>
+   819→                  )}
+   820→                  {selectedAppointment.status === 'in-progress' && (
+   821→                    <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => {
+   822→                      updateAppointmentStatus(selectedAppointment.id, 'completed')
+   823→                      setAppointmentDetailOpen(false)
+   824→                    }}>
+   825→                      Complete Service
+   826→                    </Button>
+   827→                  )}
+   828→                </div>
+   829→                <div className="flex gap-2 w-full">
+   830→                  <Button variant="ghost" size="sm" className="flex-1 text-red-500 hover:text-red-600">
+   831→                    <Trash2 className="h-4 w-4 mr-2" />
+   832→                    Cancel
+   833→                  </Button>
+   834→                </div>
+   835→              </DialogFooter>
+   836→            </>
+   837→          )}
+   838→        </DialogContent>
+   839→      </Dialog>
+   840→    </div>
+   841→  )
+   842→}
+   843→

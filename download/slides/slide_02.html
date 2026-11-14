@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>02 · The Problem — Groway Merchant OS</title>
+<link rel="stylesheet" href="global.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;width:1280px;height:720px;overflow:hidden;background:var(--bg);-webkit-font-smoothing:antialiased;}
+  .headline{font-family:var(--font-heading);font-weight:700;font-size:calc(var(--fs-h1) * 1.18);line-height:1.14;letter-spacing:-0.015em;color:var(--ink);}
+  .stat-value{font-family:var(--font-num);font-weight:600;font-size:var(--fs-display);line-height:1.05;letter-spacing:-0.01em;}
+  .icon-tile{width:40px;height:40px;border-radius:10px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+</style>
+</head>
+<body>
+<div class="slide flex flex-col" style="padding:52px 64px 34px;">
+
+  <!-- header -->
+  <div class="grid items-start" style="grid-template-columns:640px 1fr;column-gap:48px;">
+    <div>
+      <div class="flex items-center gap-4">
+        <span class="rule" style="width:34px;"></span>
+        <span class="kicker">THE PROBLEM</span>
+      </div>
+      <h1 class="headline" style="margin-top:14px;">Africa&rsquo;s retail gap — and the <span style="color:var(--primary);">fake goods</span> filling it</h1>
+    </div>
+    <p style="border-left:3px solid var(--primary);padding-left:20px;font-size:var(--fs-h3);line-height:1.6;color:var(--ink-soft);margin-top:6px;">
+      Over 90% of retail in Sub-Saharan Africa runs through informal channels, yet these merchants lack basic
+      digital tools — and their customers receive an estimated <strong style="color:var(--ink);font-weight:700;">1&nbsp;in&nbsp;3</strong> products
+      that is substandard or falsified.
+    </p>
+  </div>
+
+  <!-- stats band -->
+  <div class="flex gap-5" style="margin-top:30px;">
+    <div class="card flex-1 flex flex-col justify-between" style="padding:24px 26px;height:180px;">
+      <div class="flex items-start justify-between">
+        <span class="stat-value" style="color:var(--primary);">$240B</span>
+        <i class="material-icons" style="font-size:22px;color:var(--primary);">storefront</i>
+      </div>
+      <p style="font-size:var(--fs-small);line-height:1.5;color:var(--ink-soft);">informal retail market size annually (industry estimates)</p>
+    </div>
+    <div class="card flex-1 flex flex-col justify-between" style="padding:24px 26px;height:180px;">
+      <div class="flex items-start justify-between">
+        <span class="stat-value" style="color:var(--primary);">50M+</span>
+        <i class="material-icons" style="font-size:22px;color:var(--primary);">groups</i>
+      </div>
+      <p style="font-size:var(--fs-small);line-height:1.5;color:var(--ink-soft);">informal merchants across Africa</p>
+    </div>
+    <div class="card flex-1 flex flex-col justify-between" style="padding:24px 26px;height:180px;">
+      <div class="flex items-start justify-between">
+        <span class="stat-value" style="color:var(--accent);">R360B</span>
+        <i class="material-icons" style="font-size:22px;color:var(--accent);">report</i>
+      </div>
+      <p style="font-size:var(--fs-small);line-height:1.5;color:var(--ink-soft);">estimated annual value of counterfeit goods in SA-Kenya-Nigeria corridors (industry estimates)</p>
+    </div>
+  </div>
+
+  <!-- challenge chips 2x2 -->
+  <div class="grid grid-cols-2 gap-4" style="margin-top:26px;">
+    <div class="card-soft flex items-center gap-4" style="padding:18px 20px;min-height:92px;">
+      <span class="icon-tile"><i class="material-icons" style="font-size:20px;color:var(--primary);">credit_card_off</i></span>
+      <p style="font-size:var(--fs-body);line-height:1.55;color:var(--ink-soft);"><strong style="color:var(--ink);font-weight:700;">No digital payments</strong> — cash-only operations limit growth and create security risks</p>
+    </div>
+    <div class="card-soft flex items-center gap-4" style="padding:18px 20px;min-height:92px;">
+      <span class="icon-tile"><i class="material-icons" style="font-size:20px;color:var(--primary);">inventory</i></span>
+      <p style="font-size:var(--fs-body);line-height:1.55;color:var(--ink-soft);"><strong style="color:var(--ink);font-weight:700;">Manual inventory</strong> — no stock visibility, leading to lost sales</p>
+    </div>
+    <div class="card-soft flex items-center gap-4" style="padding:18px 20px;min-height:92px;">
+      <span class="icon-tile"><i class="material-icons" style="font-size:20px;color:var(--primary);">account_balance</i></span>
+      <p style="font-size:var(--fs-body);line-height:1.55;color:var(--ink-soft);"><strong style="color:var(--ink);font-weight:700;">Financial exclusion</strong> — no credit, insurance, or business banking</p>
+    </div>
+    <div class="card-soft flex items-center gap-4" style="padding:18px 20px;min-height:92px;">
+      <span class="icon-tile"><i class="material-icons" style="font-size:20px;color:var(--primary);">report_problem</i></span>
+      <p style="font-size:var(--fs-body);line-height:1.55;color:var(--ink-soft);"><strong style="color:var(--ink);font-weight:700;">Counterfeit exposure</strong> — merchants unknowingly stock fake stock; consumers carry the health risk</p>
+    </div>
+  </div>
+
+  <!-- footnote -->
+  <div class="flex items-center gap-2" style="margin-top:auto;padding-top:14px;">
+    <i class="material-icons" style="font-size:15px;color:var(--ink-soft);">info_outline</i>
+    <span style="font-size:var(--fs-small);color:var(--ink-soft);">Market-size and counterfeit figures are industry estimates; company traction figures on later slides are pilot targets.</span>
+  </div>
+
+</div>
+</body>
+</html>

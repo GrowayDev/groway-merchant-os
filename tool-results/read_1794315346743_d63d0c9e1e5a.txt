@@ -1,0 +1,1574 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect } from 'react'
+     4→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Badge } from '@/components/ui/badge'
+     7→import { Progress } from '@/components/ui/progress'
+     8→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+     9→import { ScrollArea } from '@/components/ui/scroll-area'
+    10→import { Input } from '@/components/ui/input'
+    11→import { Separator } from '@/components/ui/separator'
+    12→import {
+    13→  Dialog,
+    14→  DialogContent,
+    15→  DialogDescription,
+    16→  DialogFooter,
+    17→  DialogHeader,
+    18→  DialogTitle,
+    19→} from '@/components/ui/dialog'
+    20→import {
+    21→  Brain,
+    22→  TrendingUp,
+    23→  TrendingDown,
+    24→  Minus,
+    25→  AlertTriangle,
+    26→  Package,
+    27→  ShoppingCart,
+    28→  BarChart3,
+    29→  Calendar,
+    30→  Clock,
+    31→  CheckCircle2,
+    32→  XCircle,
+    33→  Lightbulb,
+    34→  ArrowRight,
+    35→  Zap,
+    36→  RefreshCw,
+    37→  Send,
+    38→  FileText,
+    39→  DollarSign,
+    40→  Percent,
+    41→  AlertCircle,
+    42→  Info,
+    43→  ChevronRight,
+    44→  Sparkles,
+    45→  Target,
+    46→  Clock4,
+    47→  Building2,
+    48→  Truck,
+    49→  Trash2,
+    50→  Tag,
+    51→  ArrowDown,
+    52→  History,
+    53→  Filter,
+    54→  Search,
+    55→  MoreHorizontal,
+    56→  LucideIcon,
+    57→} from 'lucide-react'
+    58→
+    59→// Types
+    60→interface DemandForecast {
+    61→  productId: string
+    62→  productName: string
+    63→  sku: string
+    64→  category: string
+    65→  currentStock: number
+    66→  predictedDemand: number
+    67→  confidence: number
+    68→  trend: 'up' | 'down' | 'stable'
+    69→  seasonalFactor: number
+    70→  daysOfStock: number
+    71→  recommendedOrder: number
+    72→  accuracy: number
+    73→}
+    74→
+    75→interface ReorderSuggestion {
+    76→  id: string
+    77→  productId: string
+    78→  productName: string
+    79→  sku: string
+    80→  currentStock: number
+    81→  reorderPoint: number
+    82→  suggestedQty: number
+    83→  eoq: number
+    84→  leadTime: number
+    85→  supplierId: string
+    86→  supplierName: string
+    87→  unitCost: number
+    88→  totalCost: number
+    89→  savingsVsRetail: number
+    90→  urgency: 'critical' | 'high' | 'normal' | 'low'
+    91→  confidence: number
+    92→  reason: string
+    93→}
+    94→
+    95→interface DeadStockPrediction {
+    96→  id: string
+    97→  productId: string
+    98→  productName: string
+    99→  sku: string
+   100→  category: string
+   101→  stockQuantity: number
+   102→  stockValue: number
+   103→  daysSinceLastSale: number
+   104→  deadStockProbability: number
+   105→  holdingCostPerMonth: number
+   106→  suggestedAction: 'markdown' | 'clearance' | 'liquidate' | 'donate' | 'return'
+   107→  markdownPercent: number
+   108→  projectedRecovery: number
+   109→}
+   110→
+   111→interface AIInsight {
+   112→  id: string
+   113→  type: 'demand' | 'reorder' | 'dead_stock' | 'anomaly' | 'opportunity' | 'warning'
+   114→  priority: 'critical' | 'high' | 'medium' | 'low'
+   115→  title: string
+   116→  description: string
+   117→  recommendation: string
+   118→  confidence: number
+   119→  impact: string
+   120→  actionRequired: boolean
+   121→  actionLabel?: string
+   122→  productId?: string
+   123→  productName?: string
+   124→  createdAt: string
+   125→  category: string
+   126→}
+   127→
+   128→interface AnomalyAlert {
+   129→  id: string
+   130→  type: 'unusual_spike' | 'unusual_drop' | 'pattern_break' | 'seasonal_deviation'
+   131→  productId: string
+   132→  productName: string
+   133→  description: string
+   134→  severity: 'high' | 'medium' | 'low'
+   135→  detectedAt: string
+   136→  expectedValue: number
+   137→  actualValue: number
+   138→  deviationPercent: number
+   139→}
+   140→
+   141→// South African Holidays for seasonal analysis
+   142→const SA_HOLIDAYS = [
+   143→  { name: 'Christmas', date: '2024-12-25', impact: 'high', categories: ['all'] },
+   144→  { name: 'Easter', date: '2024-03-29', impact: 'high', categories: ['all'] },
+   145→  { name: 'Heritage Day', date: '2024-09-24', impact: 'medium', categories: ['all'] },
+   146→  { name: 'Freedom Day', date: '2024-04-27', impact: 'medium', categories: ['all'] },
+   147→  { name: 'Youth Day', date: '2024-06-16', impact: 'medium', categories: ['all'] },
+   148→  { name: 'Workers Day', date: '2024-05-01', impact: 'medium', categories: ['all'] },
+   149→]
+   150→
+   151→// Mock data generators
+   152→const generateMockForecasts = (): DemandForecast[] => {
+   153→  const products = [
+   154→    { name: 'Coca-Cola 340ml', sku: 'BEV-001', category: 'Beverages' },
+   155→    { name: 'White Bread', sku: 'BAK-001', category: 'Bakery' },
+   156→    { name: 'Sunflower Oil 750ml', sku: 'GRO-001', category: 'Groceries' },
+   157→    { name: 'Chicken Portions 1kg', sku: 'FRO-001', category: 'Frozen' },
+   158→    { name: 'Milk 2L', sku: 'DAI-001', category: 'Dairy' },
+   159→    { name: 'Rice 5kg', sku: 'GRO-002', category: 'Groceries' },
+   160→    { name: 'Washing Powder 2kg', sku: 'HOU-001', category: 'Household' },
+   161→    { name: 'Bread Rolls (6pk)', sku: 'BAK-002', category: 'Bakery' },
+   162→  ]
+   163→
+   164→  return products.map((p, i) => ({
+   165→    productId: `prod-${i + 1}`,
+   166→    productName: p.name,
+   167→    sku: p.sku,
+   168→    category: p.category,
+   169→    currentStock: Math.floor(Math.random() * 100) + 10,
+   170→    predictedDemand: Math.floor(Math.random() * 50) + 20,
+   171→    confidence: Math.floor(Math.random() * 20) + 75,
+   172→    trend: ['up', 'down', 'stable'][Math.floor(Math.random() * 3)] as 'up' | 'down' | 'stable',
+   173→    seasonalFactor: Math.random() * 0.4 + 0.8,
+   174→    daysOfStock: Math.floor(Math.random() * 30) + 3,
+   175→    recommendedOrder: Math.floor(Math.random() * 100) + 20,
+   176→    accuracy: Math.floor(Math.random() * 15) + 80,
+   177→  }))
+   178→}
+   179→
+   180→const generateMockReorderSuggestions = (): ReorderSuggestion[] => {
+   181→  const suppliers = [
+   182→    { id: 'sup-1', name: 'Tiger Brands', leadTime: 3 },
+   183→    { id: 'sup-2', name: 'Clover SA', leadTime: 2 },
+   184→    { id: 'sup-3', name: 'Nampak Distribution', leadTime: 5 },
+   185→    { id: 'sup-4', name: 'Freshmark', leadTime: 1 },
+   186→    { id: 'sup-5', name: 'Unilever SA', leadTime: 4 },
+   187→  ]
+   188→
+   189→  const products = [
+   190→    { name: 'Coca-Cola 340ml (Case)', sku: 'BEV-001-C', cost: 180, retail: 220 },
+   191→    { name: 'White Bread (Bulk)', sku: 'BAK-001-B', cost: 45, retail: 55 },
+   192→    { name: 'Sunflower Oil 750ml', sku: 'GRO-001', cost: 32, retail: 42 },
+   193→    { name: 'Chicken Portions 1kg', sku: 'FRO-001', cost: 85, retail: 105 },
+   194→    { name: 'Milk 2L (Crate)', sku: 'DAI-001-C', cost: 280, retail: 340 },
+   195→  ]
+   196→
+   197→  const urgencies: ('critical' | 'high' | 'normal' | 'low')[] = ['critical', 'high', 'normal', 'low']
+   198→  const reasons = [
+   199→    'Stock below reorder point',
+   200→    'High demand forecast',
+   201→    'Seasonal preparation',
+   202→    'Lead time buffer needed',
+   203→    'Supplier promotion ending',
+   204→  ]
+   205→
+   206→  return products.map((p, i) => {
+   207→    const supplier = suppliers[i % suppliers.length]
+   208→    const suggestedQty = Math.floor(Math.random() * 50) + 10
+   209→    return {
+   210→      id: `ro-${i + 1}`,
+   211→      productId: `prod-${i + 1}`,
+   212→      productName: p.name,
+   213→      sku: p.sku,
+   214→      currentStock: Math.floor(Math.random() * 20) + 2,
+   215→      reorderPoint: Math.floor(Math.random() * 15) + 10,
+   216→      suggestedQty,
+   217→      eoq: Math.floor(suggestedQty * 1.2),
+   218→      leadTime: supplier.leadTime,
+   219→      supplierId: supplier.id,
+   220→      supplierName: supplier.name,
+   221→      unitCost: p.cost,
+   222→      totalCost: suggestedQty * p.cost,
+   223→      savingsVsRetail: suggestedQty * (p.retail - p.cost),
+   224→      urgency: urgencies[Math.floor(Math.random() * urgencies.length)],
+   225→      confidence: Math.floor(Math.random() * 20) + 75,
+   226→      reason: reasons[Math.floor(Math.random() * reasons.length)],
+   227→    }
+   228→  })
+   229→}
+   230→
+   231→const generateMockDeadStock = (): DeadStockPrediction[] => {
+   232→  const products = [
+   233→    { name: 'Premium Gift Set', sku: 'GFT-001', category: 'Gifts', stock: 15, value: 4500 },
+   234→    { name: 'Seasonal Decor', sku: 'DEC-001', category: 'Seasonal', stock: 30, value: 2100 },
+   235→    { name: 'Old Brand Cereal', sku: 'GRO-050', category: 'Groceries', stock: 25, value: 875 },
+   236→    { name: 'Discontinued Snack', sku: 'SNK-020', category: 'Snacks', stock: 40, value: 1200 },
+   237→    { name: 'Export Batch Wine', sku: 'BEV-100', category: 'Beverages', stock: 12, value: 3600 },
+   238→    { name: 'Summer Collection', sku: 'APP-015', category: 'Apparel', stock: 20, value: 5800 },
+   239→  ]
+   240→
+   241→  const actions: ('markdown' | 'clearance' | 'liquidate' | 'donate' | 'return')[] = 
+   242→    ['markdown', 'clearance', 'liquidate', 'donate', 'return']
+   243→
+   244→  return products.map((p, i) => ({
+   245→    id: `ds-${i + 1}`,
+   246→    productId: `prod-${100 + i}`,
+   247→    productName: p.name,
+   248→    sku: p.sku,
+   249→    category: p.category,
+   250→    stockQuantity: p.stock,
+   251→    stockValue: p.value,
+   252→    daysSinceLastSale: Math.floor(Math.random() * 180) + 60,
+   253→    deadStockProbability: Math.floor(Math.random() * 30) + 65,
+   254→    holdingCostPerMonth: p.value * 0.02,
+   255→    suggestedAction: actions[Math.floor(Math.random() * actions.length)],
+   256→    markdownPercent: Math.floor(Math.random() * 40) + 20,
+   257→    projectedRecovery: p.value * (0.4 + Math.random() * 0.3),
+   258→  }))
+   259→}
+   260→
+   261→const generateMockInsights = (): AIInsight[] => {
+   262→  const insights: AIInsight[] = [
+   263→    {
+   264→      id: 'ins-1',
+   265→      type: 'demand',
+   266→      priority: 'critical',
+   267→      title: 'Demand Surge Expected',
+   268→      description: 'Coca-Cola products showing 45% demand increase trend for upcoming week. Historical patterns indicate month-end purchasing spike.',
+   269→      recommendation: 'Increase stock levels by 30% before 25th of the month. Consider bulk order from Tiger Brands.',
+   270→      confidence: 92,
+   271→      impact: 'Potential revenue gain: R15,000+ if stocked appropriately',
+   272→      actionRequired: true,
+   273→      actionLabel: 'Create Order',
+   274→      productId: 'prod-1',
+   275→      productName: 'Coca-Cola 340ml',
+   276→      createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+   277→      category: 'Demand Forecasting',
+   278→    },
+   279→    {
+   280→      id: 'ins-2',
+   281→      type: 'anomaly',
+   282→      priority: 'high',
+   283→      title: 'Unusual Sales Pattern Detected',
+   284→      description: 'Bread sales dropped 35% compared to typical Tuesday patterns. This deviation is outside normal variance.',
+   285→      recommendation: 'Check competitor pricing, verify product freshness, and review shelf placement.',
+   286→      confidence: 88,
+   287→      impact: 'Potential revenue loss: R2,500 daily',
+   288→      actionRequired: true,
+   289→      actionLabel: 'Investigate',
+   290→      productId: 'prod-2',
+   291→      productName: 'White Bread',
+   292→      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+   293→      category: 'Anomaly Detection',
+   294→    },
+   295→    {
+   296→      id: 'ins-3',
+   297→      type: 'reorder',
+   298→      priority: 'high',
+   299→      title: 'Stock-Out Risk Alert',
+   300→      description: 'Sunflower Oil will reach stock-out in 4 days based on current velocity. Lead time from supplier is 5 days.',
+   301→      recommendation: 'Place emergency order immediately or arrange transfer from nearby branch.',
+   302→      confidence: 95,
+   303→      impact: 'Potential lost sales: R8,000+ if stock-out occurs',
+   304→      actionRequired: true,
+   305→      actionLabel: 'Order Now',
+   306→      productId: 'prod-3',
+   307→      productName: 'Sunflower Oil 750ml',
+   308→      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
+   309→      category: 'Reorder Alerts',
+   310→    },
+   311→    {
+   312→      id: 'ins-4',
+   313→      type: 'dead_stock',
+   314→      priority: 'medium',
+   315→      title: 'Dead Stock Opportunity',
+   316→      description: '12 items identified with <5% chance of selling at current price. Total holding cost: R420/month.',
+   317→      recommendation: 'Implement 30% markdown on seasonal items. Projected recovery: R8,400.',
+   318→      confidence: 85,
+   319→      impact: 'Recover R8,400 vs R0 if left unsold',
+   320→      actionRequired: true,
+   321→      actionLabel: 'Apply Markdown',
+   322→      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
+   323→      category: 'Dead Stock Prevention',
+   324→    },
+   325→    {
+   326→      id: 'ins-5',
+   327→      type: 'opportunity',
+   328→      priority: 'medium',
+   329→      title: 'Bulk Order Savings',
+   330→      description: 'Combining orders for Milk, Bread, and Oil from Clover SA saves R1,200 in delivery fees.',
+   331→      recommendation: 'Consolidate weekly orders to Thursday delivery schedule.',
+   332→      confidence: 91,
+   333→      impact: 'Monthly savings: R4,800',
+   334→      actionRequired: false,
+   335→      actionLabel: 'View Order Plan',
+   336→      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+   337→      category: 'Cost Optimization',
+   338→    },
+   339→    {
+   340→      id: 'ins-6',
+   341→      type: 'warning',
+   342→      priority: 'low',
+   343→      title: 'Seasonal Preparation',
+   344→      description: 'Easter holiday in 3 weeks. Historical data shows 60% increase in chocolate and beverage sales.',
+   345→      recommendation: 'Begin building stock for holiday items. Suggested order quantities calculated.',
+   346→      confidence: 78,
+   347→      impact: 'Potential revenue opportunity: R25,000+',
+   348→      actionRequired: false,
+   349→      actionLabel: 'View Forecast',
+   350→      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
+   351→      category: 'Seasonal Planning',
+   352→    },
+   353→  ]
+   354→  return insights
+   355→}
+   356→
+   357→const generateMockAnomalies = (): AnomalyAlert[] => {
+   358→  return [
+   359→    {
+   360→      id: 'anom-1',
+   361→      type: 'unusual_spike',
+   362→      productId: 'prod-1',
+   363→      productName: 'Coca-Cola 340ml',
+   364→      description: 'Sales 150% above normal for this time of day',
+   365→      severity: 'high',
+   366→      detectedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+   367→      expectedValue: 12,
+   368→      actualValue: 30,
+   369→      deviationPercent: 150,
+   370→    },
+   371→    {
+   372→      id: 'anom-2',
+   373→      type: 'unusual_drop',
+   374→      productId: 'prod-5',
+   375→      productName: 'Milk 2L',
+   376→      description: 'Morning sales 60% below usual pattern',
+   377→      severity: 'medium',
+   378→      detectedAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+   379→      expectedValue: 25,
+   380→      actualValue: 10,
+   381→      deviationPercent: -60,
+   382→    },
+   383→    {
+   384→      id: 'anom-3',
+   385→      type: 'pattern_break',
+   386→      productId: 'prod-3',
+   387→      productName: 'Sunflower Oil 750ml',
+   388→      description: 'Weekend sales pattern not matching historical trend',
+   389→      severity: 'low',
+   390→      detectedAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+   391→      expectedValue: 8,
+   392→      actualValue: 3,
+   393→      deviationPercent: -62.5,
+   394→    },
+   395→  ]
+   396→}
+   397→
+   398→// Priority color mapping
+   399→const getPriorityColor = (priority: string) => {
+   400→  const colors = {
+   401→    critical: 'bg-red-100 text-red-700 border-red-200',
+   402→    high: 'bg-orange-100 text-orange-700 border-orange-200',
+   403→    medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+   404→    low: 'bg-green-100 text-green-700 border-green-200',
+   405→  }
+   406→  return colors[priority as keyof typeof colors] || colors.medium
+   407→}
+   408→
+   409→const getPriorityBg = (priority: string) => {
+   410→  const colors = {
+   411→    critical: 'bg-red-500',
+   412→    high: 'bg-orange-500',
+   413→    medium: 'bg-yellow-500',
+   414→    low: 'bg-green-500',
+   415→  }
+   416→  return colors[priority as keyof typeof colors] || colors.medium
+   417→}
+   418→
+   419→const getUrgencyColor = (urgency: string) => {
+   420→  const colors = {
+   421→    critical: 'bg-red-100 text-red-700',
+   422→    high: 'bg-orange-100 text-orange-700',
+   423→    normal: 'bg-blue-100 text-blue-700',
+   424→    low: 'bg-gray-100 text-gray-700',
+   425→  }
+   426→  return colors[urgency as keyof typeof colors] || colors.normal
+   427→}
+   428→
+   429→const getTrendIcon = (trend: string) => {
+   430→  if (trend === 'up') return <TrendingUp className="h-4 w-4 text-green-500" />
+   431→  if (trend === 'down') return <TrendingDown className="h-4 w-4 text-red-500" />
+   432→  return <Minus className="h-4 w-4 text-gray-500" />
+   433→}
+   434→
+   435→const getInsightIcon = (type: string): LucideIcon => {
+   436→  const icons: Record<string, LucideIcon> = {
+   437→    demand: TrendingUp,
+   438→    reorder: ShoppingCart,
+   439→    dead_stock: Trash2,
+   440→    anomaly: AlertTriangle,
+   441→    opportunity: Lightbulb,
+   442→    warning: AlertCircle,
+   443→  }
+   444→  return icons[type] || Info
+   445→}
+   446→
+   447→export function JaxAIView() {
+   448→  const [activeTab, setActiveTab] = useState('dashboard')
+   449→  const [isLoading, setIsLoading] = useState(false)
+   450→  const [forecasts, setForecasts] = useState<DemandForecast[]>([])
+   451→  const [reorderSuggestions, setReorderSuggestions] = useState<ReorderSuggestion[]>([])
+   452→  const [deadStockPredictions, setDeadStockPredictions] = useState<DeadStockPrediction[]>([])
+   453→  const [insights, setInsights] = useState<AIInsight[]>([])
+   454→  const [anomalies, setAnomalies] = useState<AnomalyAlert[]>([])
+   455→  const [selectedForecast, setSelectedForecast] = useState<DemandForecast | null>(null)
+   456→  const [selectedReorder, setSelectedReorder] = useState<ReorderSuggestion | null>(null)
+   457→  const [selectedDeadStock, setSelectedDeadStock] = useState<DeadStockPrediction | null>(null)
+   458→  const [rfqDialogOpen, setRfqDialogOpen] = useState(false)
+   459→  const [searchQuery, setSearchQuery] = useState('')
+   460→  const [filterCategory, setFilterCategory] = useState('all')
+   461→
+   462→  // Load data function - defined at component level for reuse
+   463→  const loadData = async () => {
+   464→    setIsLoading(true)
+   465→    // Simulate API call
+   466→    await new Promise(resolve => setTimeout(resolve, 500))
+   467→    setForecasts(generateMockForecasts())
+   468→    setReorderSuggestions(generateMockReorderSuggestions())
+   469→    setDeadStockPredictions(generateMockDeadStock())
+   470→    setInsights(generateMockInsights())
+   471→    setAnomalies(generateMockAnomalies())
+   472→    setIsLoading(false)
+   473→  }
+   474→
+   475→  // Load data on mount - using void to explicitly indicate fire-and-forget
+   476→  useEffect(() => {
+   477→    void (async () => {
+   478→      setIsLoading(true)
+   479→      await new Promise(resolve => setTimeout(resolve, 500))
+   480→      setForecasts(generateMockForecasts())
+   481→      setReorderSuggestions(generateMockReorderSuggestions())
+   482→      setDeadStockPredictions(generateMockDeadStock())
+   483→      setInsights(generateMockInsights())
+   484→      setAnomalies(generateMockAnomalies())
+   485→      setIsLoading(false)
+   486→    })()
+   487→  }, [])
+   488→
+   489→  const generateForecast = async () => {
+   490→    setIsLoading(true)
+   491→    // In production, this would call the API
+   492→    await new Promise(resolve => setTimeout(resolve, 1000))
+   493→    setForecasts(generateMockForecasts())
+   494→    setIsLoading(false)
+   495→  }
+   496→
+   497→  const generateInsights = async () => {
+   498→    setIsLoading(true)
+   499→    await new Promise(resolve => setTimeout(resolve, 1000))
+   500→    setInsights(generateMockInsights())
+   501→    setIsLoading(false)
+   502→  }
+   503→
+   504→  // Calculate summary stats
+   505→  const stats = {
+   506→    totalForecasts: forecasts.length,
+   507→    avgConfidence: forecasts.length > 0 
+   508→      ? Math.round(forecasts.reduce((sum, f) => sum + f.confidence, 0) / forecasts.length)
+   509→      : 0,
+   510→    criticalReorders: reorderSuggestions.filter(r => r.urgency === 'critical').length,
+   511→    totalReorderValue: reorderSuggestions.reduce((sum, r) => sum + r.totalCost, 0),
+   512→    potentialSavings: reorderSuggestions.reduce((sum, r) => sum + r.savingsVsRetail, 0),
+   513→    deadStockValue: deadStockPredictions.reduce((sum, d) => sum + d.stockValue, 0),
+   514→    deadStockItems: deadStockPredictions.length,
+   515→    totalHoldingCost: deadStockPredictions.reduce((sum, d) => sum + d.holdingCostPerMonth, 0),
+   516→    criticalInsights: insights.filter(i => i.priority === 'critical').length,
+   517→    activeAnomalies: anomalies.length,
+   518→  }
+   519→
+   520→  // Dashboard Tab Content
+   521→  const renderDashboard = () => (
+   522→    <div className="space-y-6">
+   523→      {/* Header */}
+   524→      <div className="flex items-center justify-between">
+   525→        <div>
+   526→          <h2 className="text-2xl font-bold text-[#1A1A1A] flex items-center gap-2">
+   527→            <Brain className="h-7 w-7 text-[#00897B]" />
+   528→            JAX AI Intelligence Dashboard
+   529→          </h2>
+   530→          <p className="text-gray-500 mt-1">AI-powered inventory optimization for South African retail</p>
+   531→        </div>
+   532→        <Button 
+   533→          onClick={loadData}
+   534→          disabled={isLoading}
+   535→          className="bg-[#00897B] hover:bg-[#00695C]"
+   536→        >
+   537→          {isLoading ? (
+   538→            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+   539→          ) : (
+   540→            <RefreshCw className="h-4 w-4 mr-2" />
+   541→          )}
+   542→          Refresh Analysis
+   543→        </Button>
+   544→      </div>
+   545→
+   546→      {/* KPI Cards */}
+   547→      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+   548→        <Card className="bg-gradient-to-br from-[#00897B]/10 to-[#00897B]/5">
+   549→          <CardContent className="p-4">
+   550→            <div className="flex items-center gap-2 mb-2">
+   551→              <Brain className="h-4 w-4 text-[#00897B]" />
+   552→              <span className="text-xs text-gray-500">Avg Confidence</span>
+   553→            </div>
+   554→            <p className="text-2xl font-bold text-[#00897B]">{stats.avgConfidence}%</p>
+   555→            <p className="text-xs text-green-600 mt-1">High accuracy</p>
+   556→          </CardContent>
+   557→        </Card>
+   558→
+   559→        <Card className="bg-gradient-to-br from-red-50 to-red-25">
+   560→          <CardContent className="p-4">
+   561→            <div className="flex items-center gap-2 mb-2">
+   562→              <AlertTriangle className="h-4 w-4 text-red-500" />
+   563→              <span className="text-xs text-gray-500">Critical Reorders</span>
+   564→            </div>
+   565→            <p className="text-2xl font-bold text-red-600">{stats.criticalReorders}</p>
+   566→            <p className="text-xs text-gray-500 mt-1">Need immediate action</p>
+   567→          </CardContent>
+   568→        </Card>
+   569→
+   570→        <Card className="bg-gradient-to-br from-blue-50 to-blue-25">
+   571→          <CardContent className="p-4">
+   572→            <div className="flex items-center gap-2 mb-2">
+   573→              <ShoppingCart className="h-4 w-4 text-blue-500" />
+   574→              <span className="text-xs text-gray-500">Reorder Value</span>
+   575→            </div>
+   576→            <p className="text-2xl font-bold text-blue-600">R{stats.totalReorderValue.toLocaleString()}</p>
+   577→            <p className="text-xs text-gray-500 mt-1">Suggested orders</p>
+   578→          </CardContent>
+   579→        </Card>
+   580→
+   581→        <Card className="bg-gradient-to-br from-green-50 to-green-25">
+   582→          <CardContent className="p-4">
+   583→            <div className="flex items-center gap-2 mb-2">
+   584→              <DollarSign className="h-4 w-4 text-green-500" />
+   585→              <span className="text-xs text-gray-500">Potential Savings</span>
+   586→            </div>
+   587→            <p className="text-2xl font-bold text-green-600">R{stats.potentialSavings.toLocaleString()}</p>
+   588→            <p className="text-xs text-gray-500 mt-1">vs retail pricing</p>
+   589→          </CardContent>
+   590→        </Card>
+   591→
+   592→        <Card className="bg-gradient-to-br from-orange-50 to-orange-25">
+   593→          <CardContent className="p-4">
+   594→            <div className="flex items-center gap-2 mb-2">
+   595→              <Trash2 className="h-4 w-4 text-orange-500" />
+   596→              <span className="text-xs text-gray-500">Dead Stock Risk</span>
+   597→            </div>
+   598→            <p className="text-2xl font-bold text-orange-600">R{stats.deadStockValue.toLocaleString()}</p>
+   599→            <p className="text-xs text-gray-500 mt-1">{stats.deadStockItems} items at risk</p>
+   600→          </CardContent>
+   601→        </Card>
+   602→
+   603→        <Card className="bg-gradient-to-br from-purple-50 to-purple-25">
+   604→          <CardContent className="p-4">
+   605→            <div className="flex items-center gap-2 mb-2">
+   606→              <AlertCircle className="h-4 w-4 text-purple-500" />
+   607→              <span className="text-xs text-gray-500">Active Anomalies</span>
+   608→            </div>
+   609→            <p className="text-2xl font-bold text-purple-600">{stats.activeAnomalies}</p>
+   610→            <p className="text-xs text-gray-500 mt-1">Unusual patterns</p>
+   611→          </CardContent>
+   612→        </Card>
+   613→      </div>
+   614→
+   615→      {/* Main Content Grid */}
+   616→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   617→        {/* Left Column - Demand Forecast Chart */}
+   618→        <Card className="lg:col-span-2">
+   619→          <CardHeader className="pb-2">
+   620→            <div className="flex items-center justify-between">
+   621→              <CardTitle className="text-lg flex items-center gap-2">
+   622→                <TrendingUp className="h-5 w-5 text-[#00897B]" />
+   623→                7-Day Demand Forecast
+   624→              </CardTitle>
+   625→              <Button variant="outline" size="sm" onClick={() => setActiveTab('forecast')}>
+   626→                View Details
+   627→                <ChevronRight className="h-4 w-4 ml-1" />
+   628→              </Button>
+   629→            </div>
+   630→          </CardHeader>
+   631→          <CardContent>
+   632→            {/* Forecast Chart */}
+   633→            <div className="h-64 flex items-end justify-between gap-2 px-4">
+   634→              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
+   635→                const height = 40 + Math.random() * 50
+   636→                return (
+   637→                  <div key={day} className="flex-1 flex flex-col items-center gap-2">
+   638→                    <div className="w-full bg-gray-100 rounded-t-lg relative" style={{ height: '100%' }}>
+   639→                      <div 
+   640→                        className="absolute bottom-0 w-full bg-gradient-to-t from-[#00897B] to-[#00897B]/70 rounded-t-lg transition-all duration-300"
+   641→                        style={{ height: `${height}%` }}
+   642→                      >
+   643→                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-medium text-[#00897B]">
+   644→                          {Math.floor(20 + Math.random() * 30)}
+   645→                        </div>
+   646→                      </div>
+   647→                    </div>
+   648→                    <span className="text-xs text-gray-500">{day}</span>
+   649→                  </div>
+   650→                )
+   651→              })}
+   652→            </div>
+   653→            <div className="mt-4 flex items-center justify-center gap-6 text-xs text-gray-500">
+   654→              <div className="flex items-center gap-1">
+   655→                <div className="w-3 h-3 bg-[#00897B] rounded" />
+   656→                <span>Predicted Demand (units)</span>
+   657→              </div>
+   658→              <div className="flex items-center gap-1">
+   659→                <div className="w-3 h-3 bg-gray-200 rounded" />
+   660→                <span>Maximum Capacity</span>
+   661→              </div>
+   662→            </div>
+   663→          </CardContent>
+   664→        </Card>
+   665→
+   666→        {/* Right Column - Anomaly Alerts */}
+   667→        <Card>
+   668→          <CardHeader className="pb-2">
+   669→            <CardTitle className="text-lg flex items-center gap-2">
+   670→              <AlertTriangle className="h-5 w-5 text-orange-500" />
+   671→              Anomaly Alerts
+   672→            </CardTitle>
+   673→          </CardHeader>
+   674→          <CardContent>
+   675→            <ScrollArea className="h-64">
+   676→              <div className="space-y-3">
+   677→                {anomalies.map((anomaly) => (
+   678→                  <div 
+   679→                    key={anomaly.id}
+   680→                    className="p-3 rounded-lg border border-gray-200 hover:border-[#00897B] cursor-pointer transition-colors"
+   681→                  >
+   682→                    <div className="flex items-start gap-3">
+   683→                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+   684→                        anomaly.severity === 'high' ? 'bg-red-100 text-red-600' :
+   685→                        anomaly.severity === 'medium' ? 'bg-orange-100 text-orange-600' :
+   686→                        'bg-yellow-100 text-yellow-600'
+   687→                      }`}>
+   688→                        <Zap className="h-4 w-4" />
+   689→                      </div>
+   690→                      <div className="flex-1 min-w-0">
+   691→                        <p className="font-medium text-sm text-[#1A1A1A] truncate">{anomaly.productName}</p>
+   692→                        <p className="text-xs text-gray-500 mt-0.5">{anomaly.description}</p>
+   693→                        <div className="flex items-center gap-2 mt-2">
+   694→                          <Badge variant="outline" className="text-[10px]">
+   695→                            {anomaly.deviationPercent > 0 ? '+' : ''}{anomaly.deviationPercent}%
+   696→                          </Badge>
+   697→                          <span className="text-[10px] text-gray-400">
+   698→                            {new Date(anomaly.detectedAt).toLocaleTimeString()}
+   699→                          </span>
+   700→                        </div>
+   701→                      </div>
+   702→                    </div>
+   703→                  </div>
+   704→                ))}
+   705→              </div>
+   706→            </ScrollArea>
+   707→          </CardContent>
+   708→        </Card>
+   709→      </div>
+   710→
+   711→      {/* Bottom Row - Reorder Suggestions & Insights */}
+   712→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   713→        {/* Reorder Suggestions Preview */}
+   714→        <Card>
+   715→          <CardHeader className="pb-2">
+   716→            <div className="flex items-center justify-between">
+   717→              <CardTitle className="text-lg flex items-center gap-2">
+   718→                <ShoppingCart className="h-5 w-5 text-blue-500" />
+   719→                Urgent Reorder Suggestions
+   720→              </CardTitle>
+   721→              <Button variant="outline" size="sm" onClick={() => setActiveTab('reorder')}>
+   722→                View All
+   723→                <ChevronRight className="h-4 w-4 ml-1" />
+   724→              </Button>
+   725→            </div>
+   726→          </CardHeader>
+   727→          <CardContent>
+   728→            <div className="space-y-3">
+   729→              {reorderSuggestions.slice(0, 3).map((suggestion) => (
+   730→                <div 
+   731→                  key={suggestion.id}
+   732→                  className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer"
+   733→                  onClick={() => setSelectedReorder(suggestion)}
+   734→                >
+   735→                  <div className="flex-1 min-w-0">
+   736→                    <div className="flex items-center gap-2">
+   737→                      <p className="font-medium text-sm text-[#1A1A1A] truncate">{suggestion.productName}</p>
+   738→                      <Badge className={getUrgencyColor(suggestion.urgency)}>
+   739→                        {suggestion.urgency}
+   740→                      </Badge>
+   741→                    </div>
+   742→                    <p className="text-xs text-gray-500 mt-1">
+   743→                      Stock: {suggestion.currentStock} | Suggested: {suggestion.suggestedQty} units
+   744→                    </p>
+   745→                  </div>
+   746→                  <div className="text-right">
+   747→                    <p className="font-bold text-[#00897B]">R{suggestion.totalCost.toLocaleString()}</p>
+   748→                    <p className="text-xs text-green-600">Save R{suggestion.savingsVsRetail.toLocaleString()}</p>
+   749→                  </div>
+   750→                </div>
+   751→              ))}
+   752→            </div>
+   753→          </CardContent>
+   754→        </Card>
+   755→
+   756→        {/* AI Insights Preview */}
+   757→        <Card>
+   758→          <CardHeader className="pb-2">
+   759→            <div className="flex items-center justify-between">
+   760→              <CardTitle className="text-lg flex items-center gap-2">
+   761→                <Lightbulb className="h-5 w-5 text-yellow-500" />
+   762→                AI Insights
+   763→              </CardTitle>
+   764→              <Button variant="outline" size="sm" onClick={() => setActiveTab('insights')}>
+   765→                View All
+   766→                <ChevronRight className="h-4 w-4 ml-1" />
+   767→              </Button>
+   768→            </div>
+   769→          </CardHeader>
+   770→          <CardContent>
+   771→            <div className="space-y-3">
+   772→              {insights.slice(0, 3).map((insight) => {
+   773→                const Icon = getInsightIcon(insight.type)
+   774→                return (
+   775→                  <div 
+   776→                    key={insight.id}
+   777→                    className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:border-[#00897B] cursor-pointer"
+   778→                  >
+   779→                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+   780→                      insight.priority === 'critical' ? 'bg-red-100' :
+   781→                      insight.priority === 'high' ? 'bg-orange-100' :
+   782→                      insight.priority === 'medium' ? 'bg-yellow-100' :
+   783→                      'bg-green-100'
+   784→                    }`}>
+   785→                      <Icon className={`h-4 w-4 ${
+   786→                        insight.priority === 'critical' ? 'text-red-600' :
+   787→                        insight.priority === 'high' ? 'text-orange-600' :
+   788→                        insight.priority === 'medium' ? 'text-yellow-600' :
+   789→                        'text-green-600'
+   790→                      }`} />
+   791→                    </div>
+   792→                    <div className="flex-1 min-w-0">
+   793→                      <p className="font-medium text-sm text-[#1A1A1A]">{insight.title}</p>
+   794→                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{insight.description}</p>
+   795→                      <div className="flex items-center gap-2 mt-2">
+   796→                        <Badge variant="outline" className="text-[10px]">{insight.confidence}% confidence</Badge>
+   797→                        <Badge className={getPriorityColor(insight.priority)}>{insight.priority}</Badge>
+   798→                      </div>
+   799→                    </div>
+   800→                  </div>
+   801→                )
+   802→              })}
+   803→            </div>
+   804→          </CardContent>
+   805→        </Card>
+   806→      </div>
+   807→
+   808→      {/* South African Context Banner */}
+   809→      <Card className="bg-gradient-to-r from-[#00897B]/10 via-[#00897B]/5 to-transparent">
+   810→        <CardContent className="p-4">
+   811→          <div className="flex items-center gap-4">
+   812→            <div className="w-10 h-10 rounded-full bg-[#00897B]/20 flex items-center justify-center">
+   813→              <Calendar className="h-5 w-5 text-[#00897B]" />
+   814→            </div>
+   815→            <div>
+   816→              <p className="font-medium text-[#1A1A1A]">South African Seasonal Factors Active</p>
+   817→              <p className="text-sm text-gray-500">
+   818→                Accounting for: Month-end payday cycles, Load shedding patterns, Upcoming: Easter (Mar 29), Freedom Day (Apr 27)
+   819→              </p>
+   820→            </div>
+   821→          </div>
+   822→        </CardContent>
+   823→      </Card>
+   824→    </div>
+   825→  )
+   826→
+   827→  // Demand Forecast Tab Content
+   828→  const renderForecastTab = () => (
+   829→    <div className="space-y-6">
+   830→      <div className="flex items-center justify-between">
+   831→        <div>
+   832→          <h2 className="text-xl font-bold text-[#1A1A1A]">Demand Forecasting</h2>
+   833→          <p className="text-gray-500">AI-powered 7-day demand predictions with confidence intervals</p>
+   834→        </div>
+   835→        <div className="flex items-center gap-3">
+   836→          <div className="relative">
+   837→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+   838→            <Input
+   839→              placeholder="Search products..."
+   840→              value={searchQuery}
+   841→              onChange={(e) => setSearchQuery(e.target.value)}
+   842→              className="pl-9 w-64"
+   843→            />
+   844→          </div>
+   845→          <Button onClick={generateForecast} disabled={isLoading} className="bg-[#00897B] hover:bg-[#00695C]">
+   846→            {isLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+   847→            Generate Forecast
+   848→          </Button>
+   849→        </div>
+   850→      </div>
+   851→
+   852→      {/* Forecast Stats */}
+   853→      <div className="grid grid-cols-4 gap-4">
+   854→        <Card>
+   855→          <CardContent className="p-4">
+   856→            <p className="text-sm text-gray-500">Total Products</p>
+   857→            <p className="text-2xl font-bold text-[#1A1A1A]">{forecasts.length}</p>
+   858→          </CardContent>
+   859→        </Card>
+   860→        <Card>
+   861→          <CardContent className="p-4">
+   862→            <p className="text-sm text-gray-500">Avg Accuracy</p>
+   863→            <p className="text-2xl font-bold text-green-600">
+   864→              {forecasts.length > 0 ? Math.round(forecasts.reduce((sum, f) => sum + f.accuracy, 0) / forecasts.length) : 0}%
+   865→            </p>
+   866→          </CardContent>
+   867→        </Card>
+   868→        <Card>
+   869→          <CardContent className="p-4">
+   870→            <p className="text-sm text-gray-500">Trending Up</p>
+   871→            <p className="text-2xl font-bold text-green-600">{forecasts.filter(f => f.trend === 'up').length}</p>
+   872→          </CardContent>
+   873→        </Card>
+   874→        <Card>
+   875→          <CardContent className="p-4">
+   876→            <p className="text-sm text-gray-500">Trending Down</p>
+   877→            <p className="text-2xl font-bold text-red-600">{forecasts.filter(f => f.trend === 'down').length}</p>
+   878→          </CardContent>
+   879→        </Card>
+   880→      </div>
+   881→
+   882→      {/* Forecast Table */}
+   883→      <Card>
+   884→        <CardContent className="p-0">
+   885→          <div className="overflow-x-auto">
+   886→            <table className="w-full">
+   887→              <thead className="bg-gray-50 border-b">
+   888→                <tr>
+   889→                  <th className="text-left p-4 text-sm font-medium text-gray-500">Product</th>
+   890→                  <th className="text-left p-4 text-sm font-medium text-gray-500">Category</th>
+   891→                  <th className="text-right p-4 text-sm font-medium text-gray-500">Current Stock</th>
+   892→                  <th className="text-right p-4 text-sm font-medium text-gray-500">Predicted Demand</th>
+   893→                  <th className="text-center p-4 text-sm font-medium text-gray-500">Trend</th>
+   894→                  <th className="text-right p-4 text-sm font-medium text-gray-500">Confidence</th>
+   895→                  <th className="text-right p-4 text-sm font-medium text-gray-500">Days of Stock</th>
+   896→                  <th className="text-right p-4 text-sm font-medium text-gray-500">Recommended Order</th>
+   897→                  <th className="text-center p-4 text-sm font-medium text-gray-500">Actions</th>
+   898→                </tr>
+   899→              </thead>
+   900→              <tbody>
+   901→                {forecasts.map((forecast) => (
+   902→                  <tr key={forecast.productId} className="border-b hover:bg-gray-50">
+   903→                    <td className="p-4">
+   904→                      <div>
+   905→                        <p className="font-medium text-[#1A1A1A]">{forecast.productName}</p>
+   906→                        <p className="text-xs text-gray-500">{forecast.sku}</p>
+   907→                      </div>
+   908→                    </td>
+   909→                    <td className="p-4">
+   910→                      <Badge variant="outline">{forecast.category}</Badge>
+   911→                    </td>
+   912→                    <td className="p-4 text-right font-medium">{forecast.currentStock}</td>
+   913→                    <td className="p-4 text-right font-medium text-[#00897B]">{forecast.predictedDemand}</td>
+   914→                    <td className="p-4 text-center">{getTrendIcon(forecast.trend)}</td>
+   915→                    <td className="p-4 text-right">
+   916→                      <div className="flex items-center justify-end gap-2">
+   917→                        <Progress value={forecast.confidence} className="w-16 h-2" />
+   918→                        <span className="text-sm font-medium">{forecast.confidence}%</span>
+   919→                      </div>
+   920→                    </td>
+   921→                    <td className="p-4 text-right">
+   922→                      <span className={`font-medium ${
+   923→                        forecast.daysOfStock <= 7 ? 'text-red-600' :
+   924→                        forecast.daysOfStock <= 14 ? 'text-orange-600' :
+   925→                        'text-gray-900'
+   926→                      }`}>
+   927→                        {forecast.daysOfStock} days
+   928→                      </span>
+   929→                    </td>
+   930→                    <td className="p-4 text-right font-medium text-blue-600">{forecast.recommendedOrder}</td>
+   931→                    <td className="p-4 text-center">
+   932→                      <Button 
+   933→                        variant="ghost" 
+   934→                        size="sm"
+   935→                        onClick={() => setSelectedForecast(forecast)}
+   936→                      >
+   937→                        <MoreHorizontal className="h-4 w-4" />
+   938→                      </Button>
+   939→                    </td>
+   940→                  </tr>
+   941→                ))}
+   942→              </tbody>
+   943→            </table>
+   944→          </div>
+   945→        </CardContent>
+   946→      </Card>
+   947→
+   948→      {/* Seasonal Pattern Detection */}
+   949→      <Card>
+   950→        <CardHeader>
+   951→          <CardTitle className="text-lg flex items-center gap-2">
+   952→            <Calendar className="h-5 w-5 text-[#00897B]" />
+   953→            Seasonal Pattern Detection
+   954→          </CardTitle>
+   955→        </CardHeader>
+   956→        <CardContent>
+   957→          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   958→            {SA_HOLIDAYS.map((holiday) => (
+   959→              <div key={holiday.name} className="p-4 rounded-lg bg-gray-50">
+   960→                <div className="flex items-center justify-between mb-2">
+   961→                  <p className="font-medium text-sm">{holiday.name}</p>
+   962→                  <Badge className={holiday.impact === 'high' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}>
+   963→                    {holiday.impact} impact
+   964→                  </Badge>
+   965→                </div>
+   966→                <p className="text-xs text-gray-500">{new Date(holiday.date).toLocaleDateString()}</p>
+   967→                <p className="text-xs text-[#00897B] mt-2">Demand forecast adjusted</p>
+   968→              </div>
+   969→            ))}
+   970→          </div>
+   971→        </CardContent>
+   972→      </Card>
+   973→    </div>
+   974→  )
+   975→
+   976→  // Reorder Suggestions Tab Content
+   977→  const renderReorderTab = () => (
+   978→    <div className="space-y-6">
+   979→      <div className="flex items-center justify-between">
+   980→        <div>
+   981→          <h2 className="text-xl font-bold text-[#1A1A1A]">Reorder Suggestions</h2>
+   982→          <p className="text-gray-500">AI-optimized reorder recommendations with EOQ calculations</p>
+   983→        </div>
+   984→        <div className="flex items-center gap-3">
+   985→          <Button 
+   986→            variant="outline"
+   987→            onClick={() => setRfqDialogOpen(true)}
+   988→          >
+   989→            <Send className="h-4 w-4 mr-2" />
+   990→            Generate RFQ
+   991→          </Button>
+   992→          <Button className="bg-[#00897B] hover:bg-[#00695C]">
+   993→            <ShoppingCart className="h-4 w-4 mr-2" />
+   994→            Order All Critical
+   995→          </Button>
+   996→        </div>
+   997→      </div>
+   998→
+   999→      {/* Reorder Stats */}
+  1000→      <div className="grid grid-cols-5 gap-4">
+  1001→        <Card className="bg-red-50">
+  1002→          <CardContent className="p-4">
+  1003→            <p className="text-sm text-gray-500">Critical</p>
+  1004→            <p className="text-2xl font-bold text-red-600">{reorderSuggestions.filter(r => r.urgency === 'critical').length}</p>
+  1005→          </CardContent>
+  1006→        </Card>
+  1007→        <Card className="bg-orange-50">
+  1008→          <CardContent className="p-4">
+  1009→            <p className="text-sm text-gray-500">High Priority</p>
+  1010→            <p className="text-2xl font-bold text-orange-600">{reorderSuggestions.filter(r => r.urgency === 'high').length}</p>
+  1011→          </CardContent>
+  1012→        </Card>
+  1013→        <Card className="bg-blue-50">
+  1014→          <CardContent className="p-4">
+  1015→            <p className="text-sm text-gray-500">Normal</p>
+  1016→            <p className="text-2xl font-bold text-blue-600">{reorderSuggestions.filter(r => r.urgency === 'normal').length}</p>
+  1017→          </CardContent>
+  1018→        </Card>
+  1019→        <Card className="bg-green-50">
+  1020→          <CardContent className="p-4">
+  1021→            <p className="text-sm text-gray-500">Total Value</p>
+  1022→            <p className="text-2xl font-bold text-green-600">R{stats.totalReorderValue.toLocaleString()}</p>
+  1023→          </CardContent>
+  1024→        </Card>
+  1025→        <Card className="bg-purple-50">
+  1026→          <CardContent className="p-4">
+  1027→            <p className="text-sm text-gray-500">Potential Savings</p>
+  1028→            <p className="text-2xl font-bold text-purple-600">R{stats.potentialSavings.toLocaleString()}</p>
+  1029→          </CardContent>
+  1030→        </Card>
+  1031→      </div>
+  1032→
+  1033→      {/* Reorder Cards */}
+  1034→      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  1035→        {reorderSuggestions.map((suggestion) => (
+  1036→          <Card 
+  1037→            key={suggestion.id} 
+  1038→            className={`cursor-pointer transition-all hover:shadow-md ${
+  1039→              suggestion.urgency === 'critical' ? 'border-red-300' :
+  1040→              suggestion.urgency === 'high' ? 'border-orange-300' :
+  1041→              'border-gray-200'
+  1042→            }`}
+  1043→            onClick={() => setSelectedReorder(suggestion)}
+  1044→          >
+  1045→            <CardContent className="p-4">
+  1046→              <div className="flex items-start justify-between mb-3">
+  1047→                <div>
+  1048→                  <p className="font-medium text-[#1A1A1A]">{suggestion.productName}</p>
+  1049→                  <p className="text-xs text-gray-500">{suggestion.sku}</p>
+  1050→                </div>
+  1051→                <Badge className={getUrgencyColor(suggestion.urgency)}>{suggestion.urgency}</Badge>
+  1052→              </div>
+  1053→
+  1054→              <div className="space-y-2 text-sm">
+  1055→                <div className="flex justify-between">
+  1056→                  <span className="text-gray-500">Current Stock:</span>
+  1057→                  <span className="font-medium">{suggestion.currentStock} units</span>
+  1058→                </div>
+  1059→                <div className="flex justify-between">
+  1060→                  <span className="text-gray-500">Suggested Order:</span>
+  1061→                  <span className="font-medium text-[#00897B]">{suggestion.suggestedQty} units</span>
+  1062→                </div>
+  1063→                <div className="flex justify-between">
+  1064→                  <span className="text-gray-500">EOQ:</span>
+  1065→                  <span className="font-medium">{suggestion.eoq} units</span>
+  1066→                </div>
+  1067→                <Separator />
+  1068→                <div className="flex justify-between">
+  1069→                  <span className="text-gray-500">Lead Time:</span>
+  1070→                  <span className="font-medium">{suggestion.leadTime} days</span>
+  1071→                </div>
+  1072→                <div className="flex justify-between">
+  1073→                  <span className="text-gray-500">Supplier:</span>
+  1074→                  <span className="font-medium text-[#00897B]">{suggestion.supplierName}</span>
+  1075→                </div>
+  1076→              </div>
+  1077→
+  1078→              <div className="mt-4 pt-3 border-t">
+  1079→                <div className="flex justify-between items-center">
+  1080→                  <div>
+  1081→                    <p className="text-lg font-bold text-[#1A1A1A]">R{suggestion.totalCost.toLocaleString()}</p>
+  1082→                    <p className="text-xs text-green-600">Save R{suggestion.savingsVsRetail.toLocaleString()} vs retail</p>
+  1083→                  </div>
+  1084→                  <Button size="sm" className="bg-[#00897B] hover:bg-[#00695C]">
+  1085→                    Order Now
+  1086→                  </Button>
+  1087→                </div>
+  1088→              </div>
+  1089→
+  1090→              <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
+  1091→                <p className="text-gray-600">
+  1092→                  <span className="font-medium">Reason:</span> {suggestion.reason}
+  1093→                </p>
+  1094→                <p className="text-[#00897B] mt-1">
+  1095→                  <span className="font-medium">AI Confidence:</span> {suggestion.confidence}%
+  1096→                </p>
+  1097→              </div>
+  1098→            </CardContent>
+  1099→          </Card>
+  1100→        ))}
+  1101→      </div>
+  1102→    </div>
+  1103→  )
+  1104→
+  1105→  // Dead Stock Tab Content
+  1106→  const renderDeadStockTab = () => (
+  1107→    <div className="space-y-6">
+  1108→      <div className="flex items-center justify-between">
+  1109→        <div>
+  1110→          <h2 className="text-xl font-bold text-[#1A1A1A]">Dead Stock Prediction</h2>
+  1111→          <p className="text-gray-500">AI-identified slow-moving and at-risk inventory</p>
+  1112→        </div>
+  1113→        <div className="flex items-center gap-3">
+  1114→          <Button variant="outline">
+  1115→            <FileText className="h-4 w-4 mr-2" />
+  1116→            Export Report
+  1117→          </Button>
+  1118→          <Button className="bg-[#00897B] hover:bg-[#00695C]">
+  1119→            <Tag className="h-4 w-4 mr-2" />
+  1120→            Apply All Markdowns
+  1121→          </Button>
+  1122→        </div>
+  1123→      </div>
+  1124→
+  1125→      {/* Dead Stock Stats */}
+  1126→      <div className="grid grid-cols-4 gap-4">
+  1127→        <Card className="bg-orange-50">
+  1128→          <CardContent className="p-4">
+  1129→            <p className="text-sm text-gray-500">Items at Risk</p>
+  1130→            <p className="text-2xl font-bold text-orange-600">{stats.deadStockItems}</p>
+  1131→          </CardContent>
+  1132→        </Card>
+  1133→        <Card className="bg-red-50">
+  1134→          <CardContent className="p-4">
+  1135→            <p className="text-sm text-gray-500">Total Value at Risk</p>
+  1136→            <p className="text-2xl font-bold text-red-600">R{stats.deadStockValue.toLocaleString()}</p>
+  1137→          </CardContent>
+  1138→        </Card>
+  1139→        <Card className="bg-yellow-50">
+  1140→          <CardContent className="p-4">
+  1141→            <p className="text-sm text-gray-500">Monthly Holding Cost</p>
+  1142→            <p className="text-2xl font-bold text-yellow-600">R{stats.totalHoldingCost.toLocaleString()}</p>
+  1143→          </CardContent>
+  1144→        </Card>
+  1145→        <Card className="bg-green-50">
+  1146→          <CardContent className="p-4">
+  1147→            <p className="text-sm text-gray-500">Potential Recovery</p>
+  1148→            <p className="text-2xl font-bold text-green-600">
+  1149→              R{deadStockPredictions.reduce((sum, d) => sum + d.projectedRecovery, 0).toLocaleString()}
+  1150→            </p>
+  1151→          </CardContent>
+  1152→        </Card>
+  1153→      </div>
+  1154→
+  1155→      {/* Dead Stock Table */}
+  1156→      <Card>
+  1157→        <CardContent className="p-0">
+  1158→          <div className="overflow-x-auto">
+  1159→            <table className="w-full">
+  1160→              <thead className="bg-gray-50 border-b">
+  1161→                <tr>
+  1162→                  <th className="text-left p-4 text-sm font-medium text-gray-500">Product</th>
+  1163→                  <th className="text-left p-4 text-sm font-medium text-gray-500">Category</th>
+  1164→                  <th className="text-right p-4 text-sm font-medium text-gray-500">Stock Qty</th>
+  1165→                  <th className="text-right p-4 text-sm font-medium text-gray-500">Stock Value</th>
+  1166→                  <th className="text-right p-4 text-sm font-medium text-gray-500">Days Since Sale</th>
+  1167→                  <th className="text-right p-4 text-sm font-medium text-gray-500">Dead Stock %</th>
+  1168→                  <th className="text-center p-4 text-sm font-medium text-gray-500">Suggested Action</th>
+  1169→                  <th className="text-right p-4 text-sm font-medium text-gray-500">Recovery</th>
+  1170→                </tr>
+  1171→              </thead>
+  1172→              <tbody>
+  1173→                {deadStockPredictions.map((item) => (
+  1174→                  <tr key={item.id} className="border-b hover:bg-gray-50">
+  1175→                    <td className="p-4">
+  1176→                      <div>
+  1177→                        <p className="font-medium text-[#1A1A1A]">{item.productName}</p>
+  1178→                        <p className="text-xs text-gray-500">{item.sku}</p>
+  1179→                      </div>
+  1180→                    </td>
+  1181→                    <td className="p-4">
+  1182→                      <Badge variant="outline">{item.category}</Badge>
+  1183→                    </td>
+  1184→                    <td className="p-4 text-right font-medium">{item.stockQuantity}</td>
+  1185→                    <td className="p-4 text-right font-medium">R{item.stockValue.toLocaleString()}</td>
+  1186→                    <td className="p-4 text-right">
+  1187→                      <span className={`font-medium ${
+  1188→                        item.daysSinceLastSale > 120 ? 'text-red-600' :
+  1189→                        item.daysSinceLastSale > 60 ? 'text-orange-600' :
+  1190→                        'text-yellow-600'
+  1191→                      }`}>
+  1192→                        {item.daysSinceLastSale} days
+  1193→                      </span>
+  1194→                    </td>
+  1195→                    <td className="p-4 text-right">
+  1196→                      <div className="flex items-center justify-end gap-2">
+  1197→                        <Progress value={item.deadStockProbability} className="w-16 h-2" />
+  1198→                        <span className="text-sm font-medium text-red-600">{item.deadStockProbability}%</span>
+  1199→                      </div>
+  1200→                    </td>
+  1201→                    <td className="p-4 text-center">
+  1202→                      <Badge className={
+  1203→                        item.suggestedAction === 'liquidate' ? 'bg-red-100 text-red-700' :
+  1204→                        item.suggestedAction === 'clearance' ? 'bg-orange-100 text-orange-700' :
+  1205→                        item.suggestedAction === 'markdown' ? 'bg-yellow-100 text-yellow-700' :
+  1206→                        'bg-blue-100 text-blue-700'
+  1207→                      }>
+  1208→                        {item.suggestedAction === 'markdown' && `${item.markdownPercent}% `}
+  1209→                        {item.suggestedAction}
+  1210→                      </Badge>
+  1211→                    </td>
+  1212→                    <td className="p-4 text-right">
+  1213→                      <p className="font-medium text-green-600">R{Math.round(item.projectedRecovery).toLocaleString()}</p>
+  1214→                      <p className="text-xs text-gray-500">Holding: R{item.holdingCostPerMonth.toFixed(2)}/mo</p>
+  1215→                    </td>
+  1216→                  </tr>
+  1217→                ))}
+  1218→              </tbody>
+  1219→            </table>
+  1220→          </div>
+  1221→        </CardContent>
+  1222→      </Card>
+  1223→
+  1224→      {/* Liquidation Recommendations */}
+  1225→      <Card>
+  1226→        <CardHeader>
+  1227→          <CardTitle className="text-lg flex items-center gap-2">
+  1228→            <ArrowDown className="h-5 w-5 text-orange-500" />
+  1229→            Liquidation Recommendations
+  1230→          </CardTitle>
+  1231→        </CardHeader>
+  1232→        <CardContent>
+  1233→          <div className="grid grid-cols-3 gap-4">
+  1234→            <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+  1235→              <h4 className="font-medium text-yellow-800">30% Markdown</h4>
+  1236→              <p className="text-sm text-gray-600 mt-1">Items with 60-90 days since last sale</p>
+  1237→              <p className="text-2xl font-bold text-yellow-600 mt-2">
+  1238→                {deadStockPredictions.filter(d => d.suggestedAction === 'markdown').length} items
+  1239→              </p>
+  1240→            </div>
+  1241→            <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
+  1242→              <h4 className="font-medium text-orange-800">Clearance Sale</h4>
+  1243→              <p className="text-sm text-gray-600 mt-1">Items with 90-120 days since last sale</p>
+  1244→              <p className="text-2xl font-bold text-orange-600 mt-2">
+  1245→                {deadStockPredictions.filter(d => d.suggestedAction === 'clearance').length} items
+  1246→              </p>
+  1247→            </div>
+  1248→            <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+  1249→              <h4 className="font-medium text-red-800">Liquidation Partner</h4>
+  1250→              <p className="text-sm text-gray-600 mt-1">Items with 120+ days since last sale</p>
+  1251→              <p className="text-2xl font-bold text-red-600 mt-2">
+  1252→                {deadStockPredictions.filter(d => d.suggestedAction === 'liquidate').length} items
+  1253→              </p>
+  1254→            </div>
+  1255→          </div>
+  1256→        </CardContent>
+  1257→      </Card>
+  1258→    </div>
+  1259→  )
+  1260→
+  1261→  // Insights Feed Tab Content
+  1262→  const renderInsightsTab = () => (
+  1263→    <div className="space-y-6">
+  1264→      <div className="flex items-center justify-between">
+  1265→        <div>
+  1266→          <h2 className="text-xl font-bold text-[#1A1A1A]">AI Insights Feed</h2>
+  1267→          <p className="text-gray-500">Real-time inventory intelligence and recommendations</p>
+  1268→        </div>
+  1269→        <div className="flex items-center gap-3">
+  1270→          <Button variant="outline" onClick={generateInsights}>
+  1271→            <RefreshCw className="h-4 w-4 mr-2" />
+  1272→            Regenerate
+  1273→          </Button>
+  1274→          <Button className="bg-[#00897B] hover:bg-[#00695C]">
+  1275→            <Sparkles className="h-4 w-4 mr-2" />
+  1276→            New Analysis
+  1277→          </Button>
+  1278→        </div>
+  1279→      </div>
+  1280→
+  1281→      {/* Priority Filters */}
+  1282→      <div className="flex items-center gap-2">
+  1283→        <span className="text-sm text-gray-500">Filter by priority:</span>
+  1284→        {['all', 'critical', 'high', 'medium', 'low'].map((priority) => (
+  1285→          <Button
+  1286→            key={priority}
+  1287→            variant={filterCategory === priority ? 'default' : 'outline'}
+  1288→            size="sm"
+  1289→            onClick={() => setFilterCategory(priority)}
+  1290→            className={filterCategory === priority ? 'bg-[#00897B] hover:bg-[#00695C]' : ''}
+  1291→          >
+  1292→            {priority.charAt(0).toUpperCase() + priority.slice(1)}
+  1293→          </Button>
+  1294→        ))}
+  1295→      </div>
+  1296→
+  1297→      {/* Insights List */}
+  1298→      <div className="space-y-4">
+  1299→        {insights
+  1300→          .filter(i => filterCategory === 'all' || i.priority === filterCategory)
+  1301→          .map((insight) => {
+  1302→            const Icon = getInsightIcon(insight.type)
+  1303→            return (
+  1304→              <Card 
+  1305→                key={insight.id} 
+  1306→                className={`overflow-hidden ${
+  1307→                  insight.priority === 'critical' ? 'border-l-4 border-l-red-500' :
+  1308→                  insight.priority === 'high' ? 'border-l-4 border-l-orange-500' :
+  1309→                  insight.priority === 'medium' ? 'border-l-4 border-l-yellow-500' :
+  1310→                  'border-l-4 border-l-green-500'
+  1311→                }`}
+  1312→              >
+  1313→                <CardContent className="p-0">
+  1314→                  <div className="p-4">
+  1315→                    <div className="flex items-start gap-4">
+  1316→                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+  1317→                        insight.priority === 'critical' ? 'bg-red-100' :
+  1318→                        insight.priority === 'high' ? 'bg-orange-100' :
+  1319→                        insight.priority === 'medium' ? 'bg-yellow-100' :
+  1320→                        'bg-green-100'
+  1321→                      }`}>
+  1322→                        <Icon className={`h-6 w-6 ${
+  1323→                          insight.priority === 'critical' ? 'text-red-600' :
+  1324→                          insight.priority === 'high' ? 'text-orange-600' :
+  1325→                          insight.priority === 'medium' ? 'text-yellow-600' :
+  1326→                          'text-green-600'
+  1327→                        }`} />
+  1328→                      </div>
+  1329→                      <div className="flex-1">
+  1330→                        <div className="flex items-center justify-between">
+  1331→                          <div className="flex items-center gap-3">
+  1332→                            <h3 className="font-semibold text-[#1A1A1A]">{insight.title}</h3>
+  1333→                            <Badge className={getPriorityColor(insight.priority)}>{insight.priority}</Badge>
+  1334→                          </div>
+  1335→                          <div className="flex items-center gap-2 text-xs text-gray-500">
+  1336→                            <Clock4 className="h-3 w-3" />
+  1337→                            {new Date(insight.createdAt).toLocaleString()}
+  1338→                          </div>
+  1339→                        </div>
+  1340→                        <p className="text-sm text-gray-600 mt-2">{insight.description}</p>
+  1341→                        
+  1342→                        <div className="mt-4 p-3 bg-[#00897B]/5 rounded-lg">
+  1343→                          <div className="flex items-start gap-2">
+  1344→                            <Target className="h-4 w-4 text-[#00897B] mt-0.5" />
+  1345→                            <div>
+  1346→                              <p className="text-sm font-medium text-[#00897B]">Recommendation</p>
+  1347→                              <p className="text-sm text-gray-600 mt-1">{insight.recommendation}</p>
+  1348→                            </div>
+  1349→                          </div>
+  1350→                        </div>
+  1351→
+  1352→                        <div className="mt-4 flex items-center justify-between">
+  1353→                          <div className="flex items-center gap-4">
+  1354→                            <Badge variant="outline" className="flex items-center gap-1">
+  1355→                              <CheckCircle2 className="h-3 w-3 text-green-500" />
+  1356→                              {insight.confidence}% confidence
+  1357→                            </Badge>
+  1358→                            <Badge variant="outline">{insight.category}</Badge>
+  1359→                            <span className="text-sm text-gray-500">{insight.impact}</span>
+  1360→                          </div>
+  1361→                          {insight.actionRequired && (
+  1362→                            <Button size="sm" className="bg-[#00897B] hover:bg-[#00695C]">
+  1363→                              {insight.actionLabel || 'Take Action'}
+  1364→                              <ArrowRight className="h-4 w-4 ml-1" />
+  1365→                            </Button>
+  1366→                          )}
+  1367→                        </div>
+  1368→                      </div>
+  1369→                    </div>
+  1370→                  </div>
+  1371→                </CardContent>
+  1372→              </Card>
+  1373→            )
+  1374→          })}
+  1375→      </div>
+  1376→    </div>
+  1377→  )
+  1378→
+  1379→  return (
+  1380→    <div className="h-full flex flex-col">
+  1381→      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+  1382→        <div className="border-b px-6">
+  1383→          <TabsList className="h-12">
+  1384→            <TabsTrigger value="dashboard" className="data-[state=active]:bg-[#00897B]/10">
+  1385→              <Brain className="h-4 w-4 mr-2" />
+  1386→              Dashboard
+  1387→            </TabsTrigger>
+  1388→            <TabsTrigger value="forecast" className="data-[state=active]:bg-[#00897B]/10">
+  1389→              <TrendingUp className="h-4 w-4 mr-2" />
+  1390→              Demand Forecast
+  1391→            </TabsTrigger>
+  1392→            <TabsTrigger value="reorder" className="data-[state=active]:bg-[#00897B]/10">
+  1393→              <ShoppingCart className="h-4 w-4 mr-2" />
+  1394→              Reorder Suggestions
+  1395→            </TabsTrigger>
+  1396→            <TabsTrigger value="deadstock" className="data-[state=active]:bg-[#00897B]/10">
+  1397→              <Trash2 className="h-4 w-4 mr-2" />
+  1398→              Dead Stock
+  1399→            </TabsTrigger>
+  1400→            <TabsTrigger value="insights" className="data-[state=active]:bg-[#00897B]/10">
+  1401→              <Lightbulb className="h-4 w-4 mr-2" />
+  1402→              Insights Feed
+  1403→            </TabsTrigger>
+  1404→          </TabsList>
+  1405→        </div>
+  1406→
+  1407→        <div className="flex-1 overflow-auto p-6">
+  1408→          {isLoading ? (
+  1409→            <div className="flex items-center justify-center h-64">
+  1410→              <div className="text-center">
+  1411→                <RefreshCw className="h-8 w-8 text-[#00897B] animate-spin mx-auto" />
+  1412→                <p className="text-gray-500 mt-2">Analyzing inventory data...</p>
+  1413→              </div>
+  1414→            </div>
+  1415→          ) : (
+  1416→            <>
+  1417→              <TabsContent value="dashboard" className="mt-0">{renderDashboard()}</TabsContent>
+  1418→              <TabsContent value="forecast" className="mt-0">{renderForecastTab()}</TabsContent>
+  1419→              <TabsContent value="reorder" className="mt-0">{renderReorderTab()}</TabsContent>
+  1420→              <TabsContent value="deadstock" className="mt-0">{renderDeadStockTab()}</TabsContent>
+  1421→              <TabsContent value="insights" className="mt-0">{renderInsightsTab()}</TabsContent>
+  1422→            </>
+  1423→          )}
+  1424→        </div>
+  1425→      </Tabs>
+  1426→
+  1427→      {/* Forecast Detail Dialog */}
+  1428→      <Dialog open={!!selectedForecast} onOpenChange={() => setSelectedForecast(null)}>
+  1429→        <DialogContent className="max-w-2xl">
+  1430→          <DialogHeader>
+  1431→            <DialogTitle>Demand Forecast Details</DialogTitle>
+  1432→            <DialogDescription>
+  1433→              AI-generated demand prediction for {selectedForecast?.productName}
+  1434→            </DialogDescription>
+  1435→          </DialogHeader>
+  1436→          {selectedForecast && (
+  1437→            <div className="space-y-4">
+  1438→              <div className="grid grid-cols-2 gap-4">
+  1439→                <div className="p-4 bg-gray-50 rounded-lg">
+  1440→                  <p className="text-sm text-gray-500">Predicted Demand (7 days)</p>
+  1441→                  <p className="text-2xl font-bold text-[#00897B]">{selectedForecast.predictedDemand} units</p>
+  1442→                </div>
+  1443→                <div className="p-4 bg-gray-50 rounded-lg">
+  1444→                  <p className="text-sm text-gray-500">AI Confidence</p>
+  1445→                  <p className="text-2xl font-bold text-green-600">{selectedForecast.confidence}%</p>
+  1446→                </div>
+  1447→              </div>
+  1448→              <div className="grid grid-cols-3 gap-4 text-sm">
+  1449→                <div>
+  1450→                  <p className="text-gray-500">Current Stock</p>
+  1451→                  <p className="font-medium">{selectedForecast.currentStock} units</p>
+  1452→                </div>
+  1453→                <div>
+  1454→                  <p className="text-gray-500">Days of Stock</p>
+  1455→                  <p className={`font-medium ${
+  1456→                    selectedForecast.daysOfStock <= 7 ? 'text-red-600' :
+  1457→                    selectedForecast.daysOfStock <= 14 ? 'text-orange-600' : ''
+  1458→                  }`}>{selectedForecast.daysOfStock} days</p>
+  1459→                </div>
+  1460→                <div>
+  1461→                  <p className="text-gray-500">Recommended Order</p>
+  1462→                  <p className="font-medium text-blue-600">{selectedForecast.recommendedOrder} units</p>
+  1463→                </div>
+  1464→              </div>
+  1465→              <div className="p-4 bg-[#00897B]/5 rounded-lg">
+  1466→                <p className="text-sm text-[#00897B]">Historical Accuracy: {selectedForecast.accuracy}%</p>
+  1467→                <p className="text-sm text-gray-500 mt-1">Seasonal Factor: {selectedForecast.seasonalFactor.toFixed(2)}</p>
+  1468→              </div>
+  1469→            </div>
+  1470→          )}
+  1471→          <DialogFooter>
+  1472→            <Button variant="outline" onClick={() => setSelectedForecast(null)}>Close</Button>
+  1473→            <Button className="bg-[#00897B] hover:bg-[#00695C]">
+  1474→              Create Reorder
+  1475→            </Button>
+  1476→          </DialogFooter>
+  1477→        </DialogContent>
+  1478→      </Dialog>
+  1479→
+  1480→      {/* Reorder Detail Dialog */}
+  1481→      <Dialog open={!!selectedReorder} onOpenChange={() => setSelectedReorder(null)}>
+  1482→        <DialogContent className="max-w-2xl">
+  1483→          <DialogHeader>
+  1484→            <DialogTitle>Reorder Suggestion Details</DialogTitle>
+  1485→            <DialogDescription>
+  1486→              AI-optimized reorder recommendation
+  1487→            </DialogDescription>
+  1488→          </DialogHeader>
+  1489→          {selectedReorder && (
+  1490→            <div className="space-y-4">
+  1491→              <div className="flex items-center justify-between">
+  1492→                <h3 className="font-semibold text-lg">{selectedReorder.productName}</h3>
+  1493→                <Badge className={getUrgencyColor(selectedReorder.urgency)}>{selectedReorder.urgency}</Badge>
+  1494→              </div>
+  1495→              <div className="grid grid-cols-2 gap-4">
+  1496→                <div className="p-4 bg-gray-50 rounded-lg">
+  1497→                  <p className="text-sm text-gray-500">Suggested Quantity</p>
+  1498→                  <p className="text-2xl font-bold text-[#00897B]">{selectedReorder.suggestedQty} units</p>
+  1499→                </div>
+  1500→                <div className="p-4 bg-gray-50 rounded-lg">
+  1501→                  <p className="text-sm text-gray-500">Economic Order Quantity (EOQ)</p>
+  1502→                  <p className="text-2xl font-bold text-blue-600">{selectedReorder.eoq} units</p>
+  1503→                </div>
+  1504→              </div>
+  1505→              <div className="grid grid-cols-2 gap-4 text-sm">
+  1506→                <div>
+  1507→                  <p className="text-gray-500">Supplier</p>
+  1508→                  <p className="font-medium text-[#00897B]">{selectedReorder.supplierName}</p>
+  1509→                </div>
+  1510→                <div>
+  1511→                  <p className="text-gray-500">Lead Time</p>
+  1512→                  <p className="font-medium">{selectedReorder.leadTime} days</p>
+  1513→                </div>
+  1514→                <div>
+  1515→                  <p className="text-gray-500">Unit Cost</p>
+  1516→                  <p className="font-medium">R{selectedReorder.unitCost.toFixed(2)}</p>
+  1517→                </div>
+  1518→                <div>
+  1519→                  <p className="text-gray-500">Total Cost</p>
+  1520→                  <p className="font-medium text-[#00897B]">R{selectedReorder.totalCost.toLocaleString()}</p>
+  1521→                </div>
+  1522→              </div>
+  1523→              <div className="p-4 bg-green-50 rounded-lg">
+  1524→                <p className="text-sm text-green-700">
+  1525→                  <span className="font-medium">Savings vs Retail:</span> R{selectedReorder.savingsVsRetail.toLocaleString()}
+  1526→                </p>
+  1527→                <p className="text-sm text-gray-500 mt-1">{selectedReorder.reason}</p>
+  1528→              </div>
+  1529→            </div>
+  1530→          )}
+  1531→          <DialogFooter>
+  1532→            <Button variant="outline" onClick={() => setSelectedReorder(null)}>Close</Button>
+  1533→            <Button className="bg-[#00897B] hover:bg-[#00695C]">
+  1534→              <Send className="h-4 w-4 mr-2" />
+  1535→              Send RFQ
+  1536→            </Button>
+  1537→          </DialogFooter>
+  1538→        </DialogContent>
+  1539→      </Dialog>
+  1540→
+  1541→      {/* RFQ Dialog */}
+  1542→      <Dialog open={rfqDialogOpen} onOpenChange={setRfqDialogOpen}>
+  1543→        <DialogContent>
+  1544→          <DialogHeader>
+  1545→            <DialogTitle>Generate Request for Quotation (RFQ)</DialogTitle>
+  1546→            <DialogDescription>
+  1547→              Create RFQ for suggested reorder items
+  1548→            </DialogDescription>
+  1549→          </DialogHeader>
+  1550→          <div className="space-y-4">
+  1551→            <p className="text-sm text-gray-500">
+  1552→              This will generate RFQ documents for {reorderSuggestions.filter(r => r.urgency === 'critical' || r.urgency === 'high').length} items 
+  1553→              across {new Set(reorderSuggestions.map(r => r.supplierId)).size} suppliers.
+  1554→            </p>
+  1555→            <div className="p-4 bg-gray-50 rounded-lg">
+  1556→              <p className="font-medium">Total Estimated Value</p>
+  1557→              <p className="text-2xl font-bold text-[#00897B]">
+  1558→                R{reorderSuggestions.reduce((sum, r) => sum + r.totalCost, 0).toLocaleString()}
+  1559→              </p>
+  1560→            </div>
+  1561→          </div>
+  1562→          <DialogFooter>
+  1563→            <Button variant="outline" onClick={() => setRfqDialogOpen(false)}>Cancel</Button>
+  1564→            <Button className="bg-[#00897B] hover:bg-[#00695C]">
+  1565→              <FileText className="h-4 w-4 mr-2" />
+  1566→              Generate RFQ
+  1567→            </Button>
+  1568→          </DialogFooter>
+  1569→        </DialogContent>
+  1570→      </Dialog>
+  1571→    </div>
+  1572→  )
+  1573→}
+  1574→

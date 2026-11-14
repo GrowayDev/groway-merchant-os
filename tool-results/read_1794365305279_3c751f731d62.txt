@@ -1,0 +1,865 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback } from 'react'
+     4→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+     5→import { Badge } from '@/components/ui/badge'
+     6→import { Button } from '@/components/ui/button'
+     7→import { ScrollArea } from '@/components/ui/scroll-area'
+     8→import { Progress } from '@/components/ui/progress'
+     9→import { Separator } from '@/components/ui/separator'
+    10→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    11→import {
+    12→  Select,
+    13→  SelectContent,
+    14→  SelectItem,
+    15→  SelectTrigger,
+    16→  SelectValue,
+    17→} from '@/components/ui/select'
+    18→import {
+    19→  TrendingUp,
+    20→  TrendingDown,
+    21→  ArrowUpRight,
+    22→  ArrowDownRight,
+    23→  Calendar,
+    24→  Download,
+    25→  Printer,
+    26→  RefreshCw,
+    27→  Coins,
+    28→  ShoppingCart,
+    29→  Users,
+    30→  Package,
+    31→  CreditCard,
+    32→  Banknote,
+    33→  QrCode,
+    34→  Wallet,
+    35→  BarChart3,
+    36→  PieChart,
+    37→  LineChart,
+    38→  Clock,
+    39→  MapPin,
+    40→  Store,
+    41→  FileText,
+    42→  Filter,
+    43→  ChevronLeft,
+    44→  ChevronRight,
+    45→  AlertCircle,
+    46→} from 'lucide-react'
+    47→
+    48→interface HourlyBreakdown {
+    49→  hour: string
+    50→  amount: number
+    51→  count: number
+    52→}
+    53→
+    54→interface PaymentMethodBreakdown {
+    55→  method: string
+    56→  amount: number
+    57→  count: number
+    58→  percentage: number
+    59→}
+    60→
+    61→interface TopProduct {
+    62→  id: string
+    63→  name: string
+    64→  sold: number
+    65→  revenue: number
+    66→}
+    67→
+    68→interface DailyBreakdown {
+    69→  date: string
+    70→  sales: number
+    71→  transactions: number
+    72→}
+    73→
+    74→interface MonthlyBreakdown {
+    75→  month: string
+    76→  year: number
+    77→  monthName: string
+    78→  sales: number
+    79→  transactions: number
+    80→  growth: number
+    81→}
+    82→
+    83→interface QuarterlyBreakdown {
+    84→  quarter: number
+    85→  year: number
+    86→  label: string
+    87→  sales: number
+    88→  transactions: number
+    89→  growth: number
+    90→}
+    91→
+    92→interface SalesReportData {
+    93→  period: string
+    94→  periodStart: string
+    95→  periodEnd: string
+    96→  year?: number
+    97→  quarter?: number
+    98→  metrics: {
+    99→    totalSales: number
+   100→    transactionCount: number
+   101→    avgTransaction: number
+   102→    growth: number
+   103→  }
+   104→  hourlyBreakdown: HourlyBreakdown[]
+   105→  paymentMethods: PaymentMethodBreakdown[]
+   106→  topProducts: TopProduct[]
+   107→  topCategories: { category: string; revenue: number; percentage: number }[]
+   108→  dailyBreakdown: DailyBreakdown[]
+   109→  monthlyBreakdown: MonthlyBreakdown[]
+   110→  quarterlyBreakdown: QuarterlyBreakdown[]
+   111→  comparison: {
+   112→    current: number
+   113→    previous: number
+   114→    change: number
+   115→  }
+   116→  generatedAt: string
+   117→}
+   118→
+   119→const formatCurrency = (amount: number) => `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+   120→
+   121→const paymentIcons: Record<string, any> = {
+   122→  card: CreditCard,
+   123→  cash: Banknote,
+   124→  qr: QrCode,
+   125→  wallet: Wallet,
+   126→}
+   127→
+   128→const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+   129→                    'July', 'August', 'September', 'October', 'November', 'December']
+   130→
+   131→// Demo merchant ID for development
+   132→const DEMO_MERCHANT_ID = 'demo-merchant-1'
+   133→
+   134→export function SalesReportView() {
+   135→  const [data, setData] = useState<SalesReportData | null>(null)
+   136→  const [isLoading, setIsLoading] = useState(true)
+   137→  const [error, setError] = useState<string | null>(null)
+   138→  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'>('daily')
+   139→  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+   140→  const [selectedQuarter, setSelectedQuarter] = useState(Math.floor(new Date().getMonth() / 3) + 1)
+   141→  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
+   142→
+   143→  const fetchData = useCallback(async () => {
+   144→    setIsLoading(true)
+   145→    setError(null)
+   146→    
+   147→    try {
+   148→      const params = new URLSearchParams({
+   149→        merchantId: DEMO_MERCHANT_ID,
+   150→        period,
+   151→        year: selectedYear.toString(),
+   152→      })
+   153→      
+   154→      if (period === 'quarterly') {
+   155→        params.set('quarter', selectedQuarter.toString())
+   156→      }
+   157→      
+   158→      const response = await fetch(`/merchant-os/api/reports/sales?${params}`)
+   159→      
+   160→      if (!response.ok) {
+   161→        throw new Error('Failed to fetch sales report')
+   162→      }
+   163→      
+   164→      const result = await response.json()
+   165→      
+   166→      if (result.success && result.data) {
+   167→        setData(result.data)
+   168→      } else {
+   169→        throw new Error(result.error || 'Failed to load data')
+   170→      }
+   171→    } catch (err) {
+   172→      console.error('Error fetching sales report:', err)
+   173→      setError(err instanceof Error ? err.message : 'Failed to load sales report')
+   174→      // Use fallback mock data if API fails
+   175→      setData(generateMockData(period, selectedYear, selectedQuarter))
+   176→    } finally {
+   177→      setIsLoading(false)
+   178→    }
+   179→  }, [period, selectedYear, selectedQuarter])
+   180→
+   181→  useEffect(() => {
+   182→    fetchData()
+   183→  }, [fetchData])
+   184→
+   185→  const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
+   186→    try {
+   187→      const params = new URLSearchParams({
+   188→        merchantId: DEMO_MERCHANT_ID,
+   189→        period,
+   190→        format,
+   191→        year: selectedYear.toString(),
+   192→      })
+   193→      
+   194→      if (period === 'quarterly') {
+   195→        params.set('quarter', selectedQuarter.toString())
+   196→      }
+   197→      
+   198→      window.open(`/merchant-os/api/reports/sales/export?${params}`, '_blank')
+   199→    } catch (err) {
+   200→      console.error('Export failed:', err)
+   201→    }
+   202→  }
+   203→
+   204→  const handlePrint = () => {
+   205→    window.print()
+   206→  }
+   207→
+   208→  // Generate mock data as fallback
+   209→  const generateMockData = (periodType: string, year: number, quarter: number): SalesReportData => {
+   210→    const now = new Date()
+   211→    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+   212→    
+   213→    let periodStart: Date
+   214→    let periodEnd: Date = now
+   215→    
+   216→    switch (periodType) {
+   217→      case 'daily':
+   218→        periodStart = today
+   219→        break
+   220→      case 'weekly':
+   221→        periodStart = new Date(today)
+   222→        periodStart.setDate(periodStart.getDate() - 6)
+   223→        break
+   224→      case 'monthly':
+   225→        periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+   226→        break
+   227→      case 'quarterly':
+   228→        periodStart = new Date(year, (quarter - 1) * 3, 1)
+   229→        periodEnd = new Date(year, quarter * 3, 0, 23, 59, 59, 999)
+   230→        break
+   231→      case 'yearly':
+   232→        periodStart = new Date(year, 0, 1)
+   233→        periodEnd = new Date(year, 11, 31, 23, 59, 59, 999)
+   234→        break
+   235→      default:
+   236→        periodStart = today
+   237→    }
+   238→
+   239→    // Generate hourly breakdown
+   240→    const hourlyBreakdown: HourlyBreakdown[] = []
+   241→    for (let h = 8; h <= 20; h++) {
+   242→      const baseAmount = h >= 11 && h <= 14 ? 800 : h >= 17 && h <= 19 ? 600 : 200
+   243→      hourlyBreakdown.push({
+   244→        hour: `${h.toString().padStart(2, '0')}:00`,
+   245→        amount: baseAmount + Math.floor(Math.random() * 400),
+   246→        count: Math.floor(Math.random() * 10) + 1
+   247→      })
+   248→    }
+   249→
+   250→    // Generate daily breakdown
+   251→    const dailyBreakdown: DailyBreakdown[] = []
+   252→    const daysCount = periodType === 'weekly' ? 7 : periodType === 'monthly' ? 30 : 0
+   253→    for (let i = daysCount - 1; i >= 0; i--) {
+   254→      const date = new Date(periodStart)
+   255→      date.setDate(date.getDate() + (daysCount - 1 - i))
+   256→      dailyBreakdown.push({
+   257→        date: date.toISOString().split('T')[0],
+   258→        sales: 3000 + Math.floor(Math.random() * 5000),
+   259→        transactions: 20 + Math.floor(Math.random() * 40)
+   260→      })
+   261→    }
+   262→
+   263→    // Generate monthly breakdown
+   264→    const monthlyBreakdown: MonthlyBreakdown[] = []
+   265→    const monthsCount = periodType === 'quarterly' ? 3 : periodType === 'yearly' ? 12 : 0
+   266→    const startMonth = periodType === 'quarterly' ? (quarter - 1) * 3 : 0
+   267→    for (let i = 0; i < monthsCount; i++) {
+   268→      monthlyBreakdown.push({
+   269→        month: `${year}-${String(startMonth + i + 1).padStart(2, '0')}`,
+   270→        year,
+   271→        monthName: monthNames[startMonth + i],
+   272→        sales: 50000 + Math.floor(Math.random() * 50000),
+   273→        transactions: 200 + Math.floor(Math.random() * 200),
+   274→        growth: -15 + Math.floor(Math.random() * 30)
+   275→      })
+   276→    }
+   277→
+   278→    // Generate quarterly breakdown
+   279→    const quarterlyBreakdown: QuarterlyBreakdown[] = []
+   280→    if (periodType === 'yearly') {
+   281→      for (let q = 1; q <= 4; q++) {
+   282→        quarterlyBreakdown.push({
+   283→          quarter: q,
+   284→          year,
+   285→          label: `Q${q} ${year}`,
+   286→          sales: 150000 + Math.floor(Math.random() * 100000),
+   287→          transactions: 600 + Math.floor(Math.random() * 400),
+   288→          growth: -10 + Math.floor(Math.random() * 25)
+   289→        })
+   290→      }
+   291→    }
+   292→
+   293→    const totalSales = periodType === 'yearly' 
+   294→      ? quarterlyBreakdown.reduce((sum, q) => sum + q.sales, 0)
+   295→      : periodType === 'quarterly' || periodType === 'monthly'
+   296→        ? monthlyBreakdown.reduce((sum, m) => sum + m.sales, 0)
+   297→        : periodType === 'weekly'
+   298→          ? dailyBreakdown.reduce((sum, d) => sum + d.sales, 0)
+   299→          : hourlyBreakdown.reduce((sum, h) => sum + h.amount, 0)
+   300→
+   301→    const transactionCount = periodType === 'yearly'
+   302→      ? quarterlyBreakdown.reduce((sum, q) => sum + q.transactions, 0)
+   303→      : periodType === 'quarterly' || periodType === 'monthly'
+   304→        ? monthlyBreakdown.reduce((sum, m) => sum + m.transactions, 0)
+   305→        : periodType === 'weekly'
+   306→          ? dailyBreakdown.reduce((sum, d) => sum + d.transactions, 0)
+   307→          : 35 + Math.floor(Math.random() * 20)
+   308→
+   309→    return {
+   310→      period: periodType,
+   311→      periodStart: periodStart.toISOString(),
+   312→      periodEnd: periodEnd.toISOString(),
+   313→      year,
+   314→      quarter: periodType === 'quarterly' ? quarter : undefined,
+   315→      metrics: {
+   316→        totalSales,
+   317→        transactionCount,
+   318→        avgTransaction: Math.round(totalSales / transactionCount),
+   319→        growth: -10 + Math.floor(Math.random() * 25)
+   320→      },
+   321→      hourlyBreakdown,
+   322→      paymentMethods: [
+   323→        { method: 'card', amount: Math.round(totalSales * 0.55), count: Math.round(transactionCount * 0.55), percentage: 55 },
+   324→        { method: 'cash', amount: Math.round(totalSales * 0.25), count: Math.round(transactionCount * 0.25), percentage: 25 },
+   325→        { method: 'qr', amount: Math.round(totalSales * 0.12), count: Math.round(transactionCount * 0.12), percentage: 12 },
+   326→        { method: 'wallet', amount: Math.round(totalSales * 0.08), count: Math.round(transactionCount * 0.08), percentage: 8 },
+   327→      ],
+   328→      topProducts: [
+   329→        { id: 'prod-1', name: 'Burger Combo', sold: 168, revenue: 15103.20 },
+   330→        { id: 'prod-2', name: 'Chicken Wings (12pc)', sold: 126, revenue: 12587.40 },
+   331→        { id: 'prod-3', name: 'Beef Burger Deluxe', sold: 105, revenue: 7339.50 },
+   332→        { id: 'prod-4', name: 'Coca-Cola 500ml', sold: 315, revenue: 5953.50 },
+   333→        { id: 'prod-5', name: 'Milkshake Chocolate', sold: 84, revenue: 2931.60 },
+   334→      ],
+   335→      topCategories: [
+   336→        { category: 'Combos', revenue: Math.round(totalSales * 0.35), percentage: 35 },
+   337→        { category: 'Burgers', revenue: Math.round(totalSales * 0.25), percentage: 25 },
+   338→        { category: 'Beverages', revenue: Math.round(totalSales * 0.20), percentage: 20 },
+   339→        { category: 'Sides', revenue: Math.round(totalSales * 0.12), percentage: 12 },
+   340→        { category: 'Desserts', revenue: Math.round(totalSales * 0.08), percentage: 8 },
+   341→      ],
+   342→      dailyBreakdown,
+   343→      monthlyBreakdown,
+   344→      quarterlyBreakdown,
+   345→      comparison: {
+   346→        current: totalSales,
+   347→        previous: Math.round(totalSales * (0.85 + Math.random() * 0.2)),
+   348→        change: -10 + Math.floor(Math.random() * 25)
+   349→      },
+   350→      generatedAt: new Date().toISOString()
+   351→    }
+   352→  }
+   353→
+   354→  const navigatePeriod = (direction: 'prev' | 'next') => {
+   355→    if (period === 'quarterly') {
+   356→      if (direction === 'prev') {
+   357→        if (selectedQuarter === 1) {
+   358→          setSelectedQuarter(4)
+   359→          setSelectedYear(selectedYear - 1)
+   360→        } else {
+   361→          setSelectedQuarter(selectedQuarter - 1)
+   362→        }
+   363→      } else {
+   364→        if (selectedQuarter === 4) {
+   365→          setSelectedQuarter(1)
+   366→          setSelectedYear(selectedYear + 1)
+   367→        } else {
+   368→          setSelectedQuarter(selectedQuarter + 1)
+   369→        }
+   370→      }
+   371→    } else if (period === 'yearly') {
+   372→      setSelectedYear(selectedYear + (direction === 'next' ? 1 : -1))
+   373→    }
+   374→  }
+   375→
+   376→  const getPeriodLabel = () => {
+   377→    switch (period) {
+   378→      case 'daily':
+   379→        return 'Today'
+   380→      case 'weekly':
+   381→        return 'This Week'
+   382→      case 'monthly':
+   383→        return `${monthNames[selectedMonth]} ${selectedYear}`
+   384→      case 'quarterly':
+   385→        return `Q${selectedQuarter} ${selectedYear}`
+   386→      case 'yearly':
+   387→        return `Year ${selectedYear}`
+   388→      default:
+   389→        return ''
+   390→    }
+   391→  }
+   392→
+   393→  if (isLoading) {
+   394→    return (
+   395→      <div className="flex-1 p-6 flex items-center justify-center">
+   396→        <div className="text-center">
+   397→          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-[#00897B]" />
+   398→          <p className="text-[#757575]">Loading sales report...</p>
+   399→        </div>
+   400→      </div>
+   401→    )
+   402→  }
+   403→
+   404→  if (!data) {
+   405→    return (
+   406→      <div className="flex-1 p-6 flex items-center justify-center">
+   407→        <div className="text-center">
+   408→          <AlertCircle className="h-8 w-8 mx-auto mb-4 text-red-500" />
+   409→          <p className="text-[#757575]">Failed to load sales report</p>
+   410→          <Button variant="outline" size="sm" onClick={fetchData} className="mt-4">
+   411→            <RefreshCw className="h-4 w-4 mr-2" />
+   412→            Retry
+   413→          </Button>
+   414→        </div>
+   415→      </div>
+   416→    )
+   417→  }
+   418→
+   419→  const { metrics, hourlyBreakdown, paymentMethods, topProducts, topCategories, dailyBreakdown, monthlyBreakdown, quarterlyBreakdown, comparison } = data
+   420→
+   421→  return (
+   422→    <ScrollArea className="flex-1">
+   423→      <div className="p-6 space-y-6">
+   424→        {/* Header */}
+   425→        <div className="flex items-center justify-between flex-wrap gap-4">
+   426→          <div>
+   427→            <h1 className="text-2xl font-bold text-[#1A1A1A] flex items-center gap-2">
+   428→              <BarChart3 className="h-6 w-6 text-[#00897B]" />
+   429→              Sales Report
+   430→            </h1>
+   431→            <p className="text-sm text-[#757575]">
+   432→              Generated on {new Date(data.generatedAt).toLocaleString('en-ZA')}
+   433→            </p>
+   434→          </div>
+   435→          <div className="flex items-center gap-2 flex-wrap">
+   436→            <Button variant="outline" size="sm" onClick={fetchData}>
+   437→              <RefreshCw className="h-4 w-4 mr-2" />
+   438→              Refresh
+   439→            </Button>
+   440→            <Button variant="outline" size="sm" onClick={handlePrint}>
+   441→              <Printer className="h-4 w-4 mr-2" />
+   442→              Print
+   443→            </Button>
+   444→            <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
+   445→              <Download className="h-4 w-4 mr-2" />
+   446→              CSV
+   447→            </Button>
+   448→            <Button variant="outline" size="sm" onClick={() => handleExport('excel')}>
+   449→              <Download className="h-4 w-4 mr-2" />
+   450→              Excel
+   451→            </Button>
+   452→            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')}>
+   453→              <Download className="h-4 w-4 mr-2" />
+   454→              PDF
+   455→            </Button>
+   456→          </div>
+   457→        </div>
+   458→
+   459→        {/* Period Selector */}
+   460→        <div className="flex items-center gap-4 flex-wrap">
+   461→          <Tabs value={period} onValueChange={(v) => setPeriod(v as any)} className="w-auto">
+   462→            <TabsList>
+   463→              <TabsTrigger value="daily">Today</TabsTrigger>
+   464→              <TabsTrigger value="weekly">Week</TabsTrigger>
+   465→              <TabsTrigger value="monthly">Month</TabsTrigger>
+   466→              <TabsTrigger value="quarterly">Quarter</TabsTrigger>
+   467→              <TabsTrigger value="yearly">Year</TabsTrigger>
+   468→            </TabsList>
+   469→          </Tabs>
+   470→          
+   471→          {(period === 'quarterly' || period === 'yearly') && (
+   472→            <div className="flex items-center gap-2 ml-auto">
+   473→              <Button variant="outline" size="icon" onClick={() => navigatePeriod('prev')}>
+   474→                <ChevronLeft className="h-4 w-4" />
+   475→              </Button>
+   476→              <span className="text-sm font-medium min-w-[100px] text-center">
+   477→                {getPeriodLabel()}
+   478→              </span>
+   479→              <Button variant="outline" size="icon" onClick={() => navigatePeriod('next')}>
+   480→                <ChevronRight className="h-4 w-4" />
+   481→              </Button>
+   482→            </div>
+   483→          )}
+   484→        </div>
+   485→
+   486→        {/* Key Metrics */}
+   487→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+   488→          <Card className="border-l-4 border-l-[#00897B]">
+   489→            <CardContent className="p-4">
+   490→              <div className="flex items-center justify-between">
+   491→                <div>
+   492→                  <p className="text-xs text-[#757575] mb-1">Total Sales</p>
+   493→                  <p className="text-2xl font-bold text-[#1A1A1A]">{formatCurrency(metrics.totalSales)}</p>
+   494→                  <div className="flex items-center gap-1 mt-1">
+   495→                    {metrics.growth >= 0 ? (
+   496→                      <>
+   497→                        <TrendingUp className="h-3 w-3 text-green-500" />
+   498→                        <span className="text-xs text-green-500">+{metrics.growth.toFixed(1)}%</span>
+   499→                      </>
+   500→                    ) : (
+   501→                      <>
+   502→                        <TrendingDown className="h-3 w-3 text-red-500" />
+   503→                        <span className="text-xs text-red-500">{metrics.growth.toFixed(1)}%</span>
+   504→                      </>
+   505→                    )}
+   506→                    <span className="text-xs text-[#757575]">vs previous</span>
+   507→                  </div>
+   508→                </div>
+   509→                <div className="w-12 h-12 rounded-full bg-[#E0F2F1] flex items-center justify-center">
+   510→                  <Coins className="h-6 w-6 text-[#00897B]" />
+   511→                </div>
+   512→              </div>
+   513→            </CardContent>
+   514→          </Card>
+   515→
+   516→          <Card>
+   517→            <CardContent className="p-4">
+   518→              <div className="flex items-center justify-between">
+   519→                <div>
+   520→                  <p className="text-xs text-[#757575] mb-1">Transactions</p>
+   521→                  <p className="text-2xl font-bold text-[#1A1A1A]">{metrics.transactionCount.toLocaleString()}</p>
+   522→                  <p className="text-xs text-[#757575] mt-1">
+   523→                    {period === 'yearly' ? `${Math.round(metrics.transactionCount / 365)} avg/day` : 
+   524→                     period === 'monthly' || period === 'quarterly' ? `${Math.round(metrics.transactionCount / 30)} avg/day` :
+   525→                     `${Math.round(metrics.transactionCount / 7)} avg/day`}
+   526→                  </p>
+   527→                </div>
+   528→                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+   529→                  <ShoppingCart className="h-6 w-6 text-blue-500" />
+   530→                </div>
+   531→              </div>
+   532→            </CardContent>
+   533→          </Card>
+   534→
+   535→          <Card>
+   536→            <CardContent className="p-4">
+   537→              <div className="flex items-center justify-between">
+   538→                <div>
+   539→                  <p className="text-xs text-[#757575] mb-1">Avg. Transaction</p>
+   540→                  <p className="text-2xl font-bold text-[#1A1A1A]">{formatCurrency(metrics.avgTransaction)}</p>
+   541→                  <div className="flex items-center gap-1 mt-1">
+   542→                    {comparison.change >= 0 ? (
+   543→                      <ArrowUpRight className="h-3 w-3 text-green-500" />
+   544→                    ) : (
+   545→                      <ArrowDownRight className="h-3 w-3 text-red-500" />
+   546→                    )}
+   547→                    <span className="text-xs text-[#757575]">vs previous period</span>
+   548→                  </div>
+   549→                </div>
+   550→                <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center">
+   551→                  <CreditCard className="h-6 w-6 text-purple-500" />
+   552→                </div>
+   553→              </div>
+   554→            </CardContent>
+   555→          </Card>
+   556→
+   557→          <Card>
+   558→            <CardContent className="p-4">
+   559→              <div className="flex items-center justify-between">
+   560→                <div>
+   561→                  <p className="text-xs text-[#757575] mb-1">Period Comparison</p>
+   562→                  <div className="flex items-center gap-2">
+   563→                    <p className="text-lg font-bold text-[#757575]">{formatCurrency(comparison.previous)}</p>
+   564→                    <span className={`text-sm font-semibold ${comparison.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+   565→                      {comparison.change >= 0 ? '+' : ''}{comparison.change.toFixed(1)}%
+   566→                    </span>
+   567→                  </div>
+   568→                  <p className="text-xs text-[#757575] mt-1">Previous period</p>
+   569→                </div>
+   570→                <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
+   571→                  <Calendar className="h-6 w-6 text-orange-500" />
+   572→                </div>
+   573→              </div>
+   574→            </CardContent>
+   575→          </Card>
+   576→        </div>
+   577→
+   578→        {/* Daily View - Hourly Chart & Payment Methods */}
+   579→        {period === 'daily' && (
+   580→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   581→            {/* Hourly Sales Chart */}
+   582→            <Card>
+   583→              <CardHeader className="pb-2">
+   584→                <CardTitle className="text-base font-semibold flex items-center gap-2">
+   585→                  <LineChart className="h-4 w-4 text-[#00897B]" />
+   586→                  Hourly Sales
+   587→                </CardTitle>
+   588→                <CardDescription>Sales breakdown by hour</CardDescription>
+   589→              </CardHeader>
+   590→              <CardContent>
+   591→                <div className="h-48 flex items-end gap-1">
+   592→                  {hourlyBreakdown.map((hour, i) => {
+   593→                    const maxAmount = Math.max(...hourlyBreakdown.map(h => h.amount))
+   594→                    const height = maxAmount > 0 ? (hour.amount / maxAmount) * 100 : 0
+   595→                    return (
+   596→                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
+   597→                        <div className="text-[9px] text-[#757575]">{formatCurrency(hour.amount)}</div>
+   598→                        <div 
+   599→                          className="w-full bg-gradient-to-t from-[#00897B] to-[#4CAF50] rounded-t-sm min-h-[4px] transition-all hover:from-[#00695C] hover:to-[#388E3C] cursor-pointer"
+   600→                          style={{ height: `${height}%` }}
+   601→                        />
+   602→                        <div className="text-[9px] text-[#757575]">{hour.hour.replace(':00', '')}</div>
+   603→                      </div>
+   604→                    )
+   605→                  })}
+   606→                </div>
+   607→              </CardContent>
+   608→            </Card>
+   609→
+   610→            {/* Payment Methods */}
+   611→            <Card>
+   612→              <CardHeader className="pb-2">
+   613→                <CardTitle className="text-base font-semibold flex items-center gap-2">
+   614→                  <PieChart className="h-4 w-4 text-[#00897B]" />
+   615→                  Payment Methods
+   616→                </CardTitle>
+   617→                <CardDescription>Distribution of payment types</CardDescription>
+   618→              </CardHeader>
+   619→              <CardContent className="space-y-4">
+   620→                {paymentMethods.map((pm, i) => {
+   621→                  const Icon = paymentIcons[pm.method] || CreditCard
+   622→                  return (
+   623→                    <div key={i} className="space-y-2">
+   624→                      <div className="flex items-center justify-between">
+   625→                        <div className="flex items-center gap-2">
+   626→                          <div className="w-8 h-8 rounded-lg bg-[#E0F2F1] flex items-center justify-center">
+   627→                            <Icon className="h-4 w-4 text-[#00897B]" />
+   628→                          </div>
+   629→                          <div>
+   630→                            <p className="text-sm font-medium text-[#1A1A1A] capitalize">{pm.method}</p>
+   631→                            <p className="text-xs text-[#757575]">{pm.count} transactions</p>
+   632→                          </div>
+   633→                        </div>
+   634→                        <div className="text-right">
+   635→                          <p className="text-sm font-semibold text-[#1A1A1A]">{formatCurrency(pm.amount)}</p>
+   636→                          <p className="text-xs text-[#757575]">{pm.percentage.toFixed(1)}%</p>
+   637→                        </div>
+   638→                      </div>
+   639→                      <Progress value={pm.percentage} className="h-2 bg-gray-100" />
+   640→                    </div>
+   641→                  )
+   642→                })}
+   643→              </CardContent>
+   644→            </Card>
+   645→          </div>
+   646→        )}
+   647→
+   648→        {/* Weekly View - Daily Breakdown */}
+   649→        {period === 'weekly' && dailyBreakdown.length > 0 && (
+   650→          <Card>
+   651→            <CardHeader className="pb-2">
+   652→              <CardTitle className="text-base font-semibold flex items-center gap-2">
+   653→                <BarChart3 className="h-4 w-4 text-[#00897B]" />
+   654→                Daily Sales Breakdown
+   655→              </CardTitle>
+   656→              <CardDescription>Sales performance by day</CardDescription>
+   657→            </CardHeader>
+   658→            <CardContent>
+   659→              <div className="space-y-4">
+   660→                {dailyBreakdown.map((day, i) => {
+   661→                  const maxSales = Math.max(...dailyBreakdown.map(d => d.sales))
+   662→                  const percentage = maxSales > 0 ? (day.sales / maxSales) * 100 : 0
+   663→                  return (
+   664→                    <div key={i} className="space-y-2">
+   665→                      <div className="flex items-center justify-between text-sm">
+   666→                        <span className="font-medium text-[#1A1A1A] w-24">{new Date(day.date).toLocaleDateString('en-ZA', { weekday: 'short' })}</span>
+   667→                        <span className="text-[#757575]">{day.transactions} transactions</span>
+   668→                        <span className="font-semibold text-[#00897B]">{formatCurrency(day.sales)}</span>
+   669→                      </div>
+   670→                      <div className="flex items-center gap-2">
+   671→                        <Progress value={percentage} className="h-3 bg-gray-100" />
+   672→                        <span className="text-xs text-[#757575] w-12">{percentage.toFixed(0)}%</span>
+   673→                      </div>
+   674→                    </div>
+   675→                  )
+   676→                })}
+   677→              </div>
+   678→            </CardContent>
+   679→          </Card>
+   680→        )}
+   681→
+   682→        {/* Monthly View - Daily Breakdown */}
+   683→        {period === 'monthly' && dailyBreakdown.length > 0 && (
+   684→          <Card>
+   685→            <CardHeader className="pb-2">
+   686→              <CardTitle className="text-base font-semibold flex items-center gap-2">
+   687→                <BarChart3 className="h-4 w-4 text-[#00897B]" />
+   688→                Daily Sales This Month
+   689→              </CardTitle>
+   690→            </CardHeader>
+   691→            <CardContent>
+   692→              <div className="max-h-96 overflow-y-auto space-y-2">
+   693→                {dailyBreakdown.slice(-15).map((day, i) => {
+   694→                  const maxSales = Math.max(...dailyBreakdown.map(d => d.sales))
+   695→                  const percentage = maxSales > 0 ? (day.sales / maxSales) * 100 : 0
+   696→                  return (
+   697→                    <div key={i} className="flex items-center gap-3 p-2 bg-[#FAFAFA] rounded-lg">
+   698→                      <span className="text-sm text-[#757575] w-20">{day.date}</span>
+   699→                      <Progress value={percentage} className="h-2 flex-1" />
+   700→                      <span className="text-sm font-semibold text-[#00897B] w-28 text-right">{formatCurrency(day.sales)}</span>
+   701→                    </div>
+   702→                  )
+   703→                })}
+   704→              </div>
+   705→            </CardContent>
+   706→          </Card>
+   707→        )}
+   708→
+   709→        {/* Quarterly View - Monthly Breakdown */}
+   710→        {period === 'quarterly' && monthlyBreakdown.length > 0 && (
+   711→          <Card>
+   712→            <CardHeader className="pb-2">
+   713→              <CardTitle className="text-base font-semibold flex items-center gap-2">
+   714→                <BarChart3 className="h-4 w-4 text-[#00897B]" />
+   715→                Monthly Breakdown - Q{selectedQuarter} {selectedYear}
+   716→              </CardTitle>
+   717→            </CardHeader>
+   718→            <CardContent>
+   719→              <div className="space-y-4">
+   720→                {monthlyBreakdown.map((month, i) => {
+   721→                  const maxSales = Math.max(...monthlyBreakdown.map(m => m.sales))
+   722→                  const percentage = maxSales > 0 ? (month.sales / maxSales) * 100 : 0
+   723→                  return (
+   724→                    <div key={i} className="space-y-2">
+   725→                      <div className="flex items-center justify-between text-sm">
+   726→                        <span className="font-medium text-[#1A1A1A]">{month.monthName}</span>
+   727→                        <span className="text-[#757575]">{month.transactions} transactions</span>
+   728→                        <span className="font-semibold text-[#00897B]">{formatCurrency(month.sales)}</span>
+   729→                      </div>
+   730→                      <div className="flex items-center gap-2">
+   731→                        <Progress value={percentage} className="h-3 bg-gray-100" />
+   732→                        <span className={`text-xs ${month.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+   733→                          {month.growth >= 0 ? '+' : ''}{month.growth.toFixed(1)}%
+   734→                        </span>
+   735→                      </div>
+   736→                    </div>
+   737→                  )
+   738→                })}
+   739→              </div>
+   740→            </CardContent>
+   741→          </Card>
+   742→        )}
+   743→
+   744→        {/* Yearly View - Quarterly & Monthly Breakdown */}
+   745→        {period === 'yearly' && (
+   746→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   747→            {/* Quarterly Breakdown */}
+   748→            <Card>
+   749→              <CardHeader className="pb-2">
+   750→                <CardTitle className="text-base font-semibold">Quarterly Performance</CardTitle>
+   751→              </CardHeader>
+   752→              <CardContent>
+   753→                <div className="space-y-4">
+   754→                  {quarterlyBreakdown.map((q, i) => {
+   755→                    const maxSales = Math.max(...quarterlyBreakdown.map(q => q.sales))
+   756→                    const percentage = maxSales > 0 ? (q.sales / maxSales) * 100 : 0
+   757→                    return (
+   758→                      <div key={i} className="space-y-2">
+   759→                        <div className="flex items-center justify-between text-sm">
+   760→                          <span className="font-medium text-[#1A1A1A]">{q.label}</span>
+   761→                          <span className="text-[#757575]">{q.transactions} transactions</span>
+   762→                          <span className="font-semibold text-[#00897B]">{formatCurrency(q.sales)}</span>
+   763→                        </div>
+   764→                        <div className="flex items-center gap-2">
+   765→                          <Progress value={percentage} className="h-3 bg-gray-100" />
+   766→                          <span className={`text-xs ${q.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+   767→                            {q.growth >= 0 ? '+' : ''}{q.growth.toFixed(1)}%
+   768→                          </span>
+   769→                        </div>
+   770→                      </div>
+   771→                    )
+   772→                  })}
+   773→                </div>
+   774→              </CardContent>
+   775→            </Card>
+   776→
+   777→            {/* Monthly Breakdown */}
+   778→            <Card>
+   779→              <CardHeader className="pb-2">
+   780→                <CardTitle className="text-base font-semibold">Monthly Breakdown</CardTitle>
+   781→              </CardHeader>
+   782→              <CardContent>
+   783→                <div className="max-h-80 overflow-y-auto space-y-2">
+   784→                  {monthlyBreakdown.map((month, i) => {
+   785→                    const maxSales = Math.max(...monthlyBreakdown.map(m => m.sales))
+   786→                    const percentage = maxSales > 0 ? (month.sales / maxSales) * 100 : 0
+   787→                    return (
+   788→                      <div key={i} className="flex items-center gap-3 p-2 bg-[#FAFAFA] rounded-lg">
+   789→                        <span className="text-sm font-medium text-[#1A1A1A] w-20">{month.monthName}</span>
+   790→                        <Progress value={percentage} className="h-2 flex-1" />
+   791→                        <span className="text-sm font-semibold text-[#00897B] w-28 text-right">{formatCurrency(month.sales)}</span>
+   792→                      </div>
+   793→                    )
+   794→                  })}
+   795→                </div>
+   796→              </CardContent>
+   797→            </Card>
+   798→          </div>
+   799→        )}
+   800→
+   801→        {/* Top Products */}
+   802→        {topProducts.length > 0 && (
+   803→          <Card>
+   804→            <CardHeader className="pb-2">
+   805→              <CardTitle className="text-base font-semibold flex items-center gap-2">
+   806→                <Package className="h-4 w-4 text-[#00897B]" />
+   807→                Top Products
+   808→              </CardTitle>
+   809→              <CardDescription>Best selling items by revenue</CardDescription>
+   810→            </CardHeader>
+   811→            <CardContent>
+   812→              <div className="space-y-3">
+   813→                {topProducts.slice(0, 5).map((product, i) => (
+   814→                  <div key={i} className="flex items-center gap-3 p-2 bg-[#FAFAFA] rounded-lg">
+   815→                    <div className="w-8 h-8 rounded-full bg-[#E0F2F1] flex items-center justify-center text-sm font-bold text-[#00897B]">
+   816→                      {i + 1}
+   817→                    </div>
+   818→                    <div className="flex-1 min-w-0">
+   819→                      <p className="text-sm font-medium text-[#1A1A1A] truncate">{product.name}</p>
+   820→                      <p className="text-xs text-[#757575]">{product.sold} sold</p>
+   821→                    </div>
+   822→                    <div className="text-right">
+   823→                      <p className="text-sm font-semibold text-[#00897B]">{formatCurrency(product.revenue)}</p>
+   824→                      <p className="text-xs text-[#757575]">{formatCurrency(product.revenue / product.sold)} avg</p>
+   825→                    </div>
+   826→                  </div>
+   827→                ))}
+   828→              </div>
+   829→            </CardContent>
+   830→          </Card>
+   831→        )}
+   832→
+   833→        {/* Export Options Footer */}
+   834→        <Card className="bg-[#FAFAFA]">
+   835→          <CardContent className="p-4">
+   836→            <div className="flex items-center justify-between flex-wrap gap-4">
+   837→              <div className="flex items-center gap-4">
+   838→                <FileText className="h-5 w-5 text-[#757575]" />
+   839→                <div>
+   840→                  <p className="text-sm font-medium text-[#1A1A1A]">Export Report</p>
+   841→                  <p className="text-xs text-[#757575]">Download in various formats for record keeping</p>
+   842→                </div>
+   843→              </div>
+   844→              <div className="flex items-center gap-2">
+   845→                <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
+   846→                  <Download className="h-4 w-4 mr-2" />
+   847→                  CSV
+   848→                </Button>
+   849→                <Button variant="outline" size="sm" onClick={() => handleExport('excel')}>
+   850→                  <Download className="h-4 w-4 mr-2" />
+   851→                  Excel
+   852→                </Button>
+   853→                <Button variant="outline" size="sm" onClick={() => handleExport('pdf')}>
+   854→                  <Download className="h-4 w-4 mr-2" />
+   855→                  PDF
+   856→                </Button>
+   857→              </div>
+   858→            </div>
+   859→          </CardContent>
+   860→        </Card>
+   861→      </div>
+   862→    </ScrollArea>
+   863→  )
+   864→}
+   865→

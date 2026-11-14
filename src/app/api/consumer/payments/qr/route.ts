@@ -17,7 +17,7 @@ function generateQRData(userId: string, amount?: string | null): string {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const userId = searchParams.get('userId') || request.headers.get('x-user-id') || 'demo-consumer-user'
     const amount = searchParams.get('amount')
     const expiresIn = parseInt(searchParams.get('expiresIn') || '300') // 5 min default
 

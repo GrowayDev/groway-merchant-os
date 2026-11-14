@@ -1,0 +1,71 @@
+# =============================================================================
+# Groway Merchant OS — Docker Compose for Oracle Cloud
+# Designed and Built by Motheto Selepe.
+# =============================================================================
+
+services:
+  groway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: groway-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      # --- Database (SQLite, persistent volume) ---
+      - DATABASE_URL=file:/app/data/groway.db
+      # --- CRITICAL: Change these secrets before going live ---
+      - JWT_SECRET=${JWT_SECRET:-CHANGE_ME_TO_A_LONG_RANDOM_STRING_AT_LEAST_32_CHARS}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+      # --- Optional: OAuth (uncomment + set to enable Google/Apple login) ---
+      # - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      # - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      # --- Optional: z-ai SDK (for AI features: TTS, VLM, LLM, etc.) ---
+      # - ZAI_API_KEY=${ZAI_API_KEY}
+      # --- WhatsApp notification service (optional mini-service) ---
+      # - WHATSAPP_TOKEN=${WHATSAPP_TOKEN}
+    volumes:
+      # Persistent SQLite database — survives container rebuilds
+      - groway-db:/app/data
+      # Optional: mount a logs dir
+      - groway-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/platform/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # ---------- Caddy reverse proxy (SSL termination + HTTPS) ----------
+  caddy:
+    image: caddy:2-alpine
+    container_name: groway-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - groway
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+
+volumes:
+  groway-db:
+  groway-logs:
+  caddy-data:
+  caddy-config:

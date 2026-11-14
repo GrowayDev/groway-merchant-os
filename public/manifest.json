@@ -1,0 +1,25 @@
+{
+  "name": "Groway — Africa's Integrated Financial Operating System",
+  "short_name": "Groway",
+  "description": "Merchant OS, Enterprise Portal, Admin Console and financial services for African businesses. POS, Inventory, Accounting, GroCredit, GroSupply, SAPE anti-counterfeit, GroCore lending engine.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#00695C",
+  "theme_color": "#00897B",
+  "categories": ["business", "finance", "productivity", "shopping"],
+  "lang": "en-ZA",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/groway-logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/groway-logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/groway-logo.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/groway-logo.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Merchant OS", "short_name": "Merchant", "url": "/merchant-os/app", "icons": [{ "src": "/groway-logo.png", "sizes": "96x96" }] },
+    { "name": "Login", "short_name": "Login", "url": "/merchant-os/login", "icons": [{ "src": "/groway-logo.png", "sizes": "96x96" }] },
+    { "name": "GroSupply", "short_name": "Supply", "url": "/grosupply", "icons": [{ "src": "/groway-logo.png", "sizes": "96x96" }] }
+  ]
+}

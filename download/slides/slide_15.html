@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1280, height=720">
+  <title>The QR Payment Journey</title>
+  <link rel="stylesheet" href="global.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body>
+  <div class="slide relative" style="width:1280px; height:720px; overflow:hidden; background: #FFFFFF;">
+    
+    <!-- Header -->
+    <div style="padding: 48px 64px 0 64px;">
+      <div class="section-bar" style="margin-bottom:12px;"></div>
+      <h1 style="font-size:32px; font-weight:800; color:#1A1A2E; margin-bottom:4px;">The QR Payment Journey</h1>
+      <p style="font-size:18px; color:#6B7280; font-weight:400;">How Spaza Customers Pay</p>
+    </div>
+
+    <!-- 5-Step Horizontal Flow -->
+    <div style="display:flex; align-items:flex-start; padding:40px 64px 0 64px; gap:8px;">
+      
+      <!-- Step 1 -->
+      <div style="flex:1; text-align:center; position:relative;">
+        <div style="width:64px; height:64px; border-radius:50%; background: linear-gradient(135deg, #00897B 0%, #00695C 100%); margin:0 auto 16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,137,123,0.3);">
+          <span style="font-size:28px; font-weight:800; color:#FFFFFF;">1</span>
+        </div>
+        <div style="background:#E0F2F1; border-radius:12px; padding:20px 16px; height:160px; display:flex; flex-direction:column;">
+          <h3 style="font-size:16px; font-weight:700; color:#00695C; margin-bottom:10px;">Merchant Displays QR</h3>
+          <p style="font-size:13px; color:#374151; line-height:1.5;">Spaza owner shows dynamic QR code on Y90B terminal worn around neck or placed on counter.</p>
+          <p style="font-size:12px; color:#00897B; font-weight:600; margin-top:auto;">Always visible & accessible</p>
+        </div>
+        <!-- Connector arrow -->
+        <div style="position:absolute; right:-16px; top:28px; z-index:10;">
+          <span class="material-icons" style="font-size:28px; color:#00897B;">arrow_forward</span>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div style="flex:1; text-align:center; position:relative;">
+        <div style="width:64px; height:64px; border-radius:50%; background: linear-gradient(135deg, #00897B 0%, #00695C 100%); margin:0 auto 16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,137,123,0.3);">
+          <span style="font-size:28px; font-weight:800; color:#FFFFFF;">2</span>
+        </div>
+        <div style="background:#E0F2F1; border-radius:12px; padding:20px 16px; height:160px; display:flex; flex-direction:column;">
+          <h3 style="font-size:16px; font-weight:700; color:#00695C; margin-bottom:10px;">Customer Scans</h3>
+          <p style="font-size:13px; color:#374151; line-height:1.5;">Customer opens banking app (Capitec, TymeBank, Standard Bank, FNB), selects 'Scan QR', points camera at device.</p>
+        </div>
+        <div style="position:absolute; right:-16px; top:28px; z-index:10;">
+          <span class="material-icons" style="font-size:28px; color:#00897B;">arrow_forward</span>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div style="flex:1; text-align:center; position:relative;">
+        <div style="width:64px; height:64px; border-radius:50%; background: linear-gradient(135deg, #00897B 0%, #00695C 100%); margin:0 auto 16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,137,123,0.3);">
+          <span style="font-size:28px; font-weight:800; color:#FFFFFF;">3</span>
+        </div>
+        <div style="background:#E0F2F1; border-radius:12px; padding:20px 16px; height:160px; display:flex; flex-direction:column;">
+          <h3 style="font-size:16px; font-weight:700; color:#00695C; margin-bottom:10px;">Amount & Confirm</h3>
+          <p style="font-size:13px; color:#374151; line-height:1.5;">Customer enters purchase amount, reviews details, authorises with PIN or biometric.</p>
+        </div>
+        <div style="position:absolute; right:-16px; top:28px; z-index:10;">
+          <span class="material-icons" style="font-size:28px; color:#00897B;">arrow_forward</span>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div style="flex:1; text-align:center; position:relative;">
+        <div style="width:64px; height:64px; border-radius:50%; background: linear-gradient(135deg, #00897B 0%, #00695C 100%); margin:0 auto 16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,137,123,0.3);">
+          <span style="font-size:28px; font-weight:800; color:#FFFFFF;">4</span>
+        </div>
+        <div style="background:#E0F2F1; border-radius:12px; padding:20px 16px; height:160px; display:flex; flex-direction:column;">
+          <h3 style="font-size:16px; font-weight:700; color:#00695C; margin-bottom:10px;">Instant Confirmation</h3>
+          <p style="font-size:13px; color:#374151; line-height:1.5;">Both merchant and customer receive instant confirmation. Y90B plays audio alert.</p>
+          <p style="font-size:12px; color:#00897B; font-weight:600; margin-top:auto;">Digital receipt via SMS</p>
+        </div>
+        <div style="position:absolute; right:-16px; top:28px; z-index:10;">
+          <span class="material-icons" style="font-size:28px; color:#00897B;">arrow_forward</span>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div style="flex:1; text-align:center;">
+        <div style="width:64px; height:64px; border-radius:50%; background: linear-gradient(135deg, #FF8F00 0%, #E65100 100%); margin:0 auto 16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(255,143,0,0.3);">
+          <span style="font-size:28px; font-weight:800; color:#FFFFFF;">5</span>
+        </div>
+        <div style="background:#FFF3E0; border-radius:12px; padding:20px 16px; height:160px; display:flex; flex-direction:column; border:2px solid #FFE0B2;">
+          <h3 style="font-size:16px; font-weight:700; color:#E65100; margin-bottom:10px;">Auto Settlement</h3>
+          <p style="font-size:13px; color:#374151; line-height:1.5;">Funds settled directly to merchant's bank account within hours.</p>
+          <p style="font-size:12px; color:#FF8F00; font-weight:600; margin-top:auto;">Recorded in Merchant OS</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Key Metrics Bar -->
+    <div style="position:absolute; bottom:48px; left:64px; right:64px;">
+      <div style="background: linear-gradient(135deg, #0A1628 0%, #1A2332 100%); border-radius:16px; padding:28px 48px; display:flex; justify-content:space-around; align-items:center;">
+        
+        <div style="text-align:center; display:flex; align-items:center; gap:16px;">
+          <div style="width:56px; height:56px; border-radius:50%; background:rgba(0,137,123,0.2); display:flex; align-items:center; justify-content:center;">
+            <span class="material-icons" style="font-size:28px; color:#00897B;">speed</span>
+          </div>
+          <div style="text-align:left;">
+            <div style="font-size:32px; font-weight:800; color:#00897B;">&lt; 5 seconds</div>
+            <div style="font-size:14px; color:#9CA3AF;">Average transaction time</div>
+          </div>
+        </div>
+
+        <div style="width:1px; height:50px; background:rgba(255,255,255,0.1);"></div>
+
+        <div style="text-align:center; display:flex; align-items:center; gap:16px;">
+          <div style="width:56px; height:56px; border-radius:50%; background:rgba(255,143,0,0.2); display:flex; align-items:center; justify-content:center;">
+            <span class="material-icons" style="font-size:28px; color:#FF8F00;">verified</span>
+          </div>
+          <div style="text-align:left;">
+            <div style="font-size:32px; font-weight:800; color:#FF8F00;">99.7%</div>
+            <div style="font-size:14px; color:#9CA3AF;">Transaction success rate</div>
+          </div>
+        </div>
+
+        <div style="width:1px; height:50px; background:rgba(255,255,255,0.1);"></div>
+
+        <div style="text-align:center; display:flex; align-items:center; gap:16px;">
+          <div style="width:56px; height:56px; border-radius:50%; background:rgba(0,137,123,0.2); display:flex; align-items:center; justify-content:center;">
+            <span class="material-icons" style="font-size:28px; color:#00897B;">payments</span>
+          </div>
+          <div style="text-align:left;">
+            <div style="font-size:32px; font-weight:800; color:#00897B;">1.5%</div>
+            <div style="font-size:14px; color:#9CA3AF;">Transaction fee (MDR)</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Speaker notes -->
+    <aside data-notes class="hidden">
+      - The entire payment journey takes less than 5 seconds from scan to confirmation
+      - Compatible with all major South African banking apps
+      - The Y90B terminal provides both visual and audio confirmation for merchant assurance
+      - 1.5% MDR is competitive with industry standards for QR payments
+      - Settlement within hours improves cash flow for spaza shop operations
+    </aside>
+  </div>
+</body>
+</html>

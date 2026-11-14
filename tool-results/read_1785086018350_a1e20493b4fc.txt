@@ -1,0 +1,602 @@
+     1→   100→  4620→          const res = await fetch('/api/sassa?action=early-access');
+     2→   101→  4621→          const data = await res.json();
+     3→   102→  4622→          if (data.success) {
+     4→   103→  4623→            setEarlyAccessData(data.data);
+     5→   104→  4624→          }
+     6→   105→  4625→        } catch (error) {
+     7→   106→  4626→          console.error('Failed to fetch early access data:', error);
+     8→   107→  4627→        }
+     9→   108→  4628→      }
+    10→   109→  4629→    };
+    11→   110→  4630→    
+    12→   111→  4631→    fetchViewData();
+    13→   112→  4632→  }, [view, calendar.length, applications.length, paymentHistory.length, earlyAccessData]);
+    14→   113→  4633→
+    15→   114→  4634→  // Link SASSA account
+    16→   115→  4635→  const handleLink = async () => {
+    17→   116→  4636→    if (!idNumber || idNumber.length < 6) {
+    18→   117→  4637→      toast.error('Please enter a valid ID number');
+    19→   118→  4638→      return;
+    20→   119→  4639→    }
+    21→   120→  4640→    
+    22→   121→  4641→    setLoading(true);
+    23→   122→  4642→    try {
+    24→   123→  4643→      const res = await fetch('/api/sassa', {
+    25→   124→  4644→        method: 'POST',
+    26→   125→  4645→        headers: { 'Content-Type': 'application/json' },
+    27→   126→  4646→        body: JSON.stringify({ action: 'link', idNumber }),
+    28→   127→  4647→      });
+    29→   128→  4648→      const data = await res.json();
+    30→   129→  4649→      
+    31→   130→  4650→      if (data.success) {
+    32→   131→  4651→        setLinked(true);
+    33→   132→  4652→        setUserGrants(data.data.grants || []);
+    34→   133→  4653→        setTotalMonthly(data.data.totalMonthlyIncome || 0);
+    35→   134→  4654→        setMaskedId(data.data.maskedIdNumber || '');
+    36→   135→  4655→        toast.success(data.message);
+    37→   136→  4656→      } else {
+    38→   137→  4657→        toast.error(data.error || 'Failed to link account');
+    39→   138→  4658→      }
+    40→   139→  4659→    } catch {
+    41→   140→  4660→      toast.error('Failed to link account');
+    42→   141→  4661→    } finally {
+    43→   142→  4662→      setLoading(false);
+    44→   143→  4663→    }
+    45→   144→  4664→  };
+    46→   145→  4665→
+    47→   146→  4666→  // Submit application
+    48→   147→  4667→  const handleApply = async () => {
+    49→   148→  4668→    if (!selectedGrant) {
+    50→   149→  4669→      toast.error('Please select a grant type');
+    51→   150→  4670→      return;
+    52→   151→  4671→    }
+    53→   152→  4672→    
+    54→   153→  4673→    setLoading(true);
+    55→   154→  4674→    try {
+    56→   155→  4675→      const res = await fetch('/api/sassa', {
+    57→   156→  4676→        method: 'POST',
+    58→   157→  4677→        headers: { 'Content-Type': 'application/json' },
+    59→   158→  4678→        body: JSON.stringify({ action: 'apply', grantType: selectedGrant }),
+    60→   159→  4679→      });
+    61→   160→  4680→      const data = await res.json();
+    62→   161→  4681→      
+    63→   162→  4682→      if (data.success) {
+    64→   163→  4683→        toast.success(data.message);
+    65→   164→  4684→        setApplications(prev => [data.data, ...prev]);
+    66→   165→  4685→        setView('tracking');
+    67→   166→  4686→      } else {
+    68→   167→  4687→        toast.error(data.error || 'Failed to submit application');
+    69→   168→  4688→      }
+    70→   169→  4689→    } catch {
+    71→   170→  4690→      toast.error('Failed to submit application');
+    72→   171→  4691→    } finally {
+    73→   172→  4692→      setLoading(false);
+    74→   173→  4693→    }
+    75→   174→  4694→  };
+    76→   175→  4695→
+    77→   176→  4696→  // Request early access
+    78→   177→  4697→  const handleEarlyAccess = async (paymentId: string) => {
+    79→   178→  4698→    setLoading(true);
+    80→   179→  4699→    try {
+    81→   180→  4700→      const res = await fetch('/api/sassa', {
+    82→   181→  4701→        method: 'POST',
+    83→   182→  4702→        headers: { 'Content-Type': 'application/json' },
+    84→   183→  4703→        body: JSON.stringify({ action: 'early-access', paymentId }),
+    85→   184→  4704→      });
+    86→   185→  4705→      const data = await res.json();
+    87→   186→  4706→      
+    88→   187→  4707→      if (data.success) {
+    89→   188→  4708→        toast.success(data.message);
+    90→   189→  4709→        setView('main');
+    91→   190→  4710→      } else {
+    92→   191→  4711→        toast.error(data.error || 'Failed to process early access');
+    93→   192→  4712→      }
+    94→   193→  4713→    } catch {
+    95→   194→  4714→      toast.error('Failed to process early access');
+    96→   195→  4715→    } finally {
+    97→   196→  4716→      setLoading(false);
+    98→   197→  4717→    }
+    99→   198→  4718→  };
+   100→   199→  4719→
+   101→   200→  4720→  // Get status badge color
+   102→   201→  4721→  const getStatusColor = (status: string) => {
+   103→   202→  4722→    const colors: Record<string, string> = {
+   104→   203→  4723→      active: 'bg-green-100 text-green-700',
+   105→   204→  4724→      approved: 'bg-green-100 text-green-700',
+   106→   205→  4725→      pending: 'bg-amber-100 text-amber-700',
+   107→   206→  4726→      processing: 'bg-blue-100 text-blue-700',
+   108→   207→  4727→      submitted: 'bg-purple-100 text-purple-700',
+   109→   208→  4728→      suspended: 'bg-red-100 text-red-700',
+   110→   209→  4729→      rejected: 'bg-red-100 text-red-700',
+   111→   210→  4730→      processed: 'bg-green-100 text-green-700',
+   112→   211→  4731→    };
+   113→   212→  4732→    return colors[status] || 'bg-gray-100 text-gray-700';
+   114→   213→  4733→  };
+   115→   214→  4734→
+   116→   215→  4735→  // Render header with back button
+   117→   216→  4736→  const renderHeader = (title: string, subtitle?: string) => (
+   118→   217→  4737→    <div className="flex items-center gap-2 mb-3">
+   119→   218→  4738→      {view !== 'main' && (
+   120→   219→  4739→        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setView('main')}>
+   121→   220→  4740→          <ArrowLeft className="w-4 h-4" />
+   122→   221→  4741→        </Button>
+   123→   222→  4742→      )}
+   124→   223→  4743→      <div>
+   125→   224→  4744→        <h2 className="font-bold text-gray-900 text-sm">{title}</h2>
+   126→   225→  4745→        {subtitle && <p className="text-[10px] text-gray-500">{subtitle}</p>}
+   127→   226→  4746→      </div>
+   128→   227→  4747→    </div>
+   129→   228→  4748→  );
+   130→   229→  4749→
+   131→   230→  4750→  // Main view
+   132→   231→  4751→  const renderMain = () => (
+   133→   232→  4752→    <div className="space-y-3">
+   134→   233→  4753→      {/* Link Account Section */}
+   135→   234→  4754→      {!linked ? (
+   136→   235→  4755→        <div className="p-3 rounded-lg bg-[#00897B]/5 border border-[#00897B]/20">
+   137→   236→  4756→          <p className="text-xs font-medium text-gray-700 mb-2">Link your SASSA account</p>
+   138→   237→  4757→          <div className="flex gap-2">
+   139→   238→  4758→            <Input
+   140→   239→  4759→              placeholder="Enter SA ID Number"
+   141→   240→  4760→              value={idNumber}
+   142→   241→  4761→              onChange={(e) => setIdNumber(e.target.value)}
+   143→   242→  4762→              className="h-8 text-xs flex-1"
+   144→   243→  4763→              maxLength={13}
+   145→   244→  4764→            />
+   146→   245→  4765→            <Button size="sm" onClick={handleLink} disabled={loading} className="bg-[#00897B] hover:bg-[#00695C] h-8">
+   147→   246→  4766→              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Link'}
+   148→   247→  4767→            </Button>
+   149→   248→  4768→          </div>
+   150→   249→  4769→          <p className="text-[10px] text-gray-500 mt-1">Your ID is securely encrypted and verified</p>
+   151→   250→  4770→        </div>
+   152→   251→  4771→      ) : (
+   153→   252→  4772→        <>
+   154→   253→  4773→          {/* Linked Account Summary */}
+   155→   254→  4774→          <div className="p-3 rounded-lg bg-gradient-to-r from-[#00897B] to-[#43A047] text-white">
+   156→   255→  4775→            <div className="flex items-center justify-between mb-2">
+   157→   256→  4776→              <div className="flex items-center gap-2">
+   158→   257→  4777→                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+   159→   258→  4778→                  <BadgeCheck className="w-4 h-4" />
+   160→   259→  4779→                </div>
+   161→   260→  4780→                <div>
+   162→   261→  4781→                  <p className="font-semibold text-xs">Account Linked</p>
+   163→   262→  4782→                  <p className="text-[10px] text-white/80">ID: {maskedId}</p>
+   164→   263→  4783→                </div>
+   165→   264→  4784→              </div>
+   166→   265→  4785→              <Badge className="bg-white/20 text-white text-[10px]">Active</Badge>
+   167→   266→  4786→            </div>
+   168→   267→  4787→            <div className="pt-2 border-t border-white/20">
+   169→   268→  4788→              <p className="text-[10px] text-white/80">Total Monthly Grants</p>
+   170→   269→  4789→              <p className="text-xl font-bold">{formatAmount(totalMonthly)}</p>
+   171→   270→  4790→            </div>
+   172→   271→  4791→          </div>
+   173→   272→  4792→
+   174→   273→  4793→          {/* Quick Actions Grid */}
+   175→   274→  4794→          <div className="grid grid-cols-2 gap-2">
+   176→   275→  4795→            <button
+   177→   276→  4796→              onClick={() => setView('grants')}
+   178→   277→  4797→              className="p-3 rounded-lg border border-gray-200 hover:border-[#00897B] hover:bg-[#00897B]/5 transition-all text-left"
+   179→   278→  4798→            >
+   180→   279→  4799→              <HandCoins className="w-5 h-5 text-[#00897B] mb-1" />
+   181→   280→  4800→              <p className="font-medium text-gray-900 text-xs">My Grants</p>
+   182→   281→  4801→              <p className="text-[10px] text-gray-500">{userGrants.length} active</p>
+   183→   282→  4802→            </button>
+   184→   283→  4803→            <button
+   185→   284→  4804→              onClick={() => setView('calendar')}
+   186→   285→  4805→              className="p-3 rounded-lg border border-gray-200 hover:border-[#00897B] hover:bg-[#00897B]/5 transition-all text-left"
+   187→   286→  4806→            >
+   188→   287→  4807→              <Clock className="w-5 h-5 text-amber-500 mb-1" />
+   189→   288→  4808→              <p className="font-medium text-gray-900 text-xs">Payment Dates</p>
+   190→   289→  4809→              <p className="text-[10px] text-gray-500">View calendar</p>
+   191→   290→  4810→            </button>
+   192→   291→  4811→            <button
+   193→   292→  4812→              onClick={() => setView('apply')}
+   194→   293→  4813→              className="p-3 rounded-lg border border-gray-200 hover:border-[#00897B] hover:bg-[#00897B]/5 transition-all text-left"
+   195→   294→  4814→            >
+   196→   295→  4815→              <PlusCircle className="w-5 h-5 text-purple-500 mb-1" />
+   197→   296→  4816→              <p className="font-medium text-gray-900 text-xs">Apply</p>
+   198→   297→  4817→              <p className="text-[10px] text-gray-500">New grant</p>
+   199→   298→  4818→            </button>
+   200→   299→  4819→            <button
+   201→   300→  4820→              onClick={() => setView('tracking')}
+   202→   301→  4821→              className="p-3 rounded-lg border border-gray-200 hover:border-[#00897B] hover:bg-[#00897B]/5 transition-all text-left"
+   203→   302→  4822→            >
+   204→   303→  4823→              <FileText className="w-5 h-5 text-blue-500 mb-1" />
+   205→   304→  4824→              <p className="font-medium text-gray-900 text-xs">Applications</p>
+   206→   305→  4825→              <p className="text-[10px] text-gray-500">{applications.filter(a => a.status === 'processing' || a.status === 'submitted').length} pending</p>
+   207→   306→  4826→            </button>
+   208→   307→  4827→          </div>
+   209→   308→  4828→
+   210→   309→  4829→          {/* Grant+ Advance Banner */}
+   211→   310→  4830→          <div 
+   212→   311→  4831→            className="p-3 rounded-lg bg-gradient-to-r from-[#00897B] to-[#43A047] text-white cursor-pointer hover:opacity-90 transition-opacity"
+   213→   312→  4832→            onClick={() => setView('early-access')}
+   214→   313→  4833→          >
+   215→   314→  4834→            <div className="flex items-center gap-2">
+   216→   315→  4835→              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+   217→   316→  4836→                <HandCoins className="w-5 h-5 text-white" />
+   218→   317→  4837→              </div>
+   219→   318→  4838→              <div className="flex-1">
+   220→   319→  4839→                <p className="font-semibold text-xs">Grant+ Advance Available</p>
+   221→   320→  4840→                <p className="text-[10px] text-white/80">Get up to R1,200 advance on your SASSA grant</p>
+   222→   321→  4841→              </div>
+   223→   322→  4842→              <ChevronRight className="w-4 h-4 text-white/80" />
+   224→   323→  4843→            </div>
+   225→   324→  4844→          </div>
+   226→   325→  4845→        </>
+   227→   326→  4846→      )}
+   228→   327→  4847→
+   229→   328→  4848→      {/* Available Grant Types */}
+   230→   329→  4849→      <div>
+   231→   330→  4850→        <p className="text-xs font-medium text-gray-700 mb-2">All SASSA Grants (8)</p>
+   232→   331→  4851→        <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+   233→   332→  4852→          {grantTypes.map((grant) => (
+   234→   333→  4853→            <div key={grant.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100">
+   235→   334→  4854→              <div className="flex items-center gap-2">
+   236→   335→  4855→                <span className="text-base">{grant.icon}</span>
+   237→   336→  4856→                <div>
+   238→   337→  4857→                  <p className="font-medium text-gray-900 text-xs">{grant.name}</p>
+   239→   338→  4858→                  <p className="text-[10px] text-gray-500">{grant.description}</p>
+   240→   339→  4859→                </div>
+   241→   340→  4860→              </div>
+   242→   341→  4861→              <span className="font-semibold text-[#00897B] text-xs">{formatAmount(grant.amount)}</span>
+   243→   342→  4862→            </div>
+   244→   343→  4863→          ))}
+   245→   344→  4864→        </div>
+   246→   345→  4865→      </div>
+   247→   346→  4866→    </div>
+   248→   347→  4867→  );
+   249→   348→  4868→
+   250→   349→  4869→  // My Grants View
+   251→   350→  4870→  const renderGrants = () => (
+   252→   351→  4871→    <div className="space-y-3">
+   253→   352→  4872→      {renderHeader('My Grants', 'Your active SASSA grants')}
+   254→   353→  4873→      
+   255→   354→  4874→      {userGrants.length === 0 ? (
+   256→   355→  4875→        <div className="text-center py-6">
+   257→   356→  4876→          <AlertCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+   258→   357→  4877→          <p className="text-xs text-gray-500">No active grants</p>
+   259→   358→  4878→          <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => setView('apply')}>
+   260→   359→  4879→            Apply for a Grant
+   261→   360→  4880→          </Button>
+   262→   361→  4881→        </div>
+   263→   362→  4882→      ) : (
+   264→   363→  4883→        <div className="space-y-2">
+   265→   364→  4884→          {userGrants.map((grant, idx) => (
+   266→   365→  4885→            <Card key={idx} className="overflow-hidden">
+   267→   366→  4886→              <CardContent className="p-3">
+   268→   367→  4887→                <div className="flex items-start justify-between mb-2">
+   269→   368→  4888→                  <div>
+   270→   369→  4889→                    <p className="font-semibold text-gray-900 text-xs">{grant.name}</p>
+   271→   370→  4890→                    <p className="text-[10px] text-gray-500">{grant.beneficiaries} beneficiary(ies)</p>
+   272→   371→  4891→                  </div>
+   273→   372→  4892→                  <Badge className={getStatusColor(grant.status)}>{grant.status}</Badge>
+   274→   373→  4893→                </div>
+   275→   374→  4894→                <div className="grid grid-cols-2 gap-2 text-[10px]">
+   276→   375→  4895→                  <div className="p-2 rounded bg-gray-50">
+   277→   376→  4896→                    <p className="text-gray-500">Amount</p>
+   278→   377→  4897→                    <p className="font-semibold text-gray-900">{formatAmount(grant.totalAmount)}</p>
+   279→   378→  4898→                  </div>
+   280→   379→  4899→                  <div className="p-2 rounded bg-gray-50">
+   281→   380→  4900→                    <p className="text-gray-500">Next Payment</p>
+   282→   381→  4901→                    <p className="font-semibold text-gray-900">{formatDate(grant.nextPayment || '')}</p>
+   283→   382→  4902→                  </div>
+   284→   383→  4903→                </div>
+   285→   384→  4904→              </CardContent>
+   286→   385→  4905→            </Card>
+   287→   386→  4906→          ))}
+   288→   387→  4907→        </div>
+   289→   388→  4908→      )}
+   290→   389→  4909→    </div>
+   291→   390→  4910→  );
+   292→   391→  4911→
+   293→   392→  4912→  // Payment Calendar View
+   294→   393→  4913→  const renderCalendar = () => (
+   295→   394→  4914→    <div className="space-y-3">
+   296→   395→  4915→      {renderHeader('Payment Calendar', 'SASSA payment dates based on your ID')}
+   297→   396→  4916→      
+   298→   397→  4917→      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 mb-2">
+   299→   398→  4918→        <p className="text-[10px] text-amber-700">
+   300→   399→  4919→          <strong>Note:</strong> Payment dates are based on the last digit of your ID number
+   301→   400→  4920→        </p>
+   302→   401→  4921→      </div>
+   303→   402→  4922→      
+   304→   403→  4923→      <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+   305→   404→  4924→        {calendar.slice(0, 6).map((month, idx) => {
+   306→   405→  4925→          const isCurrentMonth = idx === 0;
+   307→   406→  4926→          return (
+   308→   407→  4927→            <div 
+   309→   408→  4928→              key={month.month} 
+   310→   409→  4929→              className={`p-2.5 rounded-lg border ${isCurrentMonth ? 'border-[#00897B] bg-[#00897B]/5' : 'border-gray-200'}`}
+   311→   410→  4930→            >
+   312→   411→  4931→              <div className="flex items-center justify-between mb-2">
+   313→   412→  4932→                <p className="font-semibold text-gray-900 text-xs">{month.month}</p>
+   314→   413→  4933→                {isCurrentMonth && <Badge className="bg-[#00897B] text-white text-[10px]">Current</Badge>}
+   315→   414→  4934→              </div>
+   316→   415→  4935→              <div className="space-y-1 text-[10px]">
+   317→   416→  4936→                <div className="flex justify-between">
+   318→   417→  4937→                  <span className="text-gray-600">👴 Older Person's:</span>
+   319→   418→  4938→                  <span className="font-medium text-gray-900">{new Date(month.dates.olderPersons).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>
+   320→   419→  4939→                </div>
+   321→   420→  4940→                <div className="flex justify-between">
+   322→   421→  4941→                  <span className="text-gray-600">♿ Disability:</span>
+   323→   422→  4942→                  <span className="font-medium text-gray-900">{new Date(month.dates.disability).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>
+   324→   423→  4943→                </div>
+   325→   424→  4944→                <div className="flex justify-between">
+   326→   425→  4945→                  <span className="text-gray-600">👶 Child Support:</span>
+   327→   426→  4946→                  <span className="font-medium text-gray-900">{new Date(month.dates.childSupport.start).toLocaleDateString('en-ZA', { day: 'numeric' })} - {new Date(month.dates.childSupport.end).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>
+   328→   427→  4947→                </div>
+   329→   428→  4948→              </div>
+   330→   429→  4949→            </div>
+   331→   430→  4950→          );
+   332→   431→  4951→        })}
+   333→   432→  4952→      </div>
+   334→   433→  4953→    </div>
+   335→   434→  4954→  );
+   336→   435→  4955→
+   337→   436→  4956→  // Apply for Grant View
+   338→   437→  4957→  const renderApply = () => (
+   339→   438→  4958→    <div className="space-y-3">
+   340→   439→  4959→      {renderHeader('Apply for Grant', 'Submit a new SASSA grant application')}
+   341→   440→  4960→      
+   342→   441→  4961→      <div className="space-y-2">
+   343→   442→  4962→        <Label className="text-xs">Select Grant Type</Label>
+   344→   443→  4963→        <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+   345→   444→  4964→          {grantTypes.map((grant) => (
+   346→   445→  4965→            <button
+   347→   446→  4966→              key={grant.id}
+   348→   447→  4967→              onClick={() => setSelectedGrant(grant.id)}
+   349→   448→  4968→              className={`w-full p-2.5 rounded-lg border-2 transition-all text-left ${
+   350→   449→  4969→                selectedGrant === grant.id 
+   351→   450→  4970→                  ? 'border-[#00897B] bg-[#00897B]/5' 
+   352→   451→  4971→                  : 'border-gray-200 hover:border-gray-300'
+   353→   452→  4972→              }`}
+   354→   453→  4973→            >
+   355→   454→  4974→              <div className="flex items-center gap-2">
+   356→   455→  4975→                <span className="text-lg">{grant.icon}</span>
+   357→   456→  4976→                <div className="flex-1">
+   358→   457→  4977→                  <p className="font-medium text-gray-900 text-xs">{grant.name}</p>
+   359→   458→  4978→                  <p className="text-[10px] text-gray-500">{formatAmount(grant.amount)}/month</p>
+   360→   459→  4979→                </div>
+   361→   460→  4980→                {selectedGrant === grant.id && <Check className="w-4 h-4 text-[#00897B]" />}
+   362→   461→  4981→              </div>
+   363→   462→  4982→            </button>
+   364→   463→  4983→          ))}
+   365→   464→  4984→        </div>
+   366→   465→  4985→      </div>
+   367→   466→  4986→
+   368→   467→  4987→      {selectedGrant && (
+   369→   468→  4988→        <div className="p-2.5 rounded-lg bg-gray-50">
+   370→   469→  4989→          <p className="text-xs font-medium text-gray-700 mb-1.5">Required Documents:</p>
+   371→   470→  4990→          <div className="space-y-1">
+   372→   471→  4991→            {grantTypes.find(g => g.id === selectedGrant)?.documents.map((doc: string, idx: number) => (
+   373→   472→  4992→              <div key={idx} className="flex items-center gap-1.5 text-[10px] text-gray-600">
+   374→   473→  4993→                <FileText className="w-3 h-3" />
+   375→   474→  4994→                <span>{doc}</span>
+   376→   475→  4995→              </div>
+   377→   476→  4996→            ))}
+   378→   477→  4997→          </div>
+   379→   478→  4998→          <p className="text-[10px] text-gray-500 mt-2">
+   380→   479→  4999→            Estimated processing: {grantTypes.find(g => g.id === selectedGrant)?.processingDays} days
+   381→   480→  5000→          </p>
+   382→   481→  5001→        </div>
+   383→   482→  5002→      )}
+   384→   483→  5003→
+   385→   484→  5004→      <Button 
+   386→   485→  5005→        className="w-full bg-[#00897B] hover:bg-[#00695C]" 
+   387→   486→  5006→        onClick={handleApply}
+   388→   487→  5007→        disabled={!selectedGrant || loading}
+   389→   488→  5008→      >
+   390→   489→  5009→        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+   391→   490→  5010→        Submit Application
+   392→   491→  5011→      </Button>
+   393→   492→  5012→    </div>
+   394→   493→  5013→  );
+   395→   494→  5014→
+   396→   495→  5015→  // Application Tracking View
+   397→   496→  5016→  const renderTracking = () => (
+   398→   497→  5017→    <div className="space-y-3">
+   399→   498→  5018→      {renderHeader('Application Tracking', 'Track your SASSA applications')}
+   400→   499→  5019→      
+   401→   500→  5020→      {applications.length === 0 ? (
+   402→   501→  5021→        <div className="text-center py-6">
+   403→   502→  5022→          <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+   404→   503→  5023→          <p className="text-xs text-gray-500">No applications yet</p>
+   405→   504→  5024→        </div>
+   406→   505→  5025→      ) : (
+   407→   506→  5026→        <div className="space-y-2">
+   408→   507→  5027→          {applications.map((app) => (
+   409→   508→  5028→            <Card key={app.id}>
+   410→   509→  5029→              <CardContent className="p-3">
+   411→   510→  5030→                <div className="flex items-start justify-between mb-2">
+   412→   511→  5031→                  <div>
+   413→   512→  5032→                    <p className="font-semibold text-gray-900 text-xs">{app.grantName}</p>
+   414→   513→  5033→                    <p className="text-[10px] text-gray-500">{app.id}</p>
+   415→   514→  5034→                  </div>
+   416→   515→  5035→                  <Badge className={getStatusColor(app.status)}>{app.status}</Badge>
+   417→   516→  5036→                </div>
+   418→   517→  5037→                <div className="grid grid-cols-2 gap-2 text-[10px]">
+   419→   518→  5038→                  <div>
+   420→   519→  5039→                    <p className="text-gray-500">Submitted</p>
+   421→   520→  5040→                    <p className="font-medium text-gray-900">{formatDate(app.submittedAt)}</p>
+   422→   521→  5041→                  </div>
+   423→   522→  5042→                  <div>
+   424→   523→  5043→                    <p className="text-gray-500">Processing Time</p>
+   425→   524→  5044→                    <p className="font-medium text-gray-900">{app.estimatedProcessingDays} days</p>
+   426→   525→  5045→                  </div>
+   427→   526→  5046→                </div>
+   428→   527→  5047→                {app.status === 'processing' && (
+   429→   528→  5048→                  <div className="mt-2">
+   430→   529→  5049→                    <div className="bg-gray-200 rounded-full h-1.5">
+   431→   530→  5050→                      <div className="bg-[#00897B] h-1.5 rounded-full" style={{ width: '60%' }}></div>
+   432→   531→  5051→                    </div>
+   433→   532→  5052→                    <p className="text-[10px] text-gray-500 mt-1">Application under review</p>
+   434→   533→  5053→                  </div>
+   435→   534→  5054→                )}
+   436→   535→  5055→              </CardContent>
+   437→   536→  5056→            </Card>
+   438→   537→  5057→          ))}
+   439→   538→  5058→        </div>
+   440→   539→  5059→      )}
+   441→   540→  5060→    </div>
+   442→   541→  5061→  );
+   443→   542→  5062→
+   444→   543→  5063→  // Payment History View
+   445→   544→  5064→  const renderHistory = () => (
+   446→   545→  5065→    <div className="space-y-3">
+   447→   546→  5066→      {renderHeader('Payment History', 'Last 3 months of SASSA payments')}
+   448→   547→  5067→      
+   449→   548→  5068→      <div className="p-2.5 rounded-lg bg-green-50 border border-green-200 mb-2">
+   450→   549→  5069→        <p className="text-[10px] text-green-700">Total received (3 months):</p>
+   451→   550→  5070→        <p className="font-bold text-green-800">{formatAmount(paymentHistory.filter(p => p.status === 'processed').reduce((sum, p) => sum + p.amount, 0))}</p>
+   452→   551→  5071→      </div>
+   453→   552→  5072→      
+   454→   553→  5073→      <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+   455→   554→  5074→        {paymentHistory.map((payment) => (
+   456→   555→  5075→          <div 
+   457→   556→  5076→            key={payment.id} 
+   458→   557→  5077→            className={`p-2.5 rounded-lg border ${
+   459→   558→  5078→              payment.status === 'pending' 
+   460→   559→  5079→                ? 'border-amber-200 bg-amber-50' 
+   461→   560→  5080→                : 'border-gray-200 bg-gray-50'
+   462→   561→  5081→            }`}
+   463→   562→  5082→          >
+   464→   563→  5083→            <div className="flex items-center justify-between">
+   465→   564→  5084→              <div>
+   466→   565→  5085→                <p className="font-medium text-gray-900 text-xs">{payment.grantType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+   467→   566→  5086→                <p className="text-[10px] text-gray-500">{formatDate(payment.date)}</p>
+   468→   567→  5087→              </div>
+   469→   568→  5088→              <div className="text-right">
+   470→   569→  5089→                <p className="font-semibold text-gray-900 text-xs">{formatAmount(payment.amount)}</p>
+   471→   570→  5090→                <Badge className={getStatusColor(payment.status)}>{payment.status}</Badge>
+   472→   571→  5091→              </div>
+   473→   572→  5092→            </div>
+   474→   573→  5093→            <p className="text-[10px] text-gray-400 mt-1">Ref: {payment.reference}</p>
+   475→   574→  5094→          </div>
+   476→   575→  5095→        ))}
+   477→   576→  5096→      </div>
+   478→   577→  5097→    </div>
+   479→   578→  5098→  );
+   480→   579→  5099→
+   481→   580→  5100→  // Early Access View (Grant+ Advance Flow)
+   482→   581→  5101→  const renderEarlyAccess = () => (
+   483→   582→  5102→    <div className="space-y-3">
+   484→   583→  5103→      {renderHeader('Grant+ Advance', 'Get an advance on your SASSA grant')}
+   485→   584→  5104→      
+   486→   585→  5105→      {/* Eligibility Badge */}
+   487→   586→  5106→      <div className="p-3 rounded-lg bg-gradient-to-r from-[#00897B] to-[#43A047] text-white">
+   488→   587→  5107→        <div className="flex items-center gap-2 mb-2">
+   489→   588→  5108→          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+   490→   589→  5109→            <CheckCircle className="w-4 h-4" />
+   491→   590→  5110→          </div>
+   492→   591→  5111→          <div>
+   493→   592→  5112→            <p className="font-semibold text-xs">✓ You're eligible</p>
+   494→   593→  5113→            <p className="text-[10px] text-white/80">Up to {formatAmount(earlyAccessData?.maxAdvance || 1200)} available</p>
+   495→   594→  5114→          </div>
+   496→   595→  5115→        </div>
+   497→   596→  5116→        <div className="pt-2 border-t border-white/20">
+   498→   597→  5117→          <p className="text-[10px] text-white/80">Your next grant pays on</p>
+   499→   598→  5118→          <p className="text-sm font-bold">{earlyAccessData?.nextPaymentDate ? formatDate(earlyAccessData.nextPaymentDate) : '3 June 2025'}</p>
+   500→   599→  5119→        </div>
+   501→   600→  5120→      </div>
+   502→   601→  5121→
+   503→   602→  5122→      {/* Tier Information */}
+   504→   603→  5123→      <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200">
+   505→   604→  5124→        <div className="flex items-center gap-2 mb-2">
+   506→   605→  5125→          <Award className="w-4 h-4 text-amber-500" />
+   507→   606→  5126→          <span className="text-xs font-medium text-gray-700">Your Tier: {earlyAccessData?.tier || 'Premier'}</span>
+   508→   607→  5127→        </div>
+   509→   608→  5128→        <div className="grid grid-cols-2 gap-2 text-[10px]">
+   510→   609→  5129→          <div className="p-2 bg-white rounded border">
+   511→   610→  5130→            <p className="text-gray-500">Max Advance</p>
+   512→   611→  5131→            <p className="font-semibold text-gray-900">{formatAmount(earlyAccessData?.maxAdvance || 1200)}</p>
+   513→   612→  5132→          </div>
+   514→   613→  5133→          <div className="p-2 bg-white rounded border">
+   515→   614→  5134→            <p className="text-gray-500">Service Fee</p>
+   516→   615→  5135→            <p className="font-semibold text-gray-900">R{earlyAccessData?.serviceFee || 95} flat</p>
+   517→   616→  5136→          </div>
+   518→   617→  5137→        </div>
+   519→   618→  5138→      </div>
+   520→   619→  5139→      
+   521→   620→  5140→      {earlyAccessData?.upcomingPayments?.length > 0 ? (
+   522→   621→  5141→        <div className="space-y-2">
+   523→   622→  5142→          <p className="text-xs font-medium text-gray-700">Request Advance</p>
+   524→   623→  5143→          {earlyAccessData.upcomingPayments.map((payment: any) => (
+   525→   624→  5144→            <Card key={payment.id}>
+   526→   625→  5145→              <CardContent className="p-3">
+   527→   626→  5146→                <div className="flex items-start justify-between mb-2">
+   528→   627→  5147→                  <div>
+   529→   628→  5148→                    <p className="font-semibold text-gray-900 text-xs">{payment.grantName}</p>
+   530→   629→  5149→                    <p className="text-[10px] text-gray-500">Payment date: {formatDate(payment.date)}</p>
+   531→   630→  5150→                  </div>
+   532→   631→  5151→                  <div className="text-right">
+   533→   632→  5152→                    <p className="text-[10px] text-gray-500">Full Amount</p>
+   534→   633→  5153→                    <p className="font-semibold text-gray-900 text-xs">{formatAmount(payment.amount)}</p>
+   535→   634→  5154→                  </div>
+   536→   635→  5155→                </div>
+   537→   636→  5156→                
+   538→   637→  5157→                <div className="grid grid-cols-3 gap-2 p-2 bg-gray-50 rounded text-center text-[10px] mb-2">
+   539→   638→  5158→                  <div>
+   540→   639→  5159→                    <p className="text-gray-500">Available</p>
+   541→   640→  5160→                    <p className="font-semibold text-[#00897B]">{formatAmount(payment.availableAdvance)}</p>
+   542→   641→  5161→                  </div>
+   543→   642→  5162→                  <div>
+   544→   643→  5163→                    <p className="text-gray-500">Fee</p>
+   545→   644→  5164→                    <p className="font-semibold text-amber-600">{formatAmount(payment.fee)}</p>
+   546→   645→  5165→                  </div>
+   547→   646→  5166→                  <div>
+   548→   647→  5167→                    <p className="text-gray-500">You Get</p>
+   549→   648→  5168→                    <p className="font-semibold text-green-600">{formatAmount(payment.netAmount)}</p>
+   550→   649→  5169→                  </div>
+   551→   650→  5170→                </div>
+   552→   651→  5171→
+   553→   652→  5172→                {/* NCA Compliance Notice */}
+   554→   653→  5173→                <div className="p-2 bg-blue-50 rounded text-[10px] text-blue-700 mb-2">
+   555→   654→  5174→                  <strong>NCA Compliant:</strong> No interest charged • Flat fee only • Auto-deducted from grant
+   556→   655→  5175→                </div>
+   557→   656→  5176→                
+   558→   657→  5177→                <Button 
+   559→   658→  5178→                  className="w-full bg-[#00897B] hover:bg-[#00695C] text-xs h-9"
+   560→   659→  5179→                  onClick={() => handleEarlyAccess(payment.id)}
+   561→   660→  5180→                  disabled={loading || payment.daysUntilPayment < 5}
+   562→   661→  5181→                >
+   563→   662→  5182→                  {loading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <HandCoins className="w-3 h-3 mr-1" />}
+   564→   663→  5183→                  Get Advance Now
+   565→   664→  5184→                </Button>
+   566→   665→  5185→                {payment.daysUntilPayment < 5 && (
+   567→   666→  5186→                  <p className="text-[10px] text-amber-600 text-center mt-1">Available 5+ days before payment</p>
+   568→   667→  5187→                )}
+   569→   668→  5188→              </CardContent>
+   570→   669→  5189→            </Card>
+   571→   670→  5190→          ))}
+   572→   671→  5191→        </div>
+   573→   672→  5192→      ) : (
+   574→   673→  5193→        <div className="space-y-3">
+   575→   674→  5194→          {/* Demo Advance Card */}
+   576→   675→  5195→          <Card className="border-2 border-[#00897B]">
+   577→   676→  5196→            <CardContent className="p-3">
+   578→   677→  5197→              <div className="flex items-center justify-between mb-3">
+   579→   678→  5198→                <div>
+   580→   679→  5199→                  <p className="font-semibold text-gray-900 text-sm">Older Person's Grant</p>
+   581→   680→  5200→                  <p className="text-[10px] text-gray-500">Next payment: 3 June 2025</p>
+   582→   681→  5201→                </div>
+   583→   682→  5202→                <Badge className="bg-[#00897B]/10 text-[#00897B] text-[10px]">Premier</Badge>
+   584→   683→  5203→              </div>
+   585→   684→  5204→
+   586→   685→  5205→              <div className="space-y-2 mb-3">
+   587→   686→  5206→                <div className="flex justify-between text-xs">
+   588→   687→  5207→                  <span className="text-gray-500">Grant Amount</span>
+   589→   688→  5208→                  <span className="font-medium">R 2,090.00</span>
+   590→   689→  5209→                </div>
+   591→   690→  5210→                <div className="flex justify-between text-xs">
+   592→   691→  5211→                  <span className="text-gray-500">Max Advance (57%)</span>
+   593→   692→  5212→                  <span className="font-medium text-[#00897B]">R 1,200.00</span>
+   594→   693→  5213→                </div>
+   595→   694→  5214→                <div className="flex justify-between text-xs">
+   596→   695→  5215→                  <span className="text-gray-500">Service Fee</span>
+   597→   696→  5216→                  <span className="font-medium text-amber-600">R 95.00</span>
+   598→   697→  5217→                </div>
+   599→   698→  5218→                <div className="border-t pt-2 flex justify-between text-xs font-semibold">
+   600→   699→  5219→                  <span className="text-gray-700">You Receive</span>
+   601→
+   602→[showing lines 100-699 of 852; use offset=700 with limit to continue reading]

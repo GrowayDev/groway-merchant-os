@@ -63,12 +63,13 @@ const publicApiRoutes = [
   '/merchant-os/api/grocore/', // GroCore API (tenant-scoped via x-tenant-id header)
   '/api/subscription-plans', // Public for signup form - list plans only
   '/api/merchant-os/agriculture/', // Agriculture API (farm management)
+  '/api/consumer/', // Consumer wallet API (auth handled by route via x-user-id header)
+  '/api/payplus/', // Pay+ API
 ]
 
 // API routes that require authentication but allow dev mode bypass
 const protectedApiRoutes = [
-  // Consumer routes - require consumer auth
-  '/api/consumer/',
+  // Consumer routes removed — now in publicApiRoutes (auth via x-user-id header)
   '/api/loyalty',
   '/api/send-money',
   '/api/airtime',

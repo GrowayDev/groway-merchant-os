@@ -1,0 +1,2002 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, createContext, useContext } from 'react'
+     4→import Link from 'next/link'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Card, CardContent } from '@/components/ui/card'
+     7→import { Badge } from '@/components/ui/badge'
+     8→import { Input } from '@/components/ui/input'
+     9→import { ScrollArea } from '@/components/ui/scroll-area'
+    10→import { Separator } from '@/components/ui/separator'
+    11→import {
+    12→  Dialog,
+    13→  DialogContent,
+    14→  DialogDescription,
+    15→  DialogFooter,
+    16→  DialogHeader,
+    17→  DialogTitle,
+    18→  VisuallyHidden,
+    19→} from '@/components/ui/dialog'
+    20→import {
+    21→  Sheet,
+    22→  SheetContent,
+    23→  SheetHeader,
+    24→  SheetTitle,
+    25→} from '@/components/ui/sheet'
+    26→import { getAllSKUs } from '../data/skuCatalog'
+    27→import { MerchantDashboard } from './MerchantDashboard'
+    28→import { TransactionsView } from './TransactionsView'
+    29→import { InventoryView } from './InventoryView'
+    30→import { CRMView } from './CRMView'
+    31→import { StaffHRMView } from './StaffHRMView'
+    32→import { MarketingView } from './MarketingView'
+    33→import { AccountingView } from './AccountingView'
+    34→import { EnhancedBookingView } from './EnhancedBookingView'
+    35→import { VouchersAndGiftCardsView } from './VouchersAndGiftCardsView'
+    36→import { GroSupplyView } from './GroSupplyView'
+    37→import { GroSupplyEnhancedView } from './GroSupplyEnhancedView'
+    38→import { GroCreditView } from './GroCreditView'
+    39→import { HardwareIntegration } from './HardwareIntegration'
+    40→import { OfflineModeManager, OfflineModeProvider, OfflineStatusBadge, useOfflineMode } from './OfflineModeManager'
+    41→import { PaymentGatewayView } from './PaymentGatewayView'
+    42→import { MultiLocationView } from './MultiLocationView'
+    43→import { EnterprisePortalView } from './EnterprisePortalView'
+    44→import { GroSupplyMarketplaceView } from './GroSupplyMarketplaceView'
+    45→import { TrainingView } from './TrainingView'
+    46→import { SettingsView } from './SettingsView'
+    47→import { DigitalQRMenuView } from './DigitalQRMenuView'
+    48→import { TableFloorPlanView } from './TableFloorPlanView'
+    49→import { KitchenDisplayView } from './KitchenDisplayView'
+    50→import { RecipeEngineView } from './RecipeEngineView'
+    51→import { OnlineBookingWidget } from './OnlineBookingWidget'
+    52→import { BillSplittingView } from './BillSplittingView'
+    53→import { CourseManagementView } from './CourseManagementView'
+    54→import { QRSelfServiceView } from './QRSelfServiceView'
+    55→import { LiquorComplianceView } from './LiquorComplianceView'
+    56→import { HotelManagementView } from './HotelManagementView'
+    57→import { CustomerFacingView } from './CustomerFacingView'
+    58→import { WaiterPadView } from './WaiterPadView'
+    59→import { HealthBeautyView } from './HealthBeautyView'
+    60→import { SarsEfilingView } from './SarsEfilingView'
+    61→import { BankFeedView } from './BankFeedView'
+    62→import { CourierIntegrationView } from './CourierIntegrationView'
+    63→import { WhatsAppBusinessView } from './WhatsAppBusinessView'
+    64→import { NotificationCenter } from '../../components/NotificationCenter'
+    65→import { HardwareBuildingView } from './HardwareBuildingView'
+    66→import { PricingManagementView } from './PricingManagementView'
+    67→import { SalesReportView } from './SalesReportView'
+    68→import { FnbManagementView } from './FnbManagementView'
+    69→import { ProfessionalComplianceView } from './ProfessionalComplianceView'
+    70→import { FuneralServicesView } from './FuneralServicesView'
+    71→import { AutoRepairView } from './AutoRepairView'
+    72→import { DryCleaningView } from './DryCleaningView'
+    73→import { RealEstateView } from './RealEstateView'
+    74→import { ArchitectureView } from './ArchitectureView'
+    75→import { EngineeringView } from './EngineeringView'
+    76→import { QuantitySurveyingView } from './QuantitySurveyingView'
+    77→import { MedicalPracticeView } from './MedicalPracticeView'
+    78→import { DentalPracticeView } from './DentalPracticeView'
+    79→import { ChildcareView } from './ChildcareView'
+    80→import { SportLeisureView } from './SportLeisureView'
+    81→import { ElectronicsTechView } from './ElectronicsTechView'
+    82→import { AgricultureView } from './AgricultureView'
+    83→import {
+    84→  Store, 
+    85→  ArrowLeft,
+    86→  LogOut,
+    87→  ChevronLeft,
+    88→  ChevronRight,
+    89→  Plus,
+    90→  Minus,
+    91→  Trash2,
+    92→  Search,
+    93→  CreditCard,
+    94→  Banknote,
+    95→  QrCode,
+    96→  Wallet,
+    97→  ShoppingCart,
+    98→  User,
+    99→  Users,
+   100→  Package,
+   101→  BarChart3,
+   102→  Settings,
+   103→  Bell,
+   104→  Zap,
+   105→  Clock,
+   106→  LucideIcon,
+   107→  CheckCircle2,
+   108→  Receipt,
+   109→  Home,
+   110→  X,
+   111→  Printer,
+   112→  Megaphone,
+   113→  Calculator,
+   114→  UserCog,
+   115→  Gift,
+   116→  MoreHorizontal,
+   117→  Calendar,
+   118→  Building2,
+   119→  Wifi,
+   120→  WifiOff,
+   121→  Route,
+   122→  GraduationCap,
+   123→  MapPin,
+   124→  ChefHat,
+   125→  Globe,
+   126→  Utensils,
+   127→  ShieldCheck,
+   128→  Hotel,
+   129→  Smartphone,
+   130→  Coins,
+   131→  PiggyBank,
+   132→  TrendingUp,
+   133→  Menu,
+   134→  ChevronUp,
+   135→  FileText,
+   136→  Truck,
+   137→  MessageSquare,
+   138→  Wrench,
+   139→  Scissors,
+   140→  Scale,
+   141→  Shirt,
+   142→  Percent,
+   143→  Pause,
+   144→  Play,
+   145→  Edit3,
+   146→  ArrowRightLeft,
+   147→  Star,
+   148→  Phone,
+   149→  Mail,
+   150→  Baby,
+   151→  Dumbbell,
+   152→  Leaf,
+   153→} from 'lucide-react'
+   154→import {
+   155→  QuickChargePresets,
+   156→  PriceOverrideDialog,
+   157→  DiscountDialog,
+   158→  SplitPaymentDialog,
+   159→  CustomerLookupDialog,
+   160→  HoldTransactionDialog,
+   161→  ReceiptPreview,
+   162→  VoidRefundDialog,
+   163→  CartItemWithActions,
+   164→} from './POSEnhancedFeatures'
+   165→import type {
+   166→  CartItem as EnhancedCartItem,
+   167→  HeldTransaction,
+   168→  Customer,
+   169→  SplitPayment,
+   170→  Discount,
+   171→} from './POSEnhancedFeatures'
+   172→
+   173→interface SubVertical {
+   174→  id: string
+   175→  name: string
+   176→  skuCount: number
+   177→  features: string[]
+   178→}
+   179→
+   180→interface Vertical {
+   181→  id: string
+   182→  name: string
+   183→  icon: LucideIcon
+   184→  subCount: number
+   185→  description: string
+   186→  subVerticals: SubVertical[]
+   187→}
+   188→
+   189→interface POSLayoutProps {
+   190→  vertical: Vertical
+   191→  subVertical: SubVertical
+   192→  vasTiles: string[]
+   193→  onBack: () => void
+   194→}
+   195→
+   196→// Cart item type - extended with discount and price override support
+   197→interface CartItem {
+   198→  id: string
+   199→  name: string
+   200→  price: number
+   201→  originalPrice?: number
+   202→  quantity: number
+   203→  category: string
+   204→  customerId?: string
+   205→  customerName?: string
+   206→  customerPhone?: string
+   207→  appointmentId?: string
+   208→  discount?: number
+   209→  discountType?: 'percentage' | 'fixed'
+   210→  priceOverride?: number
+   211→  notes?: string
+   212→}
+   213→
+   214→// Booking to POS interface
+   215→export interface BookingToPOS {
+   216→  appointmentId: string
+   217→  serviceName: string
+   218→  servicePrice: number
+   219→  category: string
+   220→  customerName: string
+   221→  customerPhone?: string
+   222→  customerId?: string
+   223→  depositPaid?: boolean
+   224→  depositAmount?: number
+   225→}
+   226→
+   227→type ViewType = 'dashboard' | 'pos' | 'transactions' | 'inventory' | 'pricing' | 'crm' | 'marketing' | 'staff' | 'accounting' | 'booking' | 'widget' | 'giftcards' | 'grosupply' | 'gromarket' | 'hardware' | 'payments' | 'multilocation' | 'offline' | 'training' | 'qrmenu' | 'floorplan' | 'kitchen' | 'recipe' | 'courses' | 'billsplit' | 'qrselfservice' | 'liquor' | 'hotel' | 'customerfacing' | 'waiterpad' | 'healthbeauty' | 'sars' | 'bankfeed' | 'courier' | 'whatsapp' | 'hardwarebuilding' | 'notifications' | 'settings' | 'more' | 'orders' | 'search' | 'grocredit' | 'enterprise' | 'salesreport' | 'fnbmanagement' | 'funeral' | 'autorepair' | 'dryclean' | 'professional' | 'realestate' | 'architecture' | 'engineering' | 'quantitysurveying' | 'medicalpractice' | 'dentalpractice' | 'childcare' | 'sportleisure' | 'electronicstech' | 'grocery' | 'fashion' | 'agriculture'
+   228→
+   229→// Mobile Orders View Component
+   230→const MobileOrdersView = ({ orders, onViewOrder }: { orders: any[], onViewOrder: (id: string) => void }) => {
+   231→  const getStatusColor = (status: string) => {
+   232→    const colors: Record<string, string> = {
+   233→      pending: 'bg-yellow-100 text-yellow-700',
+   234→      preparing: 'bg-orange-100 text-orange-700',
+   235→      ready: 'bg-green-100 text-green-700',
+   236→      completed: 'bg-gray-100 text-gray-700',
+   237→    }
+   238→    return colors[status] || 'bg-gray-100 text-gray-700'
+   239→  }
+   240→
+   241→  return (
+   242→    <div className="space-y-4">
+   243→      {/* Stats */}
+   244→      <div className="grid grid-cols-3 gap-3">
+   245→        <div className="bg-yellow-50 rounded-lg p-3 text-center">
+   246→          <p className="text-2xl font-bold text-yellow-600">
+   247→            {orders.filter(o => o.status === 'pending').length}
+   248→          </p>
+   249→          <p className="text-xs text-gray-500">Pending</p>
+   250→        </div>
+   251→        <div className="bg-orange-50 rounded-lg p-3 text-center">
+   252→          <p className="text-2xl font-bold text-orange-600">
+   253→            {orders.filter(o => o.status === 'preparing').length}
+   254→          </p>
+   255→          <p className="text-xs text-gray-500">Preparing</p>
+   256→        </div>
+   257→        <div className="bg-green-50 rounded-lg p-3 text-center">
+   258→          <p className="text-2xl font-bold text-green-600">
+   259→            {orders.filter(o => o.status === 'ready').length}
+   260→          </p>
+   261→          <p className="text-xs text-gray-500">Ready</p>
+   262→        </div>
+   263→      </div>
+   264→
+   265→      {/* Orders List */}
+   266→      <div className="space-y-3">
+   267→        {orders.length === 0 ? (
+   268→          <div className="text-center py-12">
+   269→            <Receipt className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+   270→            <p className="text-gray-500">No orders yet</p>
+   271→          </div>
+   272→        ) : (
+   273→          orders.map((order) => (
+   274→            <button
+   275→              key={order.id}
+   276→              onClick={() => onViewOrder(order.id)}
+   277→              className="w-full bg-white rounded-lg border border-gray-200 p-4 text-left active:bg-gray-50"
+   278→            >
+   279→              <div className="flex items-start justify-between mb-2">
+   280→                <div>
+   281→                  <p className="font-semibold text-[#1A1A1A]">{order.orderNumber}</p>
+   282→                  {order.customerName && (
+   283→                    <p className="text-sm text-gray-500">{order.customerName}</p>
+   284→                  )}
+   285→                </div>
+   286→                <Badge className={getStatusColor(order.status)}>
+   287→                  {order.status}
+   288→                </Badge>
+   289→              </div>
+   290→              <div className="flex items-center justify-between">
+   291→                <span className="text-sm text-gray-500">{order.items} items</span>
+   292→                <span className="font-bold text-[#00897B]">R{order.total.toFixed(2)}</span>
+   293→              </div>
+   294→            </button>
+   295→          ))
+   296→        )}
+   297→      </div>
+   298→    </div>
+   299→  )
+   300→}
+   301→
+   302→// Responsive context
+   303→interface ResponsiveContextType {
+   304→  isMobile: boolean
+   305→  isTablet: boolean
+   306→  isDesktop: boolean
+   307→  screenWidth: number
+   308→  mobileAppMode: boolean
+   309→  setMobileAppMode: (mode: boolean) => void
+   310→}
+   311→
+   312→const ResponsiveContext = createContext<ResponsiveContextType>({
+   313→  isMobile: false,
+   314→  isTablet: false,
+   315→  isDesktop: true,
+   316→  screenWidth: 1024,
+   317→  mobileAppMode: false,
+   318→  setMobileAppMode: () => {},
+   319→})
+   320→
+   321→export const useResponsive = () => useContext(ResponsiveContext)
+   322→
+   323→export function POSLayout({ vertical, subVertical, vasTiles, onBack }: POSLayoutProps) {
+   324→  // Offline mode hook - must be used within OfflineModeProvider
+   325→  const offlineMode = useOfflineMode()
+   326→  
+   327→  // Responsive state
+   328→  const [screenWidth, setScreenWidth] = useState(1024)
+   329→  const [mobileAppMode, setMobileAppMode] = useState(false)
+   330→  
+   331→  // Core state
+   332→  const [currentView, setCurrentView] = useState<ViewType>('dashboard')
+   333→  const [cart, setCart] = useState<CartItem[]>([])
+   334→  const [bookingData, setBookingData] = useState<BookingToPOS | null>(null)
+   335→  const [searchQuery, setSearchQuery] = useState('')
+   336→  const [activeCategory, setActiveCategory] = useState<string>('all')
+   337→  const [checkoutOpen, setCheckoutOpen] = useState(false)
+   338→  const [selectedPayment, setSelectedPayment] = useState<string | null>(null)
+   339→  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+   340→  const [saleComplete, setSaleComplete] = useState(false)
+   341→  const [offlineTransactionSaved, setOfflineTransactionSaved] = useState(false)
+   342→  
+   343→  // Enhanced POS Features state
+   344→  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+   345→  const [cartDiscount, setCartDiscount] = useState<Discount | null>(null)
+   346→  const [heldTransactions, setHeldTransactions] = useState<HeldTransaction[]>([])
+   347→  const [completedTransaction, setCompletedTransaction] = useState<{
+   348→    id: string
+   349→    number: string
+   350→    items: CartItem[]
+   351→    subtotal: number
+   352→    discount?: number
+   353→    vat: number
+   354→    total: number
+   355→    paymentMethod?: string
+   356→    customerName?: string
+   357→    createdAt: Date
+   358→  } | null>(null)
+   359→  
+   360→  // Dialog states
+   361→  const [priceOverrideOpen, setPriceOverrideOpen] = useState(false)
+   362→  const [itemDiscountOpen, setItemDiscountOpen] = useState(false)
+   363→  const [cartDiscountOpen, setCartDiscountOpen] = useState(false)
+   364→  const [splitPaymentOpen, setSplitPaymentOpen] = useState(false)
+   365→  const [customerLookupOpen, setCustomerLookupOpen] = useState(false)
+   366→  const [holdTransactionOpen, setHoldTransactionOpen] = useState(false)
+   367→  const [receiptPreviewOpen, setReceiptPreviewOpen] = useState(false)
+   368→  const [voidRefundOpen, setVoidRefundOpen] = useState(false)
+   369→  const [voidRefundMode, setVoidRefundMode] = useState<'void' | 'refund'>('void')
+   370→  const [selectedItemForEdit, setSelectedItemForEdit] = useState<CartItem | null>(null)
+   371→  const [isSplitPayment, setIsSplitPayment] = useState(false)
+   372→  const [splitPayments, setSplitPayments] = useState<SplitPayment[]>([])
+   373→  
+   374→  // Mobile-specific state
+   375→  const [mobileCartOpen, setMobileCartOpen] = useState(false)
+   376→  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+   377→  const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
+   378→  
+   379→  // Responsive breakpoints
+   380→  const isMobile = screenWidth < 640 || mobileAppMode
+   381→  const isTablet = screenWidth >= 640 && screenWidth < 1024
+   382→  const isDesktop = screenWidth >= 1024 && !mobileAppMode
+   383→  
+   384→  // Track screen size
+   385→  useEffect(() => {
+   386→    const handleResize = () => setScreenWidth(window.innerWidth)
+   387→    handleResize()
+   388→    window.addEventListener('resize', handleResize)
+   389→    return () => window.removeEventListener('resize', handleResize)
+   390→  }, [])
+   391→
+   392→  // Get SKUs for this vertical/sub-vertical
+   393→  const skus = getAllSKUs(vertical.id, subVertical.id)
+   394→  
+   395→  // Get unique categories
+   396→  const categories = ['all', ...new Set(skus.map(sku => sku.category))]
+   397→  
+   398→  // Filter SKUs by search and category
+   399→  const filteredSKUs = skus.filter(sku => {
+   400→    const matchesSearch = sku.name.toLowerCase().includes(searchQuery.toLowerCase())
+   401→    const matchesCategory = activeCategory === 'all' || sku.category === activeCategory
+   402→    return matchesSearch && matchesCategory
+   403→  })
+   404→
+   405→  // Cart calculations with discount and price override support
+   406→  const itemsSubtotal = cart.reduce((sum, item) => {
+   407→    const effectivePrice = item.priceOverride ?? item.price
+   408→    const itemTotal = effectivePrice * item.quantity
+   409→    const itemDiscount = item.discount || 0
+   410→    return sum + (itemTotal - itemDiscount)
+   411→  }, 0)
+   412→  
+   413→  // Apply cart-level discount
+   414→  const cartDiscountAmount = cartDiscount
+   415→    ? cartDiscount.type === 'percentage'
+   416→      ? itemsSubtotal * (cartDiscount.value / 100)
+   417→      : cartDiscount.value
+   418→    : 0
+   419→  
+   420→  const subtotal = itemsSubtotal - cartDiscountAmount
+   421→  const vat = subtotal * 0.15 // 15% VAT
+   422→  const total = subtotal + vat
+   423→
+   424→  const addToCart = (sku: typeof skus[0]) => {
+   425→    setCart(prev => {
+   426→      const existing = prev.find(item => item.name === sku.name)
+   427→      if (existing) {
+   428→        return prev.map(item => 
+   429→          item.name === sku.name 
+   430→            ? { ...item, quantity: item.quantity + 1 }
+   431→            : item
+   432→        )
+   433→      }
+   434→      return [...prev, { id: Date.now().toString(), name: sku.name, price: sku.price, quantity: 1, category: sku.category }]
+   435→    })
+   436→  }
+   437→  
+   438→  // Quick charge handler
+   439→  const handleQuickCharge = (amount: number, label?: string) => {
+   440→    const quickItem: CartItem = {
+   441→      id: `quick-${Date.now()}`,
+   442→      name: label || `Quick Charge - R${amount.toFixed(2)}`,
+   443→      price: amount,
+   444→      quantity: 1,
+   445→      category: 'Quick Charge'
+   446→    }
+   447→    setCart([quickItem])
+   448→  }
+   449→
+   450→  const updateQuantity = (id: string, delta: number) => {
+   451→    setCart(prev => prev.map(item => {
+   452→      if (item.id === id) {
+   453→        const newQty = item.quantity + delta
+   454→        return newQty > 0 ? { ...item, quantity: newQty } : item
+   455→      }
+   456→      return item
+   457→    }).filter(item => item.quantity > 0))
+   458→  }
+   459→
+   460→  const removeFromCart = (id: string) => {
+   461→    setCart(prev => prev.filter(item => item.id !== id))
+   462→  }
+   463→
+   464→  const clearCart = () => {
+   465→    setCart([])
+   466→    setSelectedPayment(null)
+   467→    setBookingData(null)
+   468→    setSelectedCustomer(null)
+   469→    setCartDiscount(null)
+   470→    setIsSplitPayment(false)
+   471→    setSplitPayments([])
+   472→  }
+   473→  
+   474→  // Price override handler
+   475→  const handlePriceOverride = (itemId: string, newPrice: number, reason: string) => {
+   476→    setCart(prev => prev.map(item => {
+   477→      if (item.id === itemId) {
+   478→        return {
+   479→          ...item,
+   480→          priceOverride: newPrice,
+   481→          originalPrice: item.originalPrice || item.price,
+   482→          notes: reason
+   483→        }
+   484→      }
+   485→      return item
+   486→    }))
+   487→  }
+   488→  
+   489→  // Discount handlers
+   490→  const handleItemDiscount = (discount: Discount, itemId?: string) => {
+   491→    if (!itemId) return
+   492→    setCart(prev => prev.map(item => {
+   493→      if (item.id === itemId) {
+   494→        const effectivePrice = item.priceOverride ?? item.price
+   495→        const discountAmount = discount.type === 'percentage'
+   496→          ? effectivePrice * item.quantity * (discount.value / 100)
+   497→          : discount.value
+   498→        return {
+   499→          ...item,
+   500→          discount: discountAmount,
+   501→          discountType: discount.type
+   502→        }
+   503→      }
+   504→      return item
+   505→    }))
+   506→  }
+   507→  
+   508→  const handleCartDiscount = (discount: Discount) => {
+   509→    setCartDiscount(discount)
+   510→  }
+   511→  
+   512→  // Hold transaction handlers
+   513→  const handleHoldTransaction = (notes?: string) => {
+   514→    const heldTx: HeldTransaction = {
+   515→      id: `held-${Date.now()}`,
+   516→      items: [...cart],
+   517→      subtotal: itemsSubtotal,
+   518→      discount: cartDiscountAmount,
+   519→      discountType: cartDiscount?.type || 'fixed',
+   520→      notes,
+   521→      customerName: selectedCustomer?.name || bookingData?.customerName,
+   522→      customerId: selectedCustomer?.id || bookingData?.customerId,
+   523→      heldAt: new Date()
+   524→    }
+   525→    setHeldTransactions(prev => [...prev, heldTx])
+   526→    clearCart()
+   527→  }
+   528→  
+   529→  const handleResumeTransaction = (transaction: HeldTransaction) => {
+   530→    setCart(transaction.items)
+   531→    if (transaction.customerName) {
+   532→      setSelectedCustomer({
+   533→        id: transaction.customerId || '',
+   534→        name: transaction.customerName
+   535→      })
+   536→    }
+   537→    if (transaction.discount > 0) {
+   538→      setCartDiscount({
+   539→        type: transaction.discountType,
+   540→        value: transaction.discount
+   541→      })
+   542→    }
+   543→    setHeldTransactions(prev => prev.filter(t => t.id !== transaction.id))
+   544→  }
+   545→  
+   546→  const handleDeleteHeldTransaction = (id: string) => {
+   547→    setHeldTransactions(prev => prev.filter(t => t.id !== id))
+   548→  }
+   549→  
+   550→  // Split payment handler
+   551→  const handleSplitPaymentComplete = (payments: SplitPayment[]) => {
+   552→    setSplitPayments(payments)
+   553→    setIsSplitPayment(true)
+   554→    // Process the sale with split payments
+   555→    processSale(payments)
+   556→  }
+   557→  
+   558→  // Process sale
+   559→  const processSale = async (payments?: SplitPayment[]) => {
+   560→    const sessionStr = localStorage.getItem('groway_session')
+   561→    const session = sessionStr ? JSON.parse(sessionStr) : null
+   562→    const merchantId = session?.merchantId || 'merchant-001'
+   563→    const branchId = session?.branchId || 'branch-001'
+   564→    
+   565→    const transactionNumber = `TXN-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+   566→    
+   567→    setCheckoutOpen(false)
+   568→    setSaleComplete(true)
+   569→    setOfflineTransactionSaved(false)
+   570→
+   571→    // Check if offline
+   572→    if (!offlineMode.isOnline) {
+   573→      try {
+   574→        await offlineMode.addTransaction({
+   575→          type: 'sale',
+   576→          amount: total,
+   577→          items: cart.map(item => ({
+   578→            name: item.name,
+   579→            quantity: item.quantity,
+   580→            price: item.priceOverride ?? item.price,
+   581→          })),
+   582→          paymentMethod: isSplitPayment ? 'split' : (selectedPayment || 'cash'),
+   583→          verticalId: vertical.id,
+   584→          subVerticalId: subVertical.id,
+   585→          cashierId: session?.userId,
+   586→          notes: bookingData ? `Booking: ${bookingData.customerName}` : undefined,
+   587→        })
+   588→        setOfflineTransactionSaved(true)
+   589→      } catch (error) {
+   590→        console.error('Failed to save offline transaction:', error)
+   591→      }
+   592→      
+   593→      setTimeout(() => {
+   594→        clearCart()
+   595→        setSaleComplete(false)
+   596→        setOfflineTransactionSaved(false)
+   597→      }, 3000)
+   598→      return
+   599→    }
+   600→
+   601→    // Online - save transaction
+   602→    try {
+   603→      const response = await fetch('/merchant-os/api/pos/transactions', {
+   604→        method: 'POST',
+   605→        headers: { 'Content-Type': 'application/json' },
+   606→        body: JSON.stringify({
+   607→          merchantId,
+   608→          branchId,
+   609→          items: cart.map(item => ({
+   610→            name: item.name,
+   611→            price: item.priceOverride ?? item.price,
+   612→            quantity: item.quantity,
+   613→            category: item.category,
+   614→            discount: item.discount,
+   615→            customerId: item.customerId || selectedCustomer?.id,
+   616→            customerName: item.customerName || selectedCustomer?.name,
+   617→          })),
+   618→          subtotal,
+   619→          discount: cartDiscountAmount,
+   620→          vatAmount: vat,
+   621→          total,
+   622→          paymentMethod: isSplitPayment ? 'split' : (selectedPayment || 'cash'),
+   623→          splitPayments: isSplitPayment ? splitPayments : undefined,
+   624→          customerName: selectedCustomer?.name || bookingData?.customerName,
+   625→          customerId: selectedCustomer?.id || bookingData?.customerId,
+   626→          appointmentId: bookingData?.appointmentId,
+   627→          depositApplied: bookingData?.depositPaid ? bookingData?.depositAmount : 0,
+   628→        })
+   629→      })
+   630→
+   631→      if (response.ok) {
+   632→        const result = await response.json()
+   633→        // Set completed transaction for receipt
+   634→        setCompletedTransaction({
+   635→          id: result.data?.id || transactionNumber,
+   636→          number: result.data?.number || transactionNumber,
+   637→          items: cart,
+   638→          subtotal,
+   639→          discount: cartDiscountAmount,
+   640→          vat,
+   641→          total,
+   642→          paymentMethod: isSplitPayment ? 'split' : (selectedPayment || 'cash'),
+   643→          customerName: selectedCustomer?.name || bookingData?.customerName,
+   644→          createdAt: new Date()
+   645→        })
+   646→        
+   647→        if (offlineMode.metrics.pendingSync > 0) {
+   648→          offlineMode.syncNow()
+   649→        }
+   650→      } else {
+   651→        await offlineMode.addTransaction({
+   652→          type: 'sale',
+   653→          amount: total,
+   654→          items: cart.map(item => ({
+   655→            name: item.name,
+   656→            quantity: item.quantity,
+   657→            price: item.priceOverride ?? item.price,
+   658→          })),
+   659→          paymentMethod: isSplitPayment ? 'split' : (selectedPayment || 'cash'),
+   660→          verticalId: vertical.id,
+   661→          subVerticalId: subVertical.id,
+   662→          cashierId: session?.userId,
+   663→        })
+   664→        setOfflineTransactionSaved(true)
+   665→      }
+   666→    } catch (error) {
+   667→      console.error('Transaction error:', error)
+   668→      try {
+   669→        await offlineMode.addTransaction({
+   670→          type: 'sale',
+   671→          amount: total,
+   672→          items: cart.map(item => ({
+   673→            name: item.name,
+   674→            quantity: item.quantity,
+   675→            price: item.priceOverride ?? item.price,
+   676→          })),
+   677→          paymentMethod: isSplitPayment ? 'split' : (selectedPayment || 'cash'),
+   678→          verticalId: vertical.id,
+   679→          subVerticalId: subVertical.id,
+   680→          cashierId: session?.userId,
+   681→        })
+   682→        setOfflineTransactionSaved(true)
+   683→      } catch (offlineError) {
+   684→        console.error('Failed to save offline transaction:', offlineError)
+   685→      }
+   686→    }
+   687→
+   688→    setTimeout(() => {
+   689→      clearCart()
+   690→      setSaleComplete(false)
+   691→      setOfflineTransactionSaved(false)
+   692→    }, 3000)
+   693→  }
+   694→
+   695→  // Add booking service to cart
+   696→  const addBookingToCart = (booking: BookingToPOS) => {
+   697→    setBookingData(booking)
+   698→    setCart([{
+   699→      id: `booking-${booking.appointmentId}`,
+   700→      name: booking.serviceName,
+   701→      price: booking.servicePrice,
+   702→      quantity: 1,
+   703→      category: booking.category,
+   704→      customerName: booking.customerName,
+   705→      customerPhone: booking.customerPhone,
+   706→      customerId: booking.customerId,
+   707→      appointmentId: booking.appointmentId,
+   708→    }])
+   709→    setCurrentView('pos')
+   710→    setCheckoutOpen(true)
+   711→  }
+   712→
+   713→  // Handle booking from external source
+   714→  const handleBookingToPOS = (booking: BookingToPOS) => {
+   715→    addBookingToCart(booking)
+   716→  }
+   717→
+   718→  const handleCheckout = () => {
+   719→    setCheckoutOpen(true)
+   720→  }
+   721→
+   722→  // Complete sale with selected payment
+   723→  const completeSale = async () => {
+   724→    await processSale()
+   725→  }
+   726→
+   727→  // Navigation organized into 9 categories
+   728→  interface NavItem {
+   729→    id: ViewType
+   730→    icon: LucideIcon
+   731→    label: string
+   732→  }
+   733→
+   734→  interface NavCategory {
+   735→    name: string
+   736→    items: NavItem[]
+   737→  }
+   738→
+   739→  const getNavCategories = (): NavCategory[] => {
+   740→    const categories: NavCategory[] = []
+   741→
+   742→    // 1. Overview
+   743→    categories.push({
+   744→      name: 'Overview',
+   745→      items: [
+   746→        { id: 'dashboard', icon: Home, label: 'Dashboard' },
+   747→      ]
+   748→    })
+   749→
+   750→    // 2. Sales
+   751→    const salesItems: NavItem[] = [
+   752→      { id: 'pos', icon: Store, label: 'POS' },
+   753→    ]
+   754→    
+   755→    // Food & Beverage specific
+   756→    if (vertical.id === 'fnb') {
+   757→      salesItems.push({ id: 'waiterpad', icon: Smartphone, label: 'WaiterPad' })
+   758→      salesItems.push({ id: 'floorplan', icon: MapPin, label: 'Floor Plan' })
+   759→      salesItems.push({ id: 'kitchen', icon: ChefHat, label: 'Kitchen Display' })
+   760→      salesItems.push({ id: 'courses', icon: Utensils, label: 'Course Management' })
+   761→      salesItems.push({ id: 'billsplit', icon: Users, label: 'Bill Splitting' })
+   762→      salesItems.push({ id: 'qrselfservice', icon: QrCode, label: 'QR Self-Service' })
+   763→    }
+   764→    
+   765→    categories.push({ name: 'Sales', items: salesItems })
+   766→
+   767→    // 3. Bookings & Services (ONLY for Health & Beauty)
+   768→    // Bookings and Online Widget are EXCLUSIVE to Health & Beauty vertical
+   769→    if (vertical.id === 'health-beauty') {
+   770→      categories.push({
+   771→        name: 'Bookings',
+   772→        items: [
+   773→          { id: 'booking', icon: Calendar, label: 'Bookings' },
+   774→          { id: 'widget', icon: Globe, label: 'Online Widget' },
+   775→        ]
+   776→      })
+   777→    }
+   778→
+   779→    // 4. Operations
+   780→    const operationsItems: NavItem[] = [
+   781→      { id: 'inventory', icon: Package, label: 'Inventory' },
+   782→      { id: 'pricing', icon: Coins, label: 'Pricing' },
+   783→    ]
+   784→    
+   785→    if (vertical.id === 'fnb') {
+   786→      operationsItems.push({ id: 'recipe', icon: ChefHat, label: 'Recipe Engine' })
+   787→      operationsItems.push({ id: 'fnbmanagement', icon: ChefHat, label: 'F&B Management' })
+   788→    }
+   789→
+   790→    if (vertical.id === 'hospitality') {
+   791→      operationsItems.push({ id: 'hotel', icon: Hotel, label: 'Hotel Management' })
+   792→    }
+   793→
+   794→    // Childcare & Education - Sub-vertical specific operations
+   795→    if (vertical.id === 'childcare') {
+   796→      operationsItems.push({ id: 'childcare', icon: Baby, label: 'Childcare Management' })
+   797→    }
+   798→
+   799→    // Sport & Leisure - Sub-vertical specific operations
+   800→    if (vertical.id === 'sport-leisure') {
+   801→      operationsItems.push({ id: 'sportleisure', icon: Dumbbell, label: 'Club Management' })
+   802→    }
+   803→
+   804→    // Electronics & Tech - Sub-vertical specific operations
+   805→    if (vertical.id === 'electronics') {
+   806→      operationsItems.push({ id: 'electronicstech', icon: Smartphone, label: 'Tech Services' })
+   807→    }
+   808→
+   809→    // Hardware & Building - Sub-vertical specific operations  
+   810→    if (vertical.id === 'hardware') {
+   811→      operationsItems.push({ id: 'hardwarebuilding', icon: Wrench, label: 'Building Supplies' })
+   812→    }
+   813→
+   814→    // Professional Services - Subvertical specific operations
+   815→    if (vertical.id === 'professional-services') {
+   816→      // Each subvertical has unique operations
+   817→      if (subVertical.id === 'funeral-home') {
+   818→        operationsItems.push({ id: 'funeral', icon: FileText, label: 'Funeral Management' })
+   819→      } else if (subVertical.id === 'auto-repair') {
+   820→        operationsItems.push({ id: 'autorepair', icon: Wrench, label: 'Workshop & Job Cards' })
+   821→      } else if (subVertical.id === 'legal-services') {
+   822→        operationsItems.push({ id: 'professional', icon: Scale, label: 'Legal Practice' })
+   823→      } else if (subVertical.id === 'accounting') {
+   824→        operationsItems.push({ id: 'accounting', icon: Calculator, label: 'Practice Management' })
+   825→      } else if (subVertical.id === 'dry-cleaning') {
+   826→        operationsItems.push({ id: 'dryclean', icon: Shirt, label: 'Laundry Management' })
+   827→      } else if (subVertical.id === 'tutoring-school') {
+   828→        operationsItems.push({ id: 'courses', icon: GraduationCap, label: 'Course Management' })
+   829→      } else if (subVertical.id === 'real-estate') {
+   830→        operationsItems.push({ id: 'realestate', icon: Building2, label: 'Estate Agency' })
+   831→      } else if (subVertical.id === 'architecture') {
+   832→        operationsItems.push({ id: 'architecture', icon: Building2, label: 'Architecture Practice' })
+   833→      } else if (subVertical.id === 'engineering') {
+   834→        operationsItems.push({ id: 'engineering', icon: Wrench, label: 'Engineering Practice' })
+   835→      } else if (subVertical.id === 'quantity-surveying') {
+   836→        operationsItems.push({ id: 'quantitysurveying', icon: Calculator, label: 'QS Practice' })
+   837→      } else if (subVertical.id === 'medical-practice') {
+   838→        operationsItems.push({ id: 'medicalpractice', icon: FileText, label: 'Medical Practice' })
+   839→      } else if (subVertical.id === 'dental-practice') {
+   840→        operationsItems.push({ id: 'dentalpractice', icon: FileText, label: 'Dental Practice' })
+   841→      }
+   842→    }
+   843→
+   844→    // Agriculture - Farm management operations
+   845→    if (vertical.id === 'agriculture') {
+   846→      operationsItems.push({ id: 'agriculture', icon: Leaf, label: 'Farm Management' })
+   847→    }
+   848→
+   849→    categories.push({ name: 'Operations', items: operationsItems })
+   850→
+   851→    // 5. Finance
+   852→    categories.push({
+   853→      name: 'Finance',
+   854→      items: [
+   855→        { id: 'salesreport', icon: BarChart3, label: 'Sales Report' },
+   856→        { id: 'transactions', icon: Receipt, label: 'Transactions' },
+   857→        { id: 'accounting', icon: Calculator, label: 'Accounting' },
+   858→        { id: 'payments', icon: Route, label: 'Payment Gateway' },
+   859→        { id: 'grocredit', icon: PiggyBank, label: 'GroCredit' },
+   860→      ]
+   861→    })
+   862→
+   863→    // 6. Customers
+   864→    categories.push({
+   865→      name: 'Customers',
+   866→      items: [
+   867→        { id: 'crm', icon: Users, label: 'CRM & Loyalty' },
+   868→        { id: 'marketing', icon: Megaphone, label: 'Marketing' },
+   869→      ]
+   870→    })
+   871→
+   872→    // 7. Staff
+   873→    categories.push({
+   874→      name: 'Staff',
+   875→      items: [
+   876→        { id: 'staff', icon: UserCog, label: 'Staff & HR' },
+   877→        { id: 'training', icon: GraduationCap, label: 'Training' },
+   878→      ]
+   879→    })
+   880→
+   881→    // 8. Growth
+   882→    const growthItems: NavItem[] = [
+   883→      { id: 'giftcards', icon: Gift, label: 'Gift Cards' },
+   884→      { id: 'grosupply', icon: Building2, label: 'GroSupply' },
+   885→      { id: 'gromarket', icon: ShoppingCart, label: 'GroMarket' },
+   886→      { id: 'customerfacing', icon: Globe, label: 'Customer Facing' },
+   887→    ]
+   888→    
+   889→    if (vertical.id === 'fnb' || vertical.id === 'hospitality') {
+   890→      growthItems.unshift({ id: 'qrmenu', icon: QrCode, label: 'QR Menu' })
+   891→    }
+   892→    
+   893→    categories.push({ name: 'Growth', items: growthItems })
+   894→
+   895→    // 9. Settings
+   896→    const settingsItems: NavItem[] = [
+   897→      { id: 'enterprise', icon: Building2, label: 'Enterprise Portal' },
+   898→      { id: 'multilocation', icon: Building2, label: 'Multi-Location' },
+   899→      { id: 'notifications', icon: Bell, label: 'Notifications' },
+   900→      { id: 'hardware', icon: Printer, label: 'Hardware' },
+   901→      { id: 'offline', icon: Wifi, label: 'Offline Mode' },
+   902→      { id: 'settings', icon: Settings, label: 'Settings' },
+   903→    ]
+   904→    
+   905→    // Add Liquor Compliance for applicable verticals
+   906→    if (['fnb', 'liquor', 'hospitality'].includes(vertical.id)) {
+   907→      settingsItems.splice(2, 0, { id: 'liquor', icon: ShieldCheck, label: 'Liquor Compliance' })
+   908→    }
+   909→    
+   910→    // Add Health & Beauty Compliance for health-beauty vertical
+   911→    if (vertical.id === 'health-beauty') {
+   912→      settingsItems.splice(2, 0, { id: 'healthbeauty', icon: Scissors, label: 'Health & Beauty' })
+   913→    }
+   914→    
+   915→    categories.push({ name: 'Settings', items: settingsItems })
+   916→
+   917→    return categories
+   918→  }
+   919→
+   920→  const navCategories = getNavCategories()
+   921→
+   922→  const renderMainContent = () => {
+   923→    switch (currentView) {
+   924→      case 'dashboard':
+   925→        return (
+   926→          <MerchantDashboard 
+   927→            verticalName={vertical.name}
+   928→            subVerticalName={subVertical.name}
+   929→            onNewSale={() => setCurrentView('pos')}
+   930→            onNavigate={(view) => setCurrentView(view as ViewType)}
+   931→          />
+   932→        )
+   933→      case 'salesreport':
+   934→        return <SalesReportView />
+   935→      case 'transactions':
+   936→        return <TransactionsView />
+   937→      case 'inventory':
+   938→        return <InventoryView verticalId={vertical.id} subVerticalId={subVertical.id} />
+   939→      case 'pricing':
+   940→        return <PricingManagementView />
+   941→      case 'crm':
+   942→        return <CRMView />
+   943→      case 'marketing':
+   944→        return <MarketingView />
+   945→      case 'staff':
+   946→        return <StaffHRMView />
+   947→      case 'accounting':
+   948→        return <AccountingView />
+   949→      case 'booking':
+   950→        return <EnhancedBookingView onProceedToPOS={handleBookingToPOS} />
+   951→      case 'widget':
+   952→        return <OnlineBookingWidget />
+   953→      case 'giftcards':
+   954→        return <VouchersAndGiftCardsView />
+   955→      case 'grosupply':
+   956→        return <GroSupplyEnhancedView />
+   957→      case 'gromarket':
+   958→        return <GroSupplyMarketplaceView />
+   959→      case 'payments':
+   960→        return <PaymentGatewayView />
+   961→      case 'grocredit':
+   962→        return <GroCreditView />
+   963→      case 'multilocation':
+   964→        return <MultiLocationView />
+   965→      case 'enterprise':
+   966→        return <EnterprisePortalView />
+   967→      case 'hardware':
+   968→        return <HardwareIntegration />
+   969→      case 'offline':
+   970→        return <OfflineModeManager />
+   971→      case 'training':
+   972→        return <TrainingView />
+   973→      case 'settings':
+   974→        return <SettingsView />
+   975→      case 'qrmenu':
+   976→        return <DigitalQRMenuView />
+   977→      case 'floorplan':
+   978→        return (
+   979→          <div className="flex-1 overflow-hidden">
+   980→            <TableFloorPlanView />
+   981→          </div>
+   982→        )
+   983→      case 'kitchen':
+   984→        return (
+   985→          <div className="flex-1 overflow-hidden">
+   986→            <KitchenDisplayView />
+   987→          </div>
+   988→        )
+   989→      case 'recipe':
+   990→        return (
+   991→          <div className="flex-1 overflow-hidden">
+   992→            <RecipeEngineView />
+   993→          </div>
+   994→        )
+   995→      case 'fnbmanagement':
+   996→        return (
+   997→          <div className="flex-1 overflow-hidden">
+   998→            <FnbManagementView />
+   999→          </div>
+  1000→        )
+  1001→      case 'courses':
+  1002→        return (
+  1003→          <div className="flex-1 overflow-hidden">
+  1004→            <CourseManagementView />
+  1005→          </div>
+  1006→        )
+  1007→      case 'billsplit':
+  1008→        return (
+  1009→          <div className="flex-1 overflow-hidden">
+  1010→            <BillSplittingView />
+  1011→          </div>
+  1012→        )
+  1013→      case 'qrselfservice':
+  1014→        return (
+  1015→          <div className="flex-1 overflow-hidden">
+  1016→            <QRSelfServiceView />
+  1017→          </div>
+  1018→        )
+  1019→      case 'liquor':
+  1020→        return (
+  1021→          <div className="flex-1 overflow-hidden">
+  1022→            <LiquorComplianceView />
+  1023→          </div>
+  1024→        )
+  1025→      case 'healthbeauty':
+  1026→        return (
+  1027→          <div className="flex-1 overflow-hidden">
+  1028→            <HealthBeautyView />
+  1029→          </div>
+  1030→        )
+  1031→      case 'hotel':
+  1032→        return (
+  1033→          <div className="flex-1 overflow-hidden">
+  1034→            <HotelManagementView />
+  1035→          </div>
+  1036→        )
+  1037→      case 'customerfacing':
+  1038→        return (
+  1039→          <div className="flex-1 overflow-hidden">
+  1040→            <CustomerFacingView />
+  1041→          </div>
+  1042→        )
+  1043→      case 'waiterpad':
+  1044→        return (
+  1045→          <div className="flex-1 overflow-hidden">
+  1046→            <WaiterPadView />
+  1047→          </div>
+  1048→        )
+  1049→      case 'sars':
+  1050→        return (
+  1051→          <div className="flex-1 overflow-hidden">
+  1052→            <SarsEfilingView />
+  1053→          </div>
+  1054→        )
+  1055→      case 'bankfeed':
+  1056→        return (
+  1057→          <div className="flex-1 overflow-hidden">
+  1058→            <BankFeedView />
+  1059→          </div>
+  1060→        )
+  1061→      case 'courier':
+  1062→        return (
+  1063→          <div className="flex-1 overflow-hidden">
+  1064→            <CourierIntegrationView />
+  1065→          </div>
+  1066→        )
+  1067→      case 'whatsapp':
+  1068→        return (
+  1069→          <div className="flex-1 overflow-hidden">
+  1070→            <WhatsAppBusinessView />
+  1071→          </div>
+  1072→        )
+  1073→      case 'hardwarebuilding':
+  1074→        return (
+  1075→          <div className="flex-1 overflow-hidden">
+  1076→            <HardwareBuildingView />
+  1077→          </div>
+  1078→        )
+  1079→      case 'notifications':
+  1080→        return (
+  1081→          <div className="flex-1 overflow-auto p-6">
+  1082→            <NotificationCenter />
+  1083→          </div>
+  1084→        )
+  1085→      case 'funeral':
+  1086→        return (
+  1087→          <div className="flex-1 overflow-hidden">
+  1088→            <FuneralServicesView />
+  1089→          </div>
+  1090→        )
+  1091→      case 'autorepair':
+  1092→        return (
+  1093→          <div className="flex-1 overflow-hidden">
+  1094→            <AutoRepairView />
+  1095→          </div>
+  1096→        )
+  1097→      case 'dryclean':
+  1098→        return (
+  1099→          <div className="flex-1 overflow-hidden">
+  1100→            <DryCleaningView />
+  1101→          </div>
+  1102→        )
+  1103→      case 'professional':
+  1104→        return (
+  1105→          <div className="flex-1 overflow-hidden">
+  1106→            <ProfessionalComplianceView />
+  1107→          </div>
+  1108→        )
+  1109→      case 'realestate':
+  1110→        return (
+  1111→          <div className="flex-1 overflow-hidden">
+  1112→            <RealEstateView />
+  1113→          </div>
+  1114→        )
+  1115→      case 'architecture':
+  1116→        return (
+  1117→          <div className="flex-1 overflow-hidden">
+  1118→            <ArchitectureView />
+  1119→          </div>
+  1120→        )
+  1121→      case 'engineering':
+  1122→        return (
+  1123→          <div className="flex-1 overflow-hidden">
+  1124→            <EngineeringView />
+  1125→          </div>
+  1126→        )
+  1127→      case 'quantitysurveying':
+  1128→        return (
+  1129→          <div className="flex-1 overflow-hidden">
+  1130→            <QuantitySurveyingView />
+  1131→          </div>
+  1132→        )
+  1133→      case 'medicalpractice':
+  1134→        return (
+  1135→          <div className="flex-1 overflow-hidden">
+  1136→            <MedicalPracticeView />
+  1137→          </div>
+  1138→        )
+  1139→      case 'dentalpractice':
+  1140→        return (
+  1141→          <div className="flex-1 overflow-hidden">
+  1142→            <DentalPracticeView />
+  1143→          </div>
+  1144→        )
+  1145→      case 'childcare':
+  1146→        return (
+  1147→          <div className="flex-1 overflow-hidden">
+  1148→            <ChildcareView />
+  1149→          </div>
+  1150→        )
+  1151→      case 'sportleisure':
+  1152→        return (
+  1153→          <div className="flex-1 overflow-hidden">
+  1154→            <SportLeisureView />
+  1155→          </div>
+  1156→        )
+  1157→      case 'electronicstech':
+  1158→        return (
+  1159→          <div className="flex-1 overflow-hidden">
+  1160→            <ElectronicsTechView />
+  1161→          </div>
+  1162→        )
+  1163→      case 'agriculture':
+  1164→        return (
+  1165→          <div className="flex-1 overflow-hidden">
+  1166→            <AgricultureView subVerticalId={subVertical.id} />
+  1167→          </div>
+  1168→        )
+  1169→      case 'pos':
+  1170→      default:
+  1171→        return (
+  1172→          <div className="flex-1 flex overflow-hidden">
+  1173→            {/* Product Grid */}
+  1174→            <div className="flex-1 flex flex-col min-w-0 p-4">
+  1175→              {/* Search & Categories */}
+  1176→              <div className="mb-4 space-y-3">
+  1177→                <div className="relative">
+  1178→                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#757575]" />
+  1179→                  <Input
+  1180→                    placeholder="Search products..."
+  1181→                    value={searchQuery}
+  1182→                    onChange={(e) => setSearchQuery(e.target.value)}
+  1183→                    className="pl-9"
+  1184→                  />
+  1185→                </div>
+  1186→                <ScrollArea className="w-full">
+  1187→                  <div className="flex gap-2 pb-2">
+  1188→                    {categories.map((category) => (
+  1189→                      <Button
+  1190→                        key={category}
+  1191→                        variant={activeCategory === category ? 'default' : 'outline'}
+  1192→                        size="sm"
+  1193→                        className={`text-xs ${
+  1194→                          activeCategory === category 
+  1195→                            ? 'bg-[#00897B] hover:bg-[#00695C]' 
+  1196→                            : 'border-gray-200'
+  1197→                        }`}
+  1198→                        onClick={() => setActiveCategory(category)}
+  1199→                      >
+  1200→                        {category === 'all' ? 'All' : category}
+  1201→                      </Button>
+  1202→                    ))}
+  1203→                  </div>
+  1204→                </ScrollArea>
+  1205→              </div>
+  1206→
+  1207→              {/* Product Grid */}
+  1208→              <ScrollArea className="flex-1">
+  1209→                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+  1210→                  {filteredSKUs.map((sku, index) => (
+  1211→                    <Card 
+  1212→                      key={index}
+  1213→                      className="cursor-pointer hover:border-[#00897B] hover:shadow-md transition-all duration-200"
+  1214→                      onClick={() => addToCart(sku)}
+  1215→                    >
+  1216→                      <CardContent className="p-3 text-center">
+  1217→                        <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-[#E0F2F1] text-[#00897B] flex items-center justify-center">
+  1218→                          <sku.icon className="h-5 w-5" />
+  1219→                        </div>
+  1220→                        <h4 className="text-xs font-medium text-[#1A1A1A] mb-1 line-clamp-2">{sku.name}</h4>
+  1221→                        <p className="text-sm font-bold text-[#00897B]">R{sku.price.toFixed(2)}</p>
+  1222→                      </CardContent>
+  1223→                    </Card>
+  1224→                  ))}
+  1225→                </div>
+  1226→              </ScrollArea>
+  1227→            </div>
+  1228→
+  1229→            {/* Cart Sidebar */}
+  1230→            <aside className="w-80 bg-white border-l border-gray-200 flex flex-col">
+  1231→              {/* Cart Header */}
+  1232→              <div className="p-4 border-b border-gray-200">
+  1233→                <div className="flex items-center justify-between">
+  1234→                  <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+  1235→                    <ShoppingCart className="h-4 w-4" />
+  1236→                    Current Sale
+  1237→                  </h2>
+  1238→                  <div className="flex items-center gap-1">
+  1239→                    {heldTransactions.length > 0 && (
+  1240→                      <Button 
+  1241→                        variant="ghost" 
+  1242→                        size="sm" 
+  1243→                        onClick={() => setHoldTransactionOpen(true)}
+  1244→                        className="text-xs text-amber-600"
+  1245→                      >
+  1246→                        <Pause className="h-3 w-3 mr-1" />
+  1247→                        {heldTransactions.length}
+  1248→                      </Button>
+  1249→                    )}
+  1250→                    {cart.length > 0 && (
+  1251→                      <Button variant="ghost" size="sm" onClick={clearCart} className="text-xs text-red-500 hover:text-red-600">
+  1252→                        Clear
+  1253→                      </Button>
+  1254→                    )}
+  1255→                  </div>
+  1256→                </div>
+  1257→              </div>
+  1258→
+  1259→              {/* Cart Items */}
+  1260→              <ScrollArea className="flex-1 p-4">
+  1261→                {cart.length === 0 ? (
+  1262→                  <div className="space-y-4">
+  1263→                    <div className="text-center py-4">
+  1264→                      <ShoppingCart className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+  1265→                      <p className="text-sm text-[#757575]">Cart is empty</p>
+  1266→                      <p className="text-xs text-gray-400 mt-1">Tap products or use Quick Charge</p>
+  1267→                    </div>
+  1268→                    
+  1269→                    {/* Enhanced Quick Charge Presets */}
+  1270→                    <QuickChargePresets onSelectAmount={handleQuickCharge} />
+  1271→                    
+  1272→                    {/* Held Transactions indicator */}
+  1273→                    {heldTransactions.length > 0 && (
+  1274→                      <button
+  1275→                        className="w-full flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800"
+  1276→                        onClick={() => setHoldTransactionOpen(true)}
+  1277→                      >
+  1278→                        <div className="flex items-center gap-2">
+  1279→                          <Pause className="h-4 w-4" />
+  1280→                          <span className="text-sm font-medium">{heldTransactions.length} held sale{heldTransactions.length > 1 ? 's' : ''}</span>
+  1281→                        </div>
+  1282→                        <Play className="h-4 w-4" />
+  1283→                      </button>
+  1284→                    )}
+  1285→                  </div>
+  1286→                ) : (
+  1287→                  <div className="space-y-3">
+  1288→                    {cart.map((item) => (
+  1289→                      <CartItemWithActions
+  1290→                        key={item.id}
+  1291→                        item={item}
+  1292→                        onUpdateQuantity={updateQuantity}
+  1293→                        onRemove={removeFromCart}
+  1294→                        onPriceOverride={(item) => {
+  1295→                          setSelectedItemForEdit(item)
+  1296→                          setPriceOverrideOpen(true)
+  1297→                        }}
+  1298→                        onItemDiscount={(item) => {
+  1299→                          setSelectedItemForEdit(item)
+  1300→                          setItemDiscountOpen(true)
+  1301→                        }}
+  1302→                      />
+  1303→                    ))}
+  1304→                  </div>
+  1305→                )}
+  1306→              </ScrollArea>
+  1307→
+  1308→              {/* Cart Summary */}
+  1309→              <div className="p-4 border-t border-gray-200 space-y-3">
+  1310→                {/* Customer Info */}
+  1311→                {selectedCustomer && (
+  1312→                  <div className="p-3 bg-[#E0F2F1] rounded-lg space-y-1">
+  1313→                    <div className="flex items-center justify-between">
+  1314→                      <div className="flex items-center gap-2 text-[#00897B]">
+  1315→                        <User className="h-4 w-4" />
+  1316→                        <span className="text-xs font-semibold">{selectedCustomer.name}</span>
+  1317→                      </div>
+  1318→                      <Button
+  1319→                        variant="ghost"
+  1320→                        size="sm"
+  1321→                        className="h-5 w-5 p-0"
+  1322→                        onClick={() => setSelectedCustomer(null)}
+  1323→                      >
+  1324→                        <X className="h-3 w-3" />
+  1325→                      </Button>
+  1326→                    </div>
+  1327→                    {selectedCustomer.loyaltyPoints !== undefined && selectedCustomer.loyaltyPoints > 0 && (
+  1328→                      <div className="flex items-center gap-1">
+  1329→                        <Star className="h-3 w-3 text-amber-500" />
+  1330→                        <span className="text-xs text-amber-600">{selectedCustomer.loyaltyPoints} points</span>
+  1331→                      </div>
+  1332→                    )}
+  1333→                  </div>
+  1334→                )}
+  1335→                
+  1336→                {/* Booking Customer Info */}
+  1337→                {bookingData && (
+  1338→                  <div className="p-3 bg-[#E0F2F1] rounded-lg space-y-1">
+  1339→                    <div className="flex items-center gap-2 text-[#00897B]">
+  1340→                      <Calendar className="h-4 w-4" />
+  1341→                      <span className="text-xs font-semibold">Booking Sale</span>
+  1342→                    </div>
+  1343→                    <p className="text-sm font-medium text-[#1A1A1A]">{bookingData.customerName}</p>
+  1344→                    {bookingData.customerPhone && (
+  1345→                      <p className="text-xs text-[#757575]">{bookingData.customerPhone}</p>
+  1346→                    )}
+  1347→                    {bookingData.depositPaid && bookingData.depositAmount && (
+  1348→                      <div className="flex items-center gap-1 mt-1">
+  1349→                        <Badge className="bg-green-100 text-green-700 text-[10px]">
+  1350→                          Deposit Paid: R{bookingData.depositAmount.toFixed(2)}
+  1351→                        </Badge>
+  1352→                      </div>
+  1353→                    )}
+  1354→                  </div>
+  1355→                )}
+  1356→                
+  1357→                {/* Action Buttons */}
+  1358→                <div className="flex gap-2">
+  1359→                  <Button
+  1360→                    variant="outline"
+  1361→                    size="sm"
+  1362→                    className="flex-1 text-xs"
+  1363→                    onClick={() => setCustomerLookupOpen(true)}
+  1364→                  >
+  1365→                    <User className="h-3 w-3 mr-1" />
+  1366→                    {selectedCustomer ? 'Change' : 'Customer'}
+  1367→                  </Button>
+  1368→                  <Button
+  1369→                    variant="outline"
+  1370→                    size="sm"
+  1371→                    className="flex-1 text-xs"
+  1372→                    onClick={() => setCartDiscountOpen(true)}
+  1373→                    disabled={cart.length === 0}
+  1374→                  >
+  1375→                    <Percent className="h-3 w-3 mr-1" />
+  1376→                    Discount
+  1377→                  </Button>
+  1378→                  <Button
+  1379→                    variant="outline"
+  1380→                    size="sm"
+  1381→                    className="flex-1 text-xs"
+  1382→                    onClick={() => setHoldTransactionOpen(true)}
+  1383→                    disabled={cart.length === 0}
+  1384→                  >
+  1385→                    <Pause className="h-3 w-3 mr-1" />
+  1386→                    Hold
+  1387→                  </Button>
+  1388→                </div>
+  1389→                
+  1390→                <div className="space-y-1.5 text-sm">
+  1391→                  <div className="flex justify-between text-[#757575]">
+  1392→                    <span>Items Subtotal</span>
+  1393→                    <span>R{itemsSubtotal.toFixed(2)}</span>
+  1394→                  </div>
+  1395→                  {cartDiscountAmount > 0 && (
+  1396→                    <div className="flex justify-between text-red-500">
+  1397→                      <span>Cart Discount</span>
+  1398→                      <span>-R{cartDiscountAmount.toFixed(2)}</span>
+  1399→                    </div>
+  1400→                  )}
+  1401→                  <div className="flex justify-between text-[#757575]">
+  1402→                    <span>Subtotal</span>
+  1403→                    <span>R{subtotal.toFixed(2)}</span>
+  1404→                  </div>
+  1405→                  <div className="flex justify-between text-[#757575]">
+  1406→                    <span>VAT (15%)</span>
+  1407→                    <span>R{vat.toFixed(2)}</span>
+  1408→                  </div>
+  1409→                  {bookingData?.depositPaid && bookingData?.depositAmount && (
+  1410→                    <>
+  1411→                      <Separator />
+  1412→                      <div className="flex justify-between text-green-600">
+  1413→                        <span>Deposit Deduction</span>
+  1414→                        <span>-R{bookingData.depositAmount.toFixed(2)}</span>
+  1415→                      </div>
+  1416→                    </>
+  1417→                  )}
+  1418→                  <Separator />
+  1419→                  <div className="flex justify-between font-bold text-[#1A1A1A]">
+  1420→                    <span>Total</span>
+  1421→                    <span>R{(bookingData?.depositPaid && bookingData?.depositAmount 
+  1422→                      ? total - bookingData.depositAmount 
+  1423→                      : total).toFixed(2)}</span>
+  1424→                  </div>
+  1425→                </div>
+  1426→                
+  1427→                {/* Payment Buttons */}
+  1428→                <div className="space-y-2">
+  1429→                  <Button 
+  1430→                    className="w-full bg-[#00897B] hover:bg-[#00695C] text-white font-semibold"
+  1431→                    disabled={cart.length === 0}
+  1432→                    onClick={handleCheckout}
+  1433→                  >
+  1434→                    <CreditCard className="mr-2 h-4 w-4" />
+  1435→                    Pay R{(bookingData?.depositPaid && bookingData?.depositAmount 
+  1436→                      ? total - bookingData.depositAmount 
+  1437→                      : total).toFixed(2)}
+  1438→                  </Button>
+  1439→                  <Button 
+  1440→                    variant="outline"
+  1441→                    className="w-full"
+  1442→                    disabled={cart.length === 0}
+  1443→                    onClick={() => setSplitPaymentOpen(true)}
+  1444→                  >
+  1445→                    <ArrowRightLeft className="mr-2 h-4 w-4" />
+  1446→                    Split Payment
+  1447→                  </Button>
+  1448→                </div>
+  1449→              </div>
+  1450→            </aside>
+  1451→          </div>
+  1452→        )
+  1453→    }
+  1454→  }
+  1455→
+  1456→  // Mobile Bottom Tab Bar data
+  1457→  const mobileTabs = [
+  1458→    { id: 'dashboard', icon: Home, label: 'Home' },
+  1459→    { id: 'pos', icon: Store, label: 'POS', badge: cart.length },
+  1460→    { id: 'orders', icon: Receipt, label: 'Orders' },
+  1461→    { id: 'search', icon: Search, label: 'Search' },
+  1462→    { id: 'more', icon: MoreHorizontal, label: 'More' },
+  1463→  ]
+  1464→
+  1465→
+  1466→
+  1467→  // ========== RENDER ==========
+  1468→  return (
+  1469→    <div className={`min-h-screen flex bg-[#FAFAFA] ${isMobile ? 'pb-16' : ''}`}>
+  1470→      {/* Global Offline Banner */}
+  1471→      {!offlineMode.isOnline && (
+  1472→        <div className="fixed top-0 left-0 right-0 bg-amber-500 text-white text-center py-2 text-sm font-medium z-[100] flex items-center justify-center gap-2">
+  1473→          <WifiOff className="h-4 w-4" />
+  1474→          <span>You're offline - Transactions will be saved locally</span>
+  1475→          {offlineMode.metrics.pendingSync > 0 && (
+  1476→            <Badge className="bg-white/20 text-white ml-2">
+  1477→              {offlineMode.metrics.pendingSync} pending
+  1478→            </Badge>
+  1479→          )}
+  1480→        </div>
+  1481→      )}
+  1482→      
+  1483→      {/* Mobile Layout */}
+  1484→      {isMobile && (
+  1485→        <>
+  1486→          {/* Main Content - Full Screen */}
+  1487→          <main className={`flex-1 flex flex-col min-w-0 ${!offlineMode.isOnline ? 'mt-9' : ''}`}>
+  1488→            {/* Top Bar */}
+  1489→            <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-30">
+  1490→              <div className="flex items-center justify-between">
+  1491→                <h1 className="text-base font-semibold text-[#1A1A1A]">
+  1492→                  {currentView === 'dashboard' ? 'Dashboard' : 
+  1493→                   currentView === 'pos' ? 'POS' :
+  1494→                   currentView === 'orders' ? 'Orders' : subVertical.name}
+  1495→                </h1>
+  1496→                <div className="flex items-center gap-2">
+  1497→                  {/* Offline Status */}
+  1498→                  <OfflineStatusBadge />
+  1499→                  {/* Mobile App Mode Toggle */}
+  1500→                  <Button 
+  1501→                    variant="ghost" 
+  1502→                    size="sm"
+  1503→                    onClick={() => setMobileAppMode(!mobileAppMode)}
+  1504→                    className="text-xs"
+  1505→                  >
+  1506→                    <Smartphone className="h-4 w-4 mr-1" />
+  1507→                    {mobileAppMode ? 'Exit' : 'App Mode'}
+  1508→                  </Button>
+  1509→                </div>
+  1510→              </div>
+  1511→            </header>
+  1512→            
+  1513→            {/* Content */}
+  1514→            {currentView === 'orders' ? (
+  1515→              <div className="flex-1 overflow-auto p-4">
+  1516→                <MobileOrdersView 
+  1517→                  orders={[
+  1518→                    { id: '1', orderNumber: 'ORD-001', customerName: 'John D.', items: 3, total: 250, status: 'pending', createdAt: new Date().toISOString() },
+  1519→                    { id: '2', orderNumber: 'ORD-002', customerName: 'Sarah M.', items: 2, total: 180, status: 'preparing', createdAt: new Date().toISOString() },
+  1520→                    { id: '3', orderNumber: 'ORD-003', items: 1, total: 95, status: 'ready', createdAt: new Date().toISOString() },
+  1521→                  ]}
+  1522→                  onViewOrder={(id) => {}}
+  1523→                />
+  1524→              </div>
+  1525→            ) : currentView === 'pos' ? (
+  1526→              <div className="flex-1 flex flex-col p-4">
+  1527→                {/* Category Pills */}
+  1528→                <ScrollArea className="w-full mb-4">
+  1529→                  <div className="flex gap-2 pb-2">
+  1530→                    {categories.map((category) => (
+  1531→                      <Button
+  1532→                        key={category}
+  1533→                        variant={activeCategory === category ? 'default' : 'outline'}
+  1534→                        size="sm"
+  1535→                        className={`text-xs ${
+  1536→                          activeCategory === category 
+  1537→                            ? 'bg-[#00897B] hover:bg-[#00695C]' 
+  1538→                            : 'border-gray-200'
+  1539→                        }`}
+  1540→                        onClick={() => setActiveCategory(category)}
+  1541→                      >
+  1542→                        {category === 'all' ? 'All' : category}
+  1543→                      </Button>
+  1544→                    ))}
+  1545→                  </div>
+  1546→                </ScrollArea>
+  1547→                
+  1548→                {/* Product Grid */}
+  1549→                <ScrollArea className="flex-1">
+  1550→                  <div className="grid grid-cols-2 gap-3">
+  1551→                    {filteredSKUs.map((sku, index) => (
+  1552→                      <button
+  1553→                        key={index}
+  1554→                        onClick={() => addToCart(sku)}
+  1555→                        className="bg-white rounded-lg border border-gray-200 p-4 text-center active:bg-gray-50"
+  1556→                      >
+  1557→                        <div className="w-12 h-12 mx-auto mb-2 rounded-lg bg-[#E0F2F1] text-[#00897B] flex items-center justify-center">
+  1558→                          <sku.icon className="h-6 w-6" />
+  1559→                        </div>
+  1560→                        <p className="text-sm font-medium text-[#1A1A1A] mb-1 line-clamp-2">{sku.name}</p>
+  1561→                        <p className="text-base font-bold text-[#00897B]">R{sku.price.toFixed(2)}</p>
+  1562→                      </button>
+  1563→                    ))}
+  1564→                  </div>
+  1565→                </ScrollArea>
+  1566→              </div>
+  1567→            ) : (
+  1568→              renderMainContent()
+  1569→            )}
+  1570→            
+  1571→            {/* Floating Cart Button for Mobile */}
+  1572→            {cart.length > 0 && currentView === 'pos' && (
+  1573→              <button
+  1574→                onClick={() => setMobileCartOpen(true)}
+  1575→                className="fixed bottom-20 right-4 bg-[#00897B] text-white rounded-full shadow-lg flex items-center gap-3 pl-4 pr-2 py-2 z-40 active:bg-[#00695C]"
+  1576→              >
+  1577→                <ShoppingCart className="h-5 w-5" />
+  1578→                <span className="font-medium">{cart.length}</span>
+  1579→                <div className="bg-white/20 rounded-full px-3 py-1">
+  1580→                  <span className="font-bold">R{total.toFixed(0)}</span>
+  1581→                </div>
+  1582→              </button>
+  1583→            )}
+  1584→          </main>
+  1585→          
+  1586→          {/* Bottom Navigation */}
+  1587→          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom">
+  1588→            <div className="grid grid-cols-5 h-16">
+  1589→              {mobileTabs.map((tab) => (
+  1590→                <button
+  1591→                  key={tab.id}
+  1592→                  onClick={() => {
+  1593→                    if (tab.id === 'search') {
+  1594→                      setMobileSearchOpen(true)
+  1595→                    } else if (tab.id === 'more') {
+  1596→                      setMobileMoreOpen(true)
+  1597→                    } else {
+  1598→                      setCurrentView(tab.id as ViewType)
+  1599→                    }
+  1600→                  }}
+  1601→                  className={`flex flex-col items-center justify-center gap-1 relative transition-colors ${
+  1602→                    currentView === tab.id 
+  1603→                      ? 'text-[#00897B]' 
+  1604→                      : 'text-gray-500 active:bg-gray-100'
+  1605→                  }`}
+  1606→                >
+  1607→                  <div className="relative">
+  1608→                    <tab.icon className="h-5 w-5" />
+  1609→                    {'badge' in tab && tab.badge && tab.badge > 0 && (
+  1610→                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center px-1">
+  1611→                        {tab.badge > 99 ? '99+' : tab.badge}
+  1612→                      </span>
+  1613→                    )}
+  1614→                  </div>
+  1615→                  <span className="text-[10px] font-medium">{tab.label}</span>
+  1616→                </button>
+  1617→              ))}
+  1618→            </div>
+  1619→          </div>
+  1620→          
+  1621→          {/* Mobile Cart Overlay */}
+  1622→          <Dialog open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
+  1623→            <DialogContent className="sm:hidden h-[90vh] p-0 flex flex-col max-w-full">
+  1624→              <DialogHeader className="sr-only">
+  1625→                <DialogTitle>Shopping Cart</DialogTitle>
+  1626→              </DialogHeader>
+  1627→              <div className="p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+  1628→                <div className="flex items-center gap-2">
+  1629→                  <ShoppingCart className="h-5 w-5 text-[#00897B]" />
+  1630→                  <span className="font-semibold">Current Sale</span>
+  1631→                  {cart.length > 0 && (
+  1632→                    <Badge variant="secondary">{cart.length} items</Badge>
+  1633→                  )}
+  1634→                </div>
+  1635→                <button onClick={() => setMobileCartOpen(false)} className="p-2 -mr-2">
+  1636→                  <X className="h-5 w-5 text-gray-500" />
+  1637→                </button>
+  1638→              </div>
+  1639→              <ScrollArea className="flex-1 p-4">
+  1640→                {cart.length === 0 ? (
+  1641→                  <div className="text-center py-12">
+  1642→                    <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+  1643→                    <p className="text-gray-500 font-medium">Cart is empty</p>
+  1644→                  </div>
+  1645→                ) : (
+  1646→                  <div className="space-y-3">
+  1647→                    {cart.map((item) => (
+  1648→                      <div key={item.id} className="bg-gray-50 rounded-lg p-3">
+  1649→                        <div className="flex items-start justify-between mb-2">
+  1650→                          <div className="flex-1">
+  1651→                            <p className="font-medium text-[#1A1A1A]">{item.name}</p>
+  1652→                            <p className="text-sm text-gray-500">R{item.price.toFixed(2)} each</p>
+  1653→                          </div>
+  1654→                          <button
+  1655→                            onClick={() => removeFromCart(item.id)}
+  1656→                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+  1657→                          >
+  1658→                            <Trash2 className="h-4 w-4" />
+  1659→                          </button>
+  1660→                        </div>
+  1661→                        <div className="flex items-center justify-between">
+  1662→                          <div className="flex items-center gap-3">
+  1663→                            <button
+  1664→                              onClick={() => updateQuantity(item.id, -1)}
+  1665→                              className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 active:bg-gray-100"
+  1666→                            >
+  1667→                              <Minus className="h-4 w-4" />
+  1668→                            </button>
+  1669→                            <span className="text-lg font-semibold w-8 text-center">{item.quantity}</span>
+  1670→                            <button
+  1671→                              onClick={() => updateQuantity(item.id, 1)}
+  1672→                              className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 active:bg-gray-100"
+  1673→                            >
+  1674→                              <Plus className="h-4 w-4" />
+  1675→                            </button>
+  1676→                          </div>
+  1677→                          <span className="text-lg font-bold text-[#00897B]">
+  1678→                            R{(item.price * item.quantity).toFixed(2)}
+  1679→                          </span>
+  1680→                        </div>
+  1681→                      </div>
+  1682→                    ))}
+  1683→                  </div>
+  1684→                )}
+  1685→              </ScrollArea>
+  1686→              <div className="p-4 border-t border-gray-200 bg-white space-y-3">
+  1687→                <div className="space-y-1.5 text-sm">
+  1688→                  <div className="flex justify-between text-gray-500">
+  1689→                    <span>Subtotal</span>
+  1690→                    <span>R{subtotal.toFixed(2)}</span>
+  1691→                  </div>
+  1692→                  <div className="flex justify-between text-gray-500">
+  1693→                    <span>VAT (15%)</span>
+  1694→                    <span>R{vat.toFixed(2)}</span>
+  1695→                  </div>
+  1696→                  <Separator />
+  1697→                  <div className="flex justify-between font-bold text-lg text-[#1A1A1A]">
+  1698→                    <span>Total</span>
+  1699→                    <span className="text-[#00897B]">R{total.toFixed(2)}</span>
+  1700→                  </div>
+  1701→                </div>
+  1702→                <Button
+  1703→                  className="w-full h-14 bg-[#00897B] hover:bg-[#00695C] text-lg font-semibold"
+  1704→                  disabled={cart.length === 0}
+  1705→                  onClick={() => {
+  1706→                    setMobileCartOpen(false)
+  1707→                    setCheckoutOpen(true)
+  1708→                  }}
+  1709→                >
+  1710→                  <CreditCard className="h-5 w-5 mr-2" />
+  1711→                  Pay R{total.toFixed(2)}
+  1712→                </Button>
+  1713→              </div>
+  1714→            </DialogContent>
+  1715→          </Dialog>
+  1716→
+  1717→          {/* Mobile Search Overlay */}
+  1718→          <Dialog open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
+  1719→            <DialogContent className="sm:hidden h-[90vh] p-0 flex flex-col max-w-full">
+  1720→              <DialogHeader className="sr-only">
+  1721→                <DialogTitle>Search Products</DialogTitle>
+  1722→              </DialogHeader>
+  1723→              <div className="p-4 border-b border-gray-200 flex items-center gap-3">
+  1724→                <button onClick={() => setMobileSearchOpen(false)} className="p-2 -ml-2">
+  1725→                  <ArrowLeft className="h-5 w-5 text-gray-500" />
+  1726→                </button>
+  1727→                <Input
+  1728→                  value={searchQuery}
+  1729→                  onChange={(e) => setSearchQuery(e.target.value)}
+  1730→                  placeholder="Search products..."
+  1731→                  className="flex-1 h-12 text-base"
+  1732→                  autoFocus
+  1733→                />
+  1734→              </div>
+  1735→              <ScrollArea className="flex-1">
+  1736→                {searchQuery && filteredSKUs.length === 0 ? (
+  1737→                  <div className="text-center py-12">
+  1738→                    <Search className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+  1739→                    <p className="text-gray-500">No results found</p>
+  1740→                  </div>
+  1741→                ) : searchQuery ? (
+  1742→                  <div className="p-4 space-y-2">
+  1743→                    {filteredSKUs.map((item, idx) => (
+  1744→                      <button
+  1745→                        key={idx}
+  1746→                        onClick={() => {
+  1747→                          addToCart(item)
+  1748→                          setSearchQuery('')
+  1749→                          setMobileSearchOpen(false)
+  1750→                        }}
+  1751→                        className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg active:bg-gray-100"
+  1752→                      >
+  1753→                        <div>
+  1754→                          <p className="font-medium text-[#1A1A1A]">{item.name}</p>
+  1755→                          <p className="text-sm text-gray-500">{item.category}</p>
+  1756→                        </div>
+  1757→                        <span className="font-bold text-[#00897B]">R{item.price.toFixed(2)}</span>
+  1758→                      </button>
+  1759→                    ))}
+  1760→                  </div>
+  1761→                ) : (
+  1762→                  <div className="text-center py-12">
+  1763→                    <Search className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+  1764→                    <p className="text-gray-500">Search products</p>
+  1765→                  </div>
+  1766→                )}
+  1767→              </ScrollArea>
+  1768→            </DialogContent>
+  1769→          </Dialog>
+  1770→
+  1771→          {/* Mobile More Menu */}
+  1772→          <Sheet open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>
+  1773→            <SheetContent side="bottom" className="h-[80vh] p-0">
+  1774→              <SheetHeader className="p-4 border-b border-gray-200">
+  1775→                <SheetTitle className="text-left">All Menu</SheetTitle>
+  1776→              </SheetHeader>
+  1777→              <ScrollArea className="flex-1 p-4">
+  1778→                {navCategories.map((category) => (
+  1779→                  <div key={category.name} className="mb-4">
+  1780→                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
+  1781→                      {category.name}
+  1782→                    </p>
+  1783→                    <div className="space-y-1">
+  1784→                      {category.items.map((item) => (
+  1785→                        <button
+  1786→                          key={item.id}
+  1787→                          onClick={() => {
+  1788→                            setCurrentView(item.id)
+  1789→                            setMobileMoreOpen(false)
+  1790→                          }}
+  1791→                          className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors ${
+  1792→                            currentView === item.id 
+  1793→                              ? 'bg-[#E0F2F1] text-[#00897B]' 
+  1794→                              : 'text-gray-700 active:bg-gray-100'
+  1795→                          }`}
+  1796→                        >
+  1797→                          <item.icon className="h-5 w-5" />
+  1798→                          <span className="font-medium">{item.label}</span>
+  1799→                          {currentView === item.id && (
+  1800→                            <CheckCircle2 className="h-4 w-4 ml-auto text-[#00897B]" />
+  1801→                          )}
+  1802→                        </button>
+  1803→                      ))}
+  1804→                    </div>
+  1805→                  </div>
+  1806→                ))}
+  1807→              </ScrollArea>
+  1808→            </SheetContent>
+  1809→          </Sheet>
+  1810→        </>
+  1811→      )}
+  1812→      
+  1813→      {/* Tablet Layout */}
+  1814→      {isTablet && !isMobile && (
+  1815→        <>
+  1816→          {/* Icon-only sidebar */}
+  1817→          <aside className={`w-16 bg-white border-r border-gray-200 flex flex-col ${!offlineMode.isOnline ? 'mt-9' : ''}`}>
+  1818→            <div className="p-3 border-b border-gray-200 flex justify-center">
+  1819→              <img src="/groway-logo.png" alt="Groway" className="h-7 w-auto" />
+  1820→            </div>
+  1821→            <ScrollArea className="flex-1">
+  1822→              <nav className="p-2 space-y-1">
+  1823→                {navCategories.flatMap(c => c.items).slice(0, 10).map((item) => (
+  1824→                  <button
+  1825→                    key={item.id}
+  1826→                    onClick={() => setCurrentView(item.id)}
+  1827→                    className={`w-full flex items-center justify-center p-3 rounded-lg transition-colors ${
+  1828→                      currentView === item.id 
+  1829→                        ? 'bg-[#E0F2F1] text-[#00897B]' 
+  1830→                        : 'text-gray-500 hover:bg-gray-100'
+  1831→                    }`}
+  1832→                    title={item.label}
+  1833→                  >
+  1834→                    <item.icon className="h-5 w-5" />
+  1835→                  </button>
+  1836→                ))}
+  1837→              </nav>
+  1838→            </ScrollArea>
+  1839→            <div className="p-2 border-t border-gray-200">
+  1840→              <button
+  1841→                onClick={() => setMobileMoreOpen(true)}
+  1842→                className="w-full flex items-center justify-center p-3 rounded-lg text-gray-500 hover:bg-gray-100"
+  1843→              >
+  1844→                <MoreHorizontal className="h-5 w-5" />
+  1845→              </button>
+  1846→            </div>
+  1847→          </aside>
+  1848→          
+  1849→          <main className="flex-1 flex flex-col min-w-0">
+  1850→            <header className="bg-white border-b border-gray-200 px-4 py-3">
+  1851→              <div className="flex items-center justify-between">
+  1852→                <h1 className="text-sm font-semibold text-[#1A1A1A]">{subVertical.name}</h1>
+  1853→                <div className="flex items-center gap-2">
+  1854→                  <OfflineStatusBadge />
+  1855→                  <Button variant="ghost" size="icon" className="h-8 w-8">
+  1856→                    <Bell className="h-4 w-4" />
+  1857→                  </Button>
+  1858→                </div>
+  1859→              </div>
+  1860→            </header>
+  1861→            {renderMainContent()}
+  1862→          </main>
+  1863→          
+  1864→          {/* Mobile More Menu for Tablet */}
+  1865→          <Sheet open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>
+  1866→            <SheetContent side="bottom" className="h-[80vh] p-0">
+  1867→              <SheetHeader className="p-4 border-b border-gray-200">
+  1868→                <SheetTitle className="text-left">All Menu</SheetTitle>
+  1869→              </SheetHeader>
+  1870→              <ScrollArea className="flex-1 p-4">
+  1871→                {navCategories.map((category) => (
+  1872→                  <div key={category.name} className="mb-4">
+  1873→                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
+  1874→                      {category.name}
+  1875→                    </p>
+  1876→                    <div className="space-y-1">
+  1877→                      {category.items.map((item) => (
+  1878→                        <button
+  1879→                          key={item.id}
+  1880→                          onClick={() => {
+  1881→                            setCurrentView(item.id)
+  1882→                            setMobileMoreOpen(false)
+  1883→                          }}
+  1884→                          className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors ${
+  1885→                            currentView === item.id 
+  1886→                              ? 'bg-[#E0F2F1] text-[#00897B]' 
+  1887→                              : 'text-gray-700 active:bg-gray-100'
+  1888→                          }`}
+  1889→                        >
+  1890→                          <item.icon className="h-5 w-5" />
+  1891→                          <span className="font-medium">{item.label}</span>
+  1892→                          {currentView === item.id && (
+  1893→                            <CheckCircle2 className="h-4 w-4 ml-auto text-[#00897B]" />
+  1894→                          )}
+  1895→                        </button>
+  1896→                      ))}
+  1897→                    </div>
+  1898→                  </div>
+  1899→                ))}
+  1900→              </ScrollArea>
+  1901→            </SheetContent>
+  1902→          </Sheet>
+  1903→        </>
+  1904→      )}
+  1905→      
+  1906→      {/* Desktop Layout - Original */}
+  1907→      {isDesktop && (
+  1908→        <>
+  1909→          {/* Left Sidebar */}
+  1910→          <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${!offlineMode.isOnline ? 'mt-9' : ''}`}>
+  1911→            {/* Logo */}
+  1912→            <div className="p-3 border-b border-gray-200">
+  1913→              <div className="flex items-center gap-2">
+  1914→                <img src="/groway-logo.png" alt="Groway" className="h-7 w-auto" />
+  1915→                {!sidebarCollapsed && (
+  1916→                  <Badge variant="outline" className="text-[9px] border-[#00897B]/30 text-[#00897B]">
+  1917→                    POS
+  1918→                  </Badge>
+  1919→                )}
+  1920→              </div>
+  1921→            </div>
+  1922→
+  1923→        {/* Navigation with Categories */}
+  1924→        <ScrollArea className="flex-1">
+  1925→          <nav className="p-2">
+  1926→            {navCategories.map((category) => (
+  1927→              <div key={category.name} className="mb-2">
+  1928→                {!sidebarCollapsed && (
+  1929→                  <p className="text-[10px] font-semibold text-[#9E9E9E] px-3 py-1 uppercase tracking-wide">
+  1930→                    {category.name}
+  1931→                  </p>
+  1932→                )}
+  1933→                <div className="space-y-0.5">
+  1934→                  {category.items.map((item) => (
+  1935→                    <button
+  1936→                      key={item.id}
+  1937→                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+  1938→                        currentView === item.id 
+  1939→                          ? 'bg-[#E0F2F1] text-[#00897B] font-medium' 
+  1940→                          : 'text-[#757575] hover:bg-gray-100'
+  1941→                      }`}
+  1942→                      onClick={() => setCurrentView(item.id)}
+  1943→                    >
+  1944→                      <item.icon className="h-4 w-4" />
+  1945→                      {!sidebarCollapsed && <span>{item.label}</span>}
+  1946→                    </button>
+  1947→                  ))}
+  1948→                </div>
+  1949→              </div>
+  1950→            ))}
+  1951→          </nav>
+  1952→        </ScrollArea>
+  1953→
+  1954→        {/* VAS Tiles */}
+  1955→        {!sidebarCollapsed && (
+  1956→          <div className="p-2 border-t border-gray-200">
+  1957→            <p className="text-[10px] font-medium text-[#757575] mb-2">Quick Actions</p>
+  1958→            <div className="space-y-1">
+  1959→              {vasTiles.slice(0, 4).map((tile, index) => {
+  1960→                // Map VAS tile names to their corresponding views
+  1961→                const getTileAction = (tileName: string): { view?: ViewType; action?: () => void } => {
+  1962→                  const tileLower = tileName.toLowerCase()
+  1963→                  
+  1964→                  if (tileLower.includes('gopay') || tileLower.includes('payment')) {
+  1965→                    return { view: 'payments' }
+  1966→                  } else if (tileLower.includes('grosupply') || tileLower.includes('supply')) {
+  1967→                    return { view: 'grosupply' }
+  1968→                  } else if (tileLower.includes('grocredit') || tileLower.includes('credit')) {
+  1969→                    return { view: 'grocredit' }
+  1970→                  } else if (tileLower.includes('qr') || tileLower.includes('menu')) {
+  1971→                    return { view: 'qrmenu' }
+  1972→                  } else if (tileLower.includes('booking') || tileLower.includes('appointment')) {
+  1973→                    return { view: 'booking' }
+  1974→                  } else if (tileLower.includes('loyalty') || tileLower.includes('crm')) {
+  1975→                    return { view: 'crm' }
+  1976→                  } else if (tileLower.includes('gift') || tileLower.includes('voucher')) {
+  1977→                    return { view: 'giftcards' }
+  1978→                  } else if (tileLower.includes('market') || tileLower.includes('store')) {
+  1979→                    return { view: 'gromarket' }
+  1980→                  } else if (tileLower.includes('hardware') || tileLower.includes('terminal')) {
+  1981→                    return { view: 'hardware' }
+  1982→                  } else if (tileLower.includes('airtime') || tileLower.includes('utility')) {
+  1983→                    return { view: 'payments' }
+  1984→                  } else if (tileLower.includes('geo') || tileLower.includes('discovery')) {
+  1985→                    return { view: 'marketing' }
+  1986→                  } else if (tileLower.includes('staff') || tileLower.includes('training')) {
+  1987→                    return { view: 'staff' }
+  1988→                  } else if (tileLower.includes('inventory') || tileLower.includes('stock')) {
+  1989→                    return { view: 'inventory' }
+  1990→                  } else if (tileLower.includes('multi') || tileLower.includes('location')) {
+  1991→                    return { view: 'multilocation' }
+  1992→                  }
+  1993→                  return { view: 'dashboard' }
+  1994→                }
+  1995→                
+  1996→                const tileAction = getTileAction(tile)
+  1997→                
+  1998→                return (
+  1999→                  <button
+  2000→                    key={index}
+
+[showing lines 1-2000 of 2280; use offset=2001 with limit to continue reading]

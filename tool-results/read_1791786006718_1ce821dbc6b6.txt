@@ -1,0 +1,702 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect } from 'react'
+     4→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+     5→import { Badge } from '@/components/ui/badge'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Input } from '@/components/ui/input'
+     8→import { ScrollArea } from '@/components/ui/scroll-area'
+     9→import { Progress } from '@/components/ui/progress'
+    10→import { Separator } from '@/components/ui/separator'
+    11→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    12→import {
+    13→  Dialog,
+    14→  DialogContent,
+    15→  DialogDescription,
+    16→  DialogFooter,
+    17→  DialogHeader,
+    18→  DialogTitle,
+    19→  VisuallyHidden,
+    20→} from '@/components/ui/dialog'
+    21→import {
+    22→  Select,
+    23→  SelectContent,
+    24→  SelectItem,
+    25→  SelectTrigger,
+    26→  SelectValue,
+    27→} from '@/components/ui/select'
+    28→import { Switch } from '@/components/ui/switch'
+    29→import {
+    30→  CreditCard,
+    31→  Coins,
+    32→  TrendingUp,
+    33→  TrendingDown,
+    34→  ArrowUpRight,
+    35→  ArrowDownRight,
+    36→  RefreshCw,
+    37→  Zap,
+    38→  Bot,
+    39→  Target,
+    40→  AlertCircle,
+    41→  Lightbulb,
+    42→  ArrowRight,
+    43→  CheckCircle2,
+    44→  Clock,
+    45→  Building2,
+    46→  QrCode,
+    47→  Smartphone,
+    48→  Banknote,
+    49→  Wallet,
+    50→  Globe,
+    51→  Shield,
+    52→  Settings,
+    53→  PieChart,
+    54→  BarChart3,
+    55→  Activity,
+    56→  Link2,
+    57→  Unlink2,
+    58→  Plus,
+    59→  ExternalLink,
+    60→  Copy,
+    61→  Eye,
+    62→  EyeOff,
+    63→  TestTube,
+    64→  AlertTriangle,
+    65→  Info,
+    66→  Server,
+    67→  Route,
+    68→  Percent,
+    69→  Calendar,
+    70→  FileText,
+    71→  Download,
+    72→  Filter,
+    73→  Edit,
+    74→  Trash2,
+    75→  Save,
+    76→  X,
+    77→} from 'lucide-react'
+    78→import { Label } from '@/components/ui/label'
+    79→import { Textarea } from '@/components/ui/textarea'
+    80→import {
+    81→  Table,
+    82→  TableBody,
+    83→  TableCell,
+    84→  TableHead,
+    85→  TableHeader,
+    86→  TableRow,
+    87→} from '@/components/ui/table'
+    88→import { useMerchantData } from '../hooks/useMerchantData'
+    89→import { EmptyState, NoDataEmptyState } from './EmptyState'
+    90→
+    91→// ============================================
+    92→// TYPES
+    93→// ============================================
+    94→
+    95→interface PaymentProcessor {
+    96→  id: string
+    97→  name: string
+    98→  type: 'card' | 'qr' | 'ewallet' | 'bank' | 'crypto'
+    99→  status: 'active' | 'inactive' | 'pending' | 'error'
+   100→  logo?: string
+   101→  supportedMethods: string[]
+   102→  fees: {
+   103→    percentage: number
+   104→    fixed: number
+   105→    currency: string
+   106→  }
+   107→  settlementDays: number
+   108→  minTransaction: number
+   109→  maxTransaction: number
+   110→  countries: string[]
+   111→  lastTransaction?: string
+   112→  totalVolume: number
+   113→  transactionCount: number
+   114→  apiKey?: string
+   115→  webhookUrl?: string
+   116→  testMode: boolean
+   117→}
+   118→
+   119→interface Transaction {
+   120→  id: string
+   121→  processorId: string
+   122→  processorName: string
+   123→  amount: number
+   124→  currency: string
+   125→  method: 'card' | 'qr' | 'ewallet' | 'bank' | 'cash'
+   126→  status: 'pending' | 'processing' | 'approved' | 'declined' | 'refunded' | 'cancelled'
+   127→  reference: string
+   128→  customerInfo?: {
+   129→    name?: string
+   130→    email?: string
+   131→    phone?: string
+   132→  }
+   133→  cardInfo?: {
+   134→    type: 'visa' | 'mastercard' | 'amex' | 'unionpay' | 'other'
+   135→    lastFour: string
+   136→  }
+   137→  fees: number
+   138→  netAmount: number
+   139→  createdAt: string
+   140→  settledAt?: string
+   141→  metadata?: Record<string, unknown>
+   142→}
+   143→
+   144→interface Settlement {
+   145→  id: string
+   146→  processorId: string
+   147→  processorName: string
+   148→  amount: number
+   149→  fees: number
+   150→  netAmount: number
+   151→  transactionCount: number
+   152→  status: 'pending' | 'processing' | 'completed' | 'failed'
+   153→  bankAccount: string
+   154→  reference: string
+   155→  scheduledDate: string
+   156→  completedDate?: string
+   157→}
+   158→
+   159→// Payment Method for merchant configuration
+   160→interface PaymentMethod {
+   161→  id: string
+   162→  name: string
+   163→  type: 'card' | 'qr' | 'eft' | 'cash' | 'wallet' | 'voucher' | 'account'
+   164→  processorId: string
+   165→  processorName: string
+   166→  isActive: boolean
+   167→  isDefault: boolean
+   168→  displayOrder: number
+   169→  minAmount: number
+   170→  maxAmount: number
+   171→  feeOverride?: {
+   172→    percentage: number
+   173→    fixed: number
+   174→  }
+   175→  icon: string
+   176→  description: string
+   177→  createdAt: string
+   178→  updatedAt: string
+   179→}
+   180→
+   181→// Settlement Report for detailed reporting
+   182→interface SettlementReport {
+   183→  id: string
+   184→  period: string
+   185→  startDate: string
+   186→  endDate: string
+   187→  processorId: string
+   188→  processorName: string
+   189→  totalTransactions: number
+   190→  totalAmount: number
+   191→  totalFees: number
+   192→  netAmount: number
+   193→  status: 'draft' | 'generated' | 'reconciled' | 'paid'
+   194→  generatedAt: string
+   195→  paidAt?: string
+   196→  bankReference?: string
+   197→  // Additional fields for the dialog
+   198→  startDate?: string
+   199→  endDate?: string
+   200→}
+   201→
+   202→// Fee Tracking per transaction
+   203→interface FeeTransaction {
+   204→  id: string
+   205→  transactionId: string
+   206→  processorId: string
+   207→  processorName: string
+   208→  grossAmount: number
+   209→  feePercentage: number
+   210→  feeFixed: number
+   211→  totalFee: number
+   212→  netAmount: number
+   213→  feeType: 'transaction' | 'settlement' | 'chargeback' | 'refund'
+   214→  createdAt: string
+   215→}
+   216→
+   217→interface RoutingRule {
+   218→  id: string
+   219→  name: string
+   220→  priority: number
+   221→  conditions: {
+   222→    type: 'amount' | 'method' | 'time' | 'customer' | 'card_type'
+   223→    operator: 'equals' | 'greater_than' | 'less_than' | 'contains'
+   224→    value: string | number
+   225→  }[]
+   226→  processorId: string
+   227→  processorName: string
+   228→  active: boolean
+   229→}
+   230→
+   231→interface GatewayStats {
+   232→  totalVolume: number
+   233→  totalFees: number
+   234→  netRevenue: number
+   235→  transactionCount: number
+   236→  approvalRate: number
+   237→  avgTransaction: number
+   238→  pendingSettlements: number
+   239→  todayVolume: number
+   240→}
+   241→
+   242→// ============================================
+   243→// SAMPLE DATA - REMOVED - Data now fetched from API
+   244→// ============================================
+   245→
+   246→// ============================================
+   247→// COMPONENT
+   248→// ============================================
+   249→
+   250→export function PaymentGatewayView() {
+   251→  // Get merchant data from session
+   252→  const { merchantId, isLoading: isLoadingMerchant } = useMerchantData()
+   253→  
+   254→  const [activeTab, setActiveTab] = useState('dashboard')
+   255→  const [processors, setProcessors] = useState<PaymentProcessor[]>([])
+   256→  const [transactions, setTransactions] = useState<Transaction[]>([])
+   257→  const [settlements, setSettlements] = useState<Settlement[]>([])
+   258→  const [routingRules, setRoutingRules] = useState<RoutingRule[]>([])
+   259→  const [selectedProcessor, setSelectedProcessor] = useState<PaymentProcessor | null>(null)
+   260→  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
+   261→  const [processorDetailOpen, setProcessorDetailOpen] = useState(false)
+   262→  const [transactionDetailOpen, setTransactionDetailOpen] = useState(false)
+   263→  const [addProcessorOpen, setAddProcessorOpen] = useState(false)
+   264→  const [isLoading, setIsLoading] = useState(true)
+   265→  
+   266→  // Payment Methods state
+   267→  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+   268→  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null)
+   269→  const [paymentMethodDialogOpen, setPaymentMethodDialogOpen] = useState(false)
+   270→  const [paymentMethodForm, setPaymentMethodForm] = useState<Partial<PaymentMethod>>({
+   271→    name: '',
+   272→    type: 'card',
+   273→    processorId: '',
+   274→    isActive: true,
+   275→    isDefault: false,
+   276→    minAmount: 0,
+   277→    maxAmount: 100000,
+   278→    description: '',
+   279→  })
+   280→  
+   281→  // Settlement Reports state
+   282→  const [settlementReports, setSettlementReports] = useState<SettlementReport[]>([])
+   283→  const [selectedSettlementReport, setSelectedSettlementReport] = useState<SettlementReport | null>(null)
+   284→  const [settlementReportDialogOpen, setSettlementReportDialogOpen] = useState(false)
+   285→  
+   286→  // Fee Transactions state
+   287→  const [feeTransactions, setFeeTransactions] = useState<FeeTransaction[]>([])
+   288→
+   289→  // Stats
+   290→  const stats: GatewayStats = {
+   291→    totalVolume: processors.reduce((sum, p) => sum + p.totalVolume, 0),
+   292→    totalFees: transactions.reduce((sum, t) => sum + t.fees, 0),
+   293→    netRevenue: transactions.reduce((sum, t) => sum + t.netAmount, 0),
+   294→    transactionCount: processors.reduce((sum, p) => sum + p.transactionCount, 0),
+   295→    approvalRate: transactions.length > 0 ? (transactions.filter(t => t.status === 'approved').length / transactions.length) * 100 : 0,
+   296→    avgTransaction: transactions.length > 0 ? transactions.reduce((sum, t) => sum + t.amount, 0) / transactions.length : 0,
+   297→    pendingSettlements: settlements.filter(s => s.status === 'pending' || s.status === 'processing').reduce((sum, s) => sum + s.netAmount, 0),
+   298→    todayVolume: transactions.filter(t => new Date(t.createdAt).toDateString() === new Date().toDateString()).reduce((sum, t) => sum + t.amount, 0),
+   299→  }
+   300→
+   301→  // Fetch data from API
+   302→  useEffect(() => {
+   303→    if (!merchantId) return
+   304→    
+   305→    const fetchData = async () => {
+   306→      setIsLoading(true)
+   307→      try {
+   308→        // Fetch processors
+   309→        const processorsRes = await fetch(`/merchant-os/api/payments/processors?merchantId=${merchantId}`)
+   310→        if (processorsRes.ok) {
+   311→          const data = await processorsRes.json()
+   312→          setProcessors(data.processors || [])
+   313→        }
+   314→        
+   315→        // Fetch transactions
+   316→        const transactionsRes = await fetch(`/merchant-os/api/payments/transactions?merchantId=${merchantId}`)
+   317→        if (transactionsRes.ok) {
+   318→          const data = await transactionsRes.json()
+   319→          setTransactions(data.transactions || [])
+   320→        }
+   321→        
+   322→        // Fetch settlements
+   323→        const settlementsRes = await fetch(`/merchant-os/api/payments/settlements?merchantId=${merchantId}`)
+   324→        if (settlementsRes.ok) {
+   325→          const data = await settlementsRes.json()
+   326→          setSettlements(data.settlements || [])
+   327→        }
+   328→        
+   329→        // Fetch payment methods
+   330→        const methodsRes = await fetch(`/merchant-os/api/payments/methods?merchantId=${merchantId}`)
+   331→        if (methodsRes.ok) {
+   332→          const data = await methodsRes.json()
+   333→          setPaymentMethods(data.methods || [])
+   334→        }
+   335→        
+   336→        // Fetch routing rules
+   337→        const rulesRes = await fetch(`/merchant-os/api/payments/routing-rules?merchantId=${merchantId}`)
+   338→        if (rulesRes.ok) {
+   339→          const data = await rulesRes.json()
+   340→          setRoutingRules(data.rules || [])
+   341→        }
+   342→        
+   343→        // Fetch fee transactions
+   344→        const feesRes = await fetch(`/merchant-os/api/payments/fee-transactions?merchantId=${merchantId}`)
+   345→        if (feesRes.ok) {
+   346→          const data = await feesRes.json()
+   347→          setFeeTransactions(data.fees || [])
+   348→        }
+   349→        
+   350→        // Fetch settlement reports
+   351→        const reportsRes = await fetch(`/merchant-os/api/payments/settlement-reports?merchantId=${merchantId}`)
+   352→        if (reportsRes.ok) {
+   353→          const data = await reportsRes.json()
+   354→          setSettlementReports(data.reports || [])
+   355→        }
+   356→      } catch (error) {
+   357→        console.error('Error fetching payment gateway data:', error)
+   358→      } finally {
+   359→        setIsLoading(false)
+   360→      }
+   361→    }
+   362→    
+   363→    fetchData()
+   364→  }, [merchantId])
+   365→
+   366→  const formatCurrency = (amount: number) => `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+   367→
+   368→  const getStatusColor = (status: string) => {
+   369→    switch (status) {
+   370→      case 'active':
+   371→      case 'approved':
+   372→      case 'completed':
+   373→        return 'bg-green-100 text-green-700'
+   374→      case 'pending':
+   375→      case 'processing':
+   376→        return 'bg-amber-100 text-amber-700'
+   377→      case 'inactive':
+   378→      case 'declined':
+   379→      case 'failed':
+   380→        return 'bg-red-100 text-red-700'
+   381→      case 'refunded':
+   382→      case 'cancelled':
+   383→        return 'bg-gray-100 text-gray-700'
+   384→      case 'error':
+   385→        return 'bg-red-100 text-red-700'
+   386→      default:
+   387→        return 'bg-gray-100 text-gray-700'
+   388→    }
+   389→  }
+   390→
+   391→  const getMethodIcon = (method: string) => {
+   392→    switch (method) {
+   393→      case 'card': return <CreditCard className="h-4 w-4" />
+   394→      case 'qr': return <QrCode className="h-4 w-4" />
+   395→      case 'ewallet': return <Wallet className="h-4 w-4" />
+   396→      case 'bank': return <Building2 className="h-4 w-4" />
+   397→      case 'cash': return <Banknote className="h-4 w-4" />
+   398→      default: return <Coins className="h-4 w-4" />
+   399→    }
+   400→  }
+   401→
+   402→  const getProcessorIcon = (type: string) => {
+   403→    switch (type) {
+   404→      case 'card': return <CreditCard className="h-5 w-5" />
+   405→      case 'qr': return <QrCode className="h-5 w-5" />
+   406→      case 'ewallet': return <Wallet className="h-5 w-5" />
+   407→      case 'bank': return <Building2 className="h-5 w-5" />
+   408→      default: return <Coins className="h-5 w-5" />
+   409→    }
+   410→  }
+   411→
+   412→  if (isLoading) {
+   413→    return (
+   414→      <div className="flex-1 p-6 flex items-center justify-center">
+   415→        <div className="text-center">
+   416→          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-[#00897B]" />
+   417→          <p className="text-[#757575]">Loading payment gateway...</p>
+   418→        </div>
+   419→      </div>
+   420→    )
+   421→  }
+   422→
+   423→  return (
+   424→    <div className="flex flex-col h-full bg-white">
+   425→      {/* Header */}
+   426→      <div className="border-b border-gray-200 px-6 py-4">
+   427→        <div className="flex items-center justify-between">
+   428→          <div>
+   429→            <h1 className="text-xl font-semibold text-[#1A1A1A] flex items-center gap-2">
+   430→              <CreditCard className="h-5 w-5 text-[#00897B]" />
+   431→              Payment Gateway
+   432→            </h1>
+   433→            <p className="text-sm text-[#757575]">Multi-processor payment orchestration & settlement management</p>
+   434→          </div>
+   435→          <div className="flex items-center gap-2">
+   436→            <Button variant="outline" size="sm">
+   437→              <Download className="h-4 w-4 mr-2" />
+   438→              Export
+   439→            </Button>
+   440→            <Button variant="outline" size="sm">
+   441→              <TestTube className="h-4 w-4 mr-2" />
+   442→              Test Mode
+   443→            </Button>
+   444→            <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => setAddProcessorOpen(true)}>
+   445→              <Plus className="h-4 w-4 mr-2" />
+   446→              Add Processor
+   447→            </Button>
+   448→          </div>
+   449→        </div>
+   450→      </div>
+   451→
+   452→      {/* Tabs */}
+   453→      <div className="border-b border-gray-200 px-6">
+   454→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+   455→          <TabsList className="h-12 bg-transparent">
+   456→            <TabsTrigger value="dashboard" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   457→              Dashboard
+   458→            </TabsTrigger>
+   459→            <TabsTrigger value="processors" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   460→              Processors
+   461→            </TabsTrigger>
+   462→            <TabsTrigger value="payment-methods" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   463→              Payment Methods
+   464→            </TabsTrigger>
+   465→            <TabsTrigger value="transactions" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   466→              Transactions
+   467→            </TabsTrigger>
+   468→            <TabsTrigger value="settlements" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   469→              Settlements
+   470→            </TabsTrigger>
+   471→            <TabsTrigger value="routing" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   472→              Routing
+   473→            </TabsTrigger>
+   474→            <TabsTrigger value="fees" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   475→              Fees & Rates
+   476→            </TabsTrigger>
+   477→          </TabsList>
+   478→        </Tabs>
+   479→      </div>
+   480→
+   481→      {/* Content */}
+   482→      <ScrollArea className="flex-1">
+   483→        <div className="p-6">
+   484→          {/* Dashboard Tab */}
+   485→          {activeTab === 'dashboard' && (
+   486→            <div className="space-y-6">
+   487→              {/* Stats Cards */}
+   488→              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   489→                <Card className="border-l-4 border-l-[#00897B]">
+   490→                  <CardContent className="p-4">
+   491→                    <div className="flex items-center justify-between">
+   492→                      <div>
+   493→                        <p className="text-xs text-[#757575] mb-1">Total Volume</p>
+   494→                        <p className="text-2xl font-bold text-[#1A1A1A]">{formatCurrency(stats.totalVolume)}</p>
+   495→                        <div className="flex items-center gap-1 mt-1">
+   496→                          <TrendingUp className="h-3 w-3 text-green-500" />
+   497→                          <span className="text-xs text-green-500">+18.5%</span>
+   498→                          <span className="text-xs text-[#757575]">vs last month</span>
+   499→                        </div>
+   500→                      </div>
+   501→                      <div className="w-12 h-12 rounded-full bg-[#E0F2F1] flex items-center justify-center">
+   502→                        <Coins className="h-6 w-6 text-[#00897B]" />
+   503→                      </div>
+   504→                    </div>
+   505→                  </CardContent>
+   506→                </Card>
+   507→
+   508→                <Card>
+   509→                  <CardContent className="p-4">
+   510→                    <div className="flex items-center justify-between">
+   511→                      <div>
+   512→                        <p className="text-xs text-[#757575] mb-1">Transactions</p>
+   513→                        <p className="text-2xl font-bold text-[#1A1A1A]">{stats.transactionCount.toLocaleString()}</p>
+   514→                        <div className="flex items-center gap-1 mt-1">
+   515→                          <span className="text-xs text-[#757575]">Today: {transactions.length}</span>
+   516→                        </div>
+   517→                      </div>
+   518→                      <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+   519→                        <Activity className="h-6 w-6 text-blue-500" />
+   520→                      </div>
+   521→                    </div>
+   522→                  </CardContent>
+   523→                </Card>
+   524→
+   525→                <Card>
+   526→                  <CardContent className="p-4">
+   527→                    <div className="flex items-center justify-between">
+   528→                      <div>
+   529→                        <p className="text-xs text-[#757575] mb-1">Approval Rate</p>
+   530→                        <p className="text-2xl font-bold text-[#1A1A1A]">{stats.approvalRate}%</p>
+   531→                        <div className="flex items-center gap-1 mt-1">
+   532→                          <TrendingUp className="h-3 w-3 text-green-500" />
+   533→                          <span className="text-xs text-green-500">+2.1%</span>
+   534→                        </div>
+   535→                      </div>
+   536→                      <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
+   537→                        <CheckCircle2 className="h-6 w-6 text-green-500" />
+   538→                      </div>
+   539→                    </div>
+   540→                  </CardContent>
+   541→                </Card>
+   542→
+   543→                <Card>
+   544→                  <CardContent className="p-4">
+   545→                    <div className="flex items-center justify-between">
+   546→                      <div>
+   547→                        <p className="text-xs text-[#757575] mb-1">Pending Settlements</p>
+   548→                        <p className="text-2xl font-bold text-[#1A1A1A]">{formatCurrency(stats.pendingSettlements)}</p>
+   549→                        <div className="flex items-center gap-1 mt-1">
+   550→                          <Clock className="h-3 w-3 text-amber-500" />
+   551→                          <span className="text-xs text-amber-600">Next: Tomorrow</span>
+   552→                        </div>
+   553→                      </div>
+   554→                      <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+   555→                        <Clock className="h-6 w-6 text-amber-500" />
+   556→                      </div>
+   557→                    </div>
+   558→                  </CardContent>
+   559→                </Card>
+   560→              </div>
+   561→
+   562→              {/* Processor Volume & Recent Transactions */}
+   563→              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   564→                {/* Processor Volume */}
+   565→                <Card>
+   566→                  <CardHeader className="pb-2">
+   567→                    <CardTitle className="text-base font-semibold">Volume by Processor</CardTitle>
+   568→                  </CardHeader>
+   569→                  <CardContent>
+   570→                    <div className="space-y-4">
+   571→                      {processors.filter(p => p.status === 'active').map(processor => {
+   572→                        const percentage = (processor.totalVolume / stats.totalVolume) * 100
+   573→                        return (
+   574→                          <div key={processor.id} className="space-y-2">
+   575→                            <div className="flex items-center justify-between text-sm">
+   576→                              <div className="flex items-center gap-2">
+   577→                                {getProcessorIcon(processor.type)}
+   578→                                <span className="font-medium">{processor.name}</span>
+   579→                              </div>
+   580→                              <div className="text-right">
+   581→                                <span className="font-medium">{formatCurrency(processor.totalVolume)}</span>
+   582→                                <span className="text-[#757575] ml-2">({percentage.toFixed(1)}%)</span>
+   583→                              </div>
+   584→                            </div>
+   585→                            <Progress value={percentage} className="h-2" />
+   586→                          </div>
+   587→                        )
+   588→                      })}
+   589→                    </div>
+   590→                  </CardContent>
+   591→                </Card>
+   592→
+   593→                {/* Recent Transactions */}
+   594→                <Card>
+   595→                  <CardHeader className="pb-2">
+   596→                    <div className="flex items-center justify-between">
+   597→                      <CardTitle className="text-base font-semibold">Recent Transactions</CardTitle>
+   598→                      <Button variant="ghost" size="sm" className="text-xs text-[#00897B]" onClick={() => setActiveTab('transactions')}>
+   599→                        View All
+   600→                      </Button>
+   601→                    </div>
+   602→                  </CardHeader>
+   603→                  <CardContent>
+   604→                    <div className="space-y-3">
+   605→                      {transactions.slice(0, 6).map(txn => (
+   606→                        <div key={txn.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer" onClick={() => {
+   607→                          setSelectedTransaction(txn)
+   608→                          setTransactionDetailOpen(true)
+   609→                        }}>
+   610→                          <div className="w-10 h-10 rounded-full bg-[#F5F5F5] flex items-center justify-center">
+   611→                            {getMethodIcon(txn.method)}
+   612→                          </div>
+   613→                          <div className="flex-1 min-w-0">
+   614→                            <div className="flex items-center gap-2">
+   615→                              <p className="text-sm font-medium text-[#1A1A1A]">{txn.customerInfo?.name || 'Walk-in'}</p>
+   616→                              <Badge className={getStatusColor(txn.status)} variant="outline">
+   617→                                {txn.status}
+   618→                              </Badge>
+   619→                            </div>
+   620→                            <p className="text-xs text-[#757575]">{txn.processorName} • {txn.id}</p>
+   621→                          </div>
+   622→                          <div className="text-right">
+   623→                            <p className="text-sm font-semibold text-green-600">+{formatCurrency(txn.amount)}</p>
+   624→                            <p className="text-xs text-[#757575]">{new Date(txn.createdAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}</p>
+   625→                          </div>
+   626→                        </div>
+   627→                      ))}
+   628→                    </div>
+   629→                  </CardContent>
+   630→                </Card>
+   631→              </div>
+   632→
+   633→              {/* GroAI Payment Insights */}
+   634→              <Card className="border-l-4 border-l-[#00897B]">
+   635→                <CardHeader className="pb-2">
+   636→                  <CardTitle className="text-sm flex items-center gap-2">
+   637→                    <Bot className="h-4 w-4 text-[#00897B]" />
+   638→                    GroAI Payment Insights
+   639→                  </CardTitle>
+   640→                </CardHeader>
+   641→                <CardContent>
+   642→                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+   643→                    {[
+   644→                      { type: 'opportunity', title: 'Cost Savings Available', description: 'Switch EFT transactions to Ozow to save R1,245/month in fees.', action: 'Review Routing', priority: 'high' },
+   645→                      { type: 'alert', title: 'High Decline Rate', description: 'Yoco decline rate increased to 4.2%. Consider routing high-value to Paystack.', action: 'Adjust Rules', priority: 'high' },
+   646→                      { type: 'trend', title: 'QR Payments Growing', description: 'Gropay QR volume up 34% this month. Consider promoting QR for lower fees.', action: 'View Report', priority: 'medium' },
+   647→                      { type: 'recommendation', title: 'Settlement Optimization', description: 'Consolidating settlements could improve cash flow by R15,000/week.', action: 'Learn More', priority: 'low' },
+   648→                    ].map((insight, i) => (
+   649→                      <div key={i} className={`p-3 rounded-lg border ${
+   650→                        insight.priority === 'high' ? 'border-red-200 bg-red-50' :
+   651→                        insight.priority === 'medium' ? 'border-amber-200 bg-amber-50' :
+   652→                        'border-green-200 bg-green-50'
+   653→                      }`}>
+   654→                        <div className="flex items-start gap-3">
+   655→                          {insight.type === 'opportunity' && <Lightbulb className="h-5 w-5 text-amber-600" />}
+   656→                          {insight.type === 'alert' && <AlertCircle className="h-5 w-5 text-red-600" />}
+   657→                          {insight.type === 'trend' && <TrendingUp className="h-5 w-5 text-blue-600" />}
+   658→                          {insight.type === 'recommendation' && <Target className="h-5 w-5 text-green-600" />}
+   659→                          <div className="flex-1">
+   660→                            <h4 className="font-medium text-sm">{insight.title}</h4>
+   661→                            <p className="text-xs text-[#757575] mt-1">{insight.description}</p>
+   662→                            <Button size="sm" variant="outline" className="mt-2 h-7 text-xs">
+   663→                              {insight.action}
+   664→                              <ArrowRight className="h-3 w-3 ml-1" />
+   665→                            </Button>
+   666→                          </div>
+   667→                        </div>
+   668→                      </div>
+   669→                    ))}
+   670→                  </div>
+   671→                </CardContent>
+   672→              </Card>
+   673→
+   674→              {/* Fee Breakdown */}
+   675→              <Card>
+   676→                <CardHeader className="pb-2">
+   677→                  <CardTitle className="text-base font-semibold">Fee Breakdown (This Month)</CardTitle>
+   678→                </CardHeader>
+   679→                <CardContent>
+   680→                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   681→                    <div className="p-4 bg-red-50 rounded-lg text-center">
+   682→                      <p className="text-xs text-[#757575] mb-1">Total Fees Paid</p>
+   683→                      <p className="text-xl font-bold text-red-600">{formatCurrency(stats.totalFees)}</p>
+   684→                    </div>
+   685→                    <div className="p-4 bg-blue-50 rounded-lg text-center">
+   686→                      <p className="text-xs text-[#757575] mb-1">Avg Fee Rate</p>
+   687→                      <p className="text-xl font-bold text-blue-600">2.1%</p>
+   688→                    </div>
+   689→                    <div className="p-4 bg-green-50 rounded-lg text-center">
+   690→                      <p className="text-xs text-[#757575] mb-1">Potential Savings</p>
+   691→                      <p className="text-xl font-bold text-green-600">{formatCurrency(1245)}</p>
+   692→                    </div>
+   693→                    <div className="p-4 bg-purple-50 rounded-lg text-center">
+   694→                      <p className="text-xs text-[#757575] mb-1">Net Revenue</p>
+   695→                      <p className="text-xl font-bold text-purple-600">{formatCurrency(stats.netRevenue)}</p>
+   696→                    </div>
+   697→                  </div>
+   698→                </CardContent>
+   699→              </Card>
+   700→            </div>
+
+[showing lines 1-700 of 1686; use offset=701 with limit to continue reading]

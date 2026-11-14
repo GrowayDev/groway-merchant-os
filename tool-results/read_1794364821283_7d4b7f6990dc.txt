@@ -1,0 +1,957 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo } from 'react'
+     4→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     5→import { Badge } from '@/components/ui/badge'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Input } from '@/components/ui/input'
+     8→import { ScrollArea } from '@/components/ui/scroll-area'
+     9→import { Progress } from '@/components/ui/progress'
+    10→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+    11→import {
+    12→  Select,
+    13→  SelectContent,
+    14→  SelectItem,
+    15→  SelectTrigger,
+    16→  SelectValue,
+    17→} from '@/components/ui/select'
+    18→import {
+    19→  Dialog,
+    20→  DialogContent,
+    21→  DialogDescription,
+    22→  DialogFooter,
+    23→  DialogHeader,
+    24→  DialogTitle,
+    25→} from '@/components/ui/dialog'
+    26→import {
+    27→  Table,
+    28→  TableBody,
+    29→  TableCell,
+    30→  TableHead,
+    31→  TableHeader,
+    32→  TableRow,
+    33→} from '@/components/ui/table'
+    34→import {
+    35→  Search,
+    36→  Coins,
+    37→  TrendingUp,
+    38→  TrendingDown,
+    39→  Package,
+    40→  Calculator,
+    41→  Percent,
+    42→  Edit2,
+    43→  Save,
+    44→  X,
+    45→  AlertTriangle,
+    46→  CheckCircle2,
+    47→  ArrowUpRight,
+    48→  ArrowDownRight,
+    49→  RefreshCw,
+    50→  Download,
+    51→  Upload,
+    52→  Filter,
+    53→  BarChart3,
+    54→  Tag,
+    55→  Clock,
+    56→  History,
+    57→  ChevronRight,
+    58→  Layers,
+    59→  Target,
+    60→  Zap,
+    61→  Info,
+    62→} from 'lucide-react'
+    63→import { useMerchantData } from '../hooks/useMerchantData'
+    64→import { EmptyState, NoDataEmptyState } from './EmptyState'
+    65→
+    66→// Types
+    67→interface PricingItem {
+    68→  id: string
+    69→  name: string
+    70→  sku: string
+    71→  category: string
+    72→  costPrice: number
+    73→  sellingPrice: number
+    74→  margin: number
+    75→  marginPercent: number
+    76→  markup: number
+    77→  stock: number
+    78→  velocity: number
+    79→  lastPriceChange: string
+    80→  priceHistory: PriceHistoryEntry[]
+    81→  competitorPrice?: number
+    82→  suggestedPrice?: number
+    83→  demandLevel: 'high' | 'medium' | 'low'
+    84→}
+    85→
+    86→interface PriceHistoryEntry {
+    87→  date: string
+    88→  oldPrice: number
+    89→  newPrice: number
+    90→  reason: string
+    91→  user: string
+    92→}
+    93→
+    94→interface BulkPriceUpdate {
+    95→  ids: string[]
+    96→  field: 'sellingPrice' | 'costPrice'
+    97→  operation: 'set' | 'increase' | 'decrease' | 'margin'
+    98→  value: number
+    99→  reason: string
+   100→}
+   101→
+   102→// Mock data generator removed - data now fetched from API
+   103→
+   104→// Margin Calculator Component
+   105→function MarginCalculator() {
+   106→  const [cost, setCost] = useState<number>(0)
+   107→  const [sellPrice, setSellPrice] = useState<number>(0)
+   108→  const [marginPercent, setMarginPercent] = useState<number>(0)
+   109→  const [markupPercent, setMarkupPercent] = useState<number>(0)
+   110→  const [calcMode, setCalcMode] = useState<'cost-sell' | 'cost-margin' | 'sell-margin'>('cost-sell')
+   111→
+   112→  const calculateFromCostSell = () => {
+   113→    if (cost > 0 && sellPrice > 0) {
+   114→      const margin = ((sellPrice - cost) / sellPrice) * 100
+   115→      const markup = ((sellPrice - cost) / cost) * 100
+   116→      setMarginPercent(Number(margin.toFixed(1)))
+   117→      setMarkupPercent(Number(markup.toFixed(1)))
+   118→    }
+   119→  }
+   120→
+   121→  const calculateFromCostMargin = () => {
+   122→    if (cost > 0 && marginPercent > 0) {
+   123→      const sell = cost / (1 - marginPercent / 100)
+   124→      const markup = ((sell - cost) / cost) * 100
+   125→      setSellPrice(Number(sell.toFixed(2)))
+   126→      setMarkupPercent(Number(markup.toFixed(1)))
+   127→    }
+   128→  }
+   129→
+   130→  const calculateFromSellMargin = () => {
+   131→    if (sellPrice > 0 && marginPercent > 0) {
+   132→      const c = sellPrice * (1 - marginPercent / 100)
+   133→      const markup = ((sellPrice - c) / c) * 100
+   134→      setCost(Number(c.toFixed(2)))
+   135→      setMarkupPercent(Number(markup.toFixed(1)))
+   136→    }
+   137→  }
+   138→
+   139→  const handleCalculate = () => {
+   140→    switch (calcMode) {
+   141→      case 'cost-sell':
+   142→        calculateFromCostSell()
+   143→        break
+   144→      case 'cost-margin':
+   145→        calculateFromCostMargin()
+   146→        break
+   147→      case 'sell-margin':
+   148→        calculateFromSellMargin()
+   149→        break
+   150→    }
+   151→  }
+   152→
+   153→  return (
+   154→    <Card>
+   155→      <CardHeader className="pb-2">
+   156→        <CardTitle className="text-sm flex items-center gap-2">
+   157→          <Calculator className="h-4 w-4 text-[#00897B]" />
+   158→          Margin Calculator
+   159→        </CardTitle>
+   160→      </CardHeader>
+   161→      <CardContent className="space-y-4">
+   162→        <div className="flex gap-2">
+   163→          <Button
+   164→            size="sm"
+   165→            variant={calcMode === 'cost-sell' ? 'default' : 'outline'}
+   166→            className={calcMode === 'cost-sell' ? 'bg-[#00897B] hover:bg-[#00695C]' : ''}
+   167→            onClick={() => setCalcMode('cost-sell')}
+   168→          >
+   169→            Cost + Sell
+   170→          </Button>
+   171→          <Button
+   172→            size="sm"
+   173→            variant={calcMode === 'cost-margin' ? 'default' : 'outline'}
+   174→            className={calcMode === 'cost-margin' ? 'bg-[#00897B] hover:bg-[#00695C]' : ''}
+   175→            onClick={() => setCalcMode('cost-margin')}
+   176→          >
+   177→            Cost + Margin
+   178→          </Button>
+   179→          <Button
+   180→            size="sm"
+   181→            variant={calcMode === 'sell-margin' ? 'default' : 'outline'}
+   182→            className={calcMode === 'sell-margin' ? 'bg-[#00897B] hover:bg-[#00695C]' : ''}
+   183→            onClick={() => setCalcMode('sell-margin')}
+   184→          >
+   185→            Sell + Margin
+   186→          </Button>
+   187→        </div>
+   188→
+   189→        <div className="grid grid-cols-2 gap-3">
+   190→          <div>
+   191→            <label className="text-xs text-[#757575]">Cost Price (R)</label>
+   192→            <Input
+   193→              type="number"
+   194→              value={cost || ''}
+   195→              onChange={(e) => setCost(Number(e.target.value))}
+   196→              placeholder="0.00"
+   197→              disabled={calcMode === 'sell-margin'}
+   198→            />
+   199→          </div>
+   200→          <div>
+   201→            <label className="text-xs text-[#757575]">Selling Price (R)</label>
+   202→            <Input
+   203→              type="number"
+   204→              value={sellPrice || ''}
+   205→              onChange={(e) => setSellPrice(Number(e.target.value))}
+   206→              placeholder="0.00"
+   207→              disabled={calcMode === 'cost-margin'}
+   208→            />
+   209→          </div>
+   210→          <div>
+   211→            <label className="text-xs text-[#757575]">Margin %</label>
+   212→            <Input
+   213→              type="number"
+   214→              value={marginPercent || ''}
+   215→              onChange={(e) => setMarginPercent(Number(e.target.value))}
+   216→              placeholder="0"
+   217→              disabled={calcMode === 'cost-sell'}
+   218→            />
+   219→          </div>
+   220→          <div>
+   221→            <label className="text-xs text-[#757575]">Markup %</label>
+   222→            <Input
+   223→              type="number"
+   224→              value={markupPercent || ''}
+   225→              disabled
+   226→              className="bg-gray-50"
+   227→            />
+   228→          </div>
+   229→        </div>
+   230→
+   231→        <Button onClick={handleCalculate} className="w-full bg-[#00897B] hover:bg-[#00695C]">
+   232→          Calculate
+   233→        </Button>
+   234→
+   235→        {cost > 0 && sellPrice > 0 && (
+   236→          <div className="p-3 bg-[#E0F2F1] rounded-lg">
+   237→            <div className="grid grid-cols-2 gap-2 text-sm">
+   238→              <div>
+   239→                <span className="text-[#757575]">Profit per unit:</span>
+   240→                <span className="font-bold text-[#00897B] ml-2">R{(sellPrice - cost).toFixed(2)}</span>
+   241→              </div>
+   242→              <div>
+   243→                <span className="text-[#757575]">Margin:</span>
+   244→                <span className="font-bold text-[#00897B] ml-2">{marginPercent}%</span>
+   245→              </div>
+   246→            </div>
+   247→          </div>
+   248→        )}
+   249→      </CardContent>
+   250→    </Card>
+   251→  )
+   252→}
+   253→
+   254→// Main Component
+   255→export function PricingManagementView() {
+   256→  // Get merchant data from session
+   257→  const { merchantId, isLoading: isLoadingMerchant } = useMerchantData()
+   258→  
+   259→  const [pricingData, setPricingData] = useState<PricingItem[]>([])
+   260→  const [searchQuery, setSearchQuery] = useState('')
+   261→  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+   262→  const [marginFilter, setMarginFilter] = useState<string>('all')
+   263→  const [selectedItems, setSelectedItems] = useState<string[]>([])
+   264→  const [editItem, setEditItem] = useState<PricingItem | null>(null)
+   265→  const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false)
+   266→  const [bulkUpdate, setBulkUpdate] = useState<BulkPriceUpdate>({
+   267→    ids: [],
+   268→    field: 'sellingPrice',
+   269→    operation: 'increase',
+   270→    value: 0,
+   271→    reason: ''
+   272→  })
+   273→  const [toast, setToast] = useState<{ show: boolean; title: string; message: string; type: 'success' | 'error' } | null>(null)
+   274→  const [activeTab, setActiveTab] = useState('overview')
+   275→
+   276→  // Computed
+   277→  const categories = ['all', ...new Set(pricingData.map(i => i.category))]
+   278→  
+   279→  const filteredItems = useMemo(() => pricingData.filter(item => {
+   280→    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+   281→                          item.sku.toLowerCase().includes(searchQuery.toLowerCase())
+   282→    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter
+   283→    let matchesMargin = true
+   284→    if (marginFilter === 'low') matchesMargin = item.marginPercent < 40
+   285→    else if (marginFilter === 'healthy') matchesMargin = item.marginPercent >= 40 && item.marginPercent < 60
+   286→    else if (marginFilter === 'high') matchesMargin = item.marginPercent >= 60
+   287→    return matchesSearch && matchesCategory && matchesMargin
+   288→  }), [pricingData, searchQuery, categoryFilter, marginFilter])
+   289→
+   290→  // KPIs
+   291→  const avgMargin = pricingData.reduce((sum, i) => sum + i.marginPercent, 0) / pricingData.length
+   292→  const totalStockValue = pricingData.reduce((sum, i) => sum + (i.costPrice * i.stock), 0)
+   293→  const totalRetailValue = pricingData.reduce((sum, i) => sum + (i.sellingPrice * i.stock), 0)
+   294→  const lowMarginItems = pricingData.filter(i => i.marginPercent < 40).length
+   295→  const priceAlerts = pricingData.filter(i => i.suggestedPrice && i.suggestedPrice !== i.sellingPrice).length
+   296→
+   297→  // Helpers
+   298→  const getMarginColor = (margin: number) => {
+   299→    if (margin < 30) return 'text-red-500'
+   300→    if (margin < 40) return 'text-orange-500'
+   301→    if (margin < 50) return 'text-yellow-600'
+   302→    return 'text-green-600'
+   303→  }
+   304→
+   305→  const getDemandBadge = (demand: string) => {
+   306→    switch (demand) {
+   307→      case 'high':
+   308→        return <Badge className="bg-green-100 text-green-700">High Demand</Badge>
+   309→      case 'medium':
+   310→        return <Badge className="bg-yellow-100 text-yellow-700">Medium</Badge>
+   311→      case 'low':
+   312→        return <Badge className="bg-gray-100 text-gray-700">Low Demand</Badge>
+   313→      default:
+   314→        return null
+   315→    }
+   316→  }
+   317→
+   318→  const showToast = (title: string, message: string, type: 'success' | 'error' = 'success') => {
+   319→    setToast({ show: true, title, message, type })
+   320→    setTimeout(() => setToast(null), 3000)
+   321→  }
+   322→
+   323→  // Handlers
+   324→  const handleSelectAll = () => {
+   325→    if (selectedItems.length === filteredItems.length) {
+   326→      setSelectedItems([])
+   327→    } else {
+   328→      setSelectedItems(filteredItems.map(i => i.id))
+   329→    }
+   330→  }
+   331→
+   332→  const handleSelectItem = (id: string) => {
+   333→    setSelectedItems(prev => 
+   334→      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+   335→    )
+   336→  }
+   337→
+   338→  const handleUpdatePrice = (item: PricingItem, field: 'sellingPrice' | 'costPrice', value: number) => {
+   339→    const newData = pricingData.map(i => {
+   340→      if (i.id === item.id) {
+   341→        const newCost = field === 'costPrice' ? value : i.costPrice
+   342→        const newSell = field === 'sellingPrice' ? value : i.sellingPrice
+   343→        const newMargin = newSell - newCost
+   344→        const newMarginPercent = (newMargin / newSell) * 100
+   345→        const newMarkup = (newMargin / newCost) * 100
+   346→        
+   347→        return {
+   348→          ...i,
+   349→          costPrice: newCost,
+   350→          sellingPrice: newSell,
+   351→          margin: newMargin,
+   352→          marginPercent: newMarginPercent,
+   353→          markup: newMarkup,
+   354→          lastPriceChange: new Date().toISOString().split('T')[0],
+   355→          priceHistory: [
+   356→            { date: new Date().toISOString().split('T')[0], oldPrice: i[field], newPrice: value, reason: 'Manual update', user: 'Current User' },
+   357→            ...i.priceHistory
+   358→          ]
+   359→        }
+   360→      }
+   361→      return i
+   362→    })
+   363→    setPricingData(newData)
+   364→    setEditItem(null)
+   365→    showToast('Price Updated', `${item.name} price updated successfully`, 'success')
+   366→  }
+   367→
+   368→  const handleBulkUpdate = () => {
+   369→    if (selectedItems.length === 0) {
+   370→      showToast('No Selection', 'Please select items to update', 'error')
+   371→      return
+   372→    }
+   373→    if (!bulkUpdate.reason.trim()) {
+   374→      showToast('Reason Required', 'Please provide a reason for the price change', 'error')
+   375→      return
+   376→    }
+   377→
+   378→    const newData = pricingData.map(item => {
+   379→      if (selectedItems.includes(item.id)) {
+   380→        let newPrice = bulkUpdate.field === 'sellingPrice' ? item.sellingPrice : item.costPrice
+   381→        
+   382→        switch (bulkUpdate.operation) {
+   383→          case 'set':
+   384→            newPrice = bulkUpdate.value
+   385→            break
+   386→          case 'increase':
+   387→            newPrice = newPrice * (1 + bulkUpdate.value / 100)
+   388→            break
+   389→          case 'decrease':
+   390→            newPrice = newPrice * (1 - bulkUpdate.value / 100)
+   391→            break
+   392→          case 'margin':
+   393→            const cost = item.costPrice
+   394→            newPrice = cost / (1 - bulkUpdate.value / 100)
+   395→            break
+   396→        }
+   397→
+   398→        const newCost = bulkUpdate.field === 'costPrice' ? newPrice : item.costPrice
+   399→        const newSell = bulkUpdate.field === 'sellingPrice' ? newPrice : item.sellingPrice
+   400→        const newMargin = newSell - newCost
+   401→        const newMarginPercent = (newMargin / newSell) * 100
+   402→        const newMarkup = (newMargin / newCost) * 100
+   403→
+   404→        return {
+   405→          ...item,
+   406→          costPrice: newCost,
+   407→          sellingPrice: newSell,
+   408→          margin: newMargin,
+   409→          marginPercent: newMarginPercent,
+   410→          markup: newMarkup,
+   411→          lastPriceChange: new Date().toISOString().split('T')[0],
+   412→          priceHistory: [
+   413→            { 
+   414→              date: new Date().toISOString().split('T')[0], 
+   415→              oldPrice: bulkUpdate.field === 'sellingPrice' ? item.sellingPrice : item.costPrice, 
+   416→              newPrice, 
+   417→              reason: bulkUpdate.reason, 
+   418→              user: 'Current User' 
+   419→            },
+   420→            ...item.priceHistory
+   421→          ]
+   422→        }
+   423→      }
+   424→      return item
+   425→    })
+   426→
+   427→    setPricingData(newData)
+   428→    setSelectedItems([])
+   429→    setBulkUpdateOpen(false)
+   430→    setBulkUpdate({ ids: [], field: 'sellingPrice', operation: 'increase', value: 0, reason: '' })
+   431→    showToast('Bulk Update Complete', `${selectedItems.length} items updated`, 'success')
+   432→  }
+   433→
+   434→  const handleExport = () => {
+   435→    const csv = [
+   436→      'SKU,Name,Category,Cost Price,Selling Price,Margin %,Markup %,Stock',
+   437→      ...filteredItems.map(i => 
+   438→        `${i.sku},"${i.name}",${i.category},${i.costPrice},${i.sellingPrice},${i.marginPercent.toFixed(1)},${i.markup.toFixed(1)},${i.stock}`
+   439→      )
+   440→    ].join('\n')
+   441→    const blob = new Blob([csv], { type: 'text/csv' })
+   442→    const url = URL.createObjectURL(blob)
+   443→    const a = document.createElement('a')
+   444→    a.href = url
+   445→    a.download = `pricing-export-${new Date().toISOString().split('T')[0]}.csv`
+   446→    a.click()
+   447→    URL.revokeObjectURL(url)
+   448→    showToast('Export Complete', `${filteredItems.length} items exported to CSV`, 'success')
+   449→  }
+   450→
+   451→  // Render Overview Tab
+   452→  const renderOverview = () => (
+   453→    <div className="space-y-6">
+   454→      {/* KPI Cards */}
+   455→      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+   456→        <Card className="border-l-4 border-l-[#00897B]">
+   457→          <CardContent className="p-4">
+   458→            <p className="text-xs text-[#757575]">Avg Margin</p>
+   459→            <p className={`text-xl font-bold ${getMarginColor(avgMargin)}`}>{avgMargin.toFixed(1)}%</p>
+   460→          </CardContent>
+   461→        </Card>
+   462→        <Card>
+   463→          <CardContent className="p-4">
+   464→            <p className="text-xs text-[#757575]">Stock Value (Cost)</p>
+   465→            <p className="text-xl font-bold">R{totalStockValue.toLocaleString()}</p>
+   466→          </CardContent>
+   467→        </Card>
+   468→        <Card>
+   469→          <CardContent className="p-4">
+   470→            <p className="text-xs text-[#757575]">Retail Value</p>
+   471→            <p className="text-xl font-bold text-[#00897B]">R{totalRetailValue.toLocaleString()}</p>
+   472→          </CardContent>
+   473→        </Card>
+   474→        <Card>
+   475→          <CardContent className="p-4">
+   476→            <p className="text-xs text-[#757575]">Low Margin Items</p>
+   477→            <p className="text-xl font-bold text-orange-500">{lowMarginItems}</p>
+   478→          </CardContent>
+   479→        </Card>
+   480→        <Card>
+   481→          <CardContent className="p-4">
+   482→            <p className="text-xs text-[#757575]">Price Suggestions</p>
+   483→            <p className="text-xl font-bold text-blue-500">{priceAlerts}</p>
+   484→          </CardContent>
+   485→        </Card>
+   486→      </div>
+   487→
+   488→      {/* Quick Actions */}
+   489→      <div className="flex gap-2 flex-wrap">
+   490→        <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => setActiveTab('products')}>
+   491→          <Coins className="h-4 w-4 mr-2" />Manage Prices
+   492→        </Button>
+   493→        <Button variant="outline" onClick={() => { setBulkUpdateOpen(true); setSelectedItems(filteredItems.map(i => i.id)) }}>
+   494→          <Edit2 className="h-4 w-4 mr-2" />Bulk Update
+   495→        </Button>
+   496→        <Button variant="outline" onClick={handleExport}>
+   497→          <Download className="h-4 w-4 mr-2" />Export
+   498→        </Button>
+   499→      </div>
+   500→
+   501→      {/* Charts Row */}
+   502→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   503→        {/* Margin Distribution */}
+   504→        <Card>
+   505→          <CardHeader className="pb-2">
+   506→            <CardTitle className="text-sm flex items-center gap-2">
+   507→              <BarChart3 className="h-4 w-4 text-[#00897B]" />
+   508→              Margin Distribution
+   509→            </CardTitle>
+   510→          </CardHeader>
+   511→          <CardContent>
+   512→            <div className="space-y-3">
+   513→              {[
+   514→                { range: '< 30%', count: pricingData.filter(i => i.marginPercent < 30).length, color: 'bg-red-500' },
+   515→                { range: '30-40%', count: pricingData.filter(i => i.marginPercent >= 30 && i.marginPercent < 40).length, color: 'bg-orange-500' },
+   516→                { range: '40-50%', count: pricingData.filter(i => i.marginPercent >= 40 && i.marginPercent < 50).length, color: 'bg-yellow-500' },
+   517→                { range: '50-60%', count: pricingData.filter(i => i.marginPercent >= 50 && i.marginPercent < 60).length, color: 'bg-green-400' },
+   518→                { range: '> 60%', count: pricingData.filter(i => i.marginPercent >= 60).length, color: 'bg-green-600' },
+   519→              ].map((bucket) => (
+   520→                <div key={bucket.range} className="flex items-center gap-3">
+   521→                  <span className="w-16 text-xs text-[#757575]">{bucket.range}</span>
+   522→                  <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
+   523→                    <div 
+   524→                      className={`h-full ${bucket.color} rounded-full transition-all duration-500`}
+   525→                      style={{ width: `${(bucket.count / pricingData.length) * 100}%` }}
+   526→                    />
+   527→                  </div>
+   528→                  <span className="w-8 text-sm font-medium text-right">{bucket.count}</span>
+   529→                </div>
+   530→              ))}
+   531→            </div>
+   532→          </CardContent>
+   533→        </Card>
+   534→
+   535→        {/* Price Suggestions */}
+   536→        <Card>
+   537→          <CardHeader className="pb-2">
+   538→            <CardTitle className="text-sm flex items-center gap-2">
+   539→              <Zap className="h-4 w-4 text-yellow-500" />
+   540→              Price Suggestions
+   541→            </CardTitle>
+   542→          </CardHeader>
+   543→          <CardContent>
+   544→            <div className="space-y-3">
+   545→              {pricingData
+   546→                .filter(i => i.suggestedPrice && i.suggestedPrice !== i.sellingPrice)
+   547→                .slice(0, 5)
+   548→                .map(item => (
+   549→                  <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+   550→                    <div>
+   551→                      <p className="text-sm font-medium">{item.name}</p>
+   552→                      <p className="text-xs text-[#757575]">Current: R{item.sellingPrice.toFixed(2)}</p>
+   553→                    </div>
+   554→                    <div className="text-right">
+   555→                      <p className="text-sm font-bold text-[#00897B]">R{item.suggestedPrice?.toFixed(2)}</p>
+   556→                      <p className="text-xs text-[#757575]">Suggested</p>
+   557→                    </div>
+   558→                    <Button 
+   559→                      size="sm" 
+   560→                      className="ml-2 bg-[#00897B] hover:bg-[#00695C]"
+   561→                      onClick={() => handleUpdatePrice(item, 'sellingPrice', item.suggestedPrice!)}
+   562→                    >
+   563→                      Apply
+   564→                    </Button>
+   565→                  </div>
+   566→                ))}
+   567→              {pricingData.filter(i => i.suggestedPrice && i.suggestedPrice !== i.sellingPrice).length === 0 && (
+   568→                <div className="text-center py-6 text-[#757575]">
+   569→                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
+   570→                  <p className="text-sm">All prices are optimized</p>
+   571→                </div>
+   572→              )}
+   573→            </div>
+   574→          </CardContent>
+   575→        </Card>
+   576→      </div>
+   577→
+   578→      {/* Margin Calculator */}
+   579→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   580→        <MarginCalculator />
+   581→        
+   582→        {/* Quick Stats */}
+   583→        <Card className="lg:col-span-2">
+   584→          <CardHeader className="pb-2">
+   585→            <CardTitle className="text-sm flex items-center gap-2">
+   586→              <Target className="h-4 w-4 text-[#00897B]" />
+   587→              Category Performance
+   588→            </CardTitle>
+   589→          </CardHeader>
+   590→          <CardContent>
+   591→            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   592→              {Object.entries(
+   593→                pricingData.reduce((acc, item) => {
+   594→                  if (!acc[item.category]) {
+   595→                    acc[item.category] = { count: 0, totalMargin: 0, totalStock: 0 }
+   596→                  }
+   597→                  acc[item.category].count++
+   598→                  acc[item.category].totalMargin += item.marginPercent
+   599→                  acc[item.category].totalStock += item.stock
+   600→                  return acc
+   601→                }, {} as Record<string, { count: number; totalMargin: number; totalStock: number }>)
+   602→              ).map(([category, data]) => (
+   603→                <div key={category} className="p-3 bg-gray-50 rounded-lg">
+   604→                  <p className="text-xs font-medium text-[#757575]">{category}</p>
+   605→                  <p className={`text-lg font-bold ${getMarginColor(data.totalMargin / data.count)}`}>
+   606→                    {(data.totalMargin / data.count).toFixed(1)}%
+   607→                  </p>
+   608→                  <p className="text-xs text-[#757575]">{data.count} items • {data.totalStock} units</p>
+   609→                </div>
+   610→              ))}
+   611→            </div>
+   612→          </CardContent>
+   613→        </Card>
+   614→      </div>
+   615→    </div>
+   616→  )
+   617→
+   618→  // Render Products Tab
+   619→  const renderProducts = () => (
+   620→    <div className="space-y-4">
+   621→      {/* Filters */}
+   622→      <div className="flex gap-3 flex-wrap">
+   623→        <div className="relative flex-1 min-w-[200px]">
+   624→          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#757575]" />
+   625→          <Input 
+   626→            placeholder="Search products..." 
+   627→            value={searchQuery} 
+   628→            onChange={e => setSearchQuery(e.target.value)} 
+   629→            className="pl-9" 
+   630→          />
+   631→        </div>
+   632→        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+   633→          <SelectTrigger className="w-[150px]">
+   634→            <SelectValue placeholder="Category" />
+   635→          </SelectTrigger>
+   636→          <SelectContent>
+   637→            {categories.map(c => (
+   638→              <SelectItem key={c} value={c}>{c === 'all' ? 'All Categories' : c}</SelectItem>
+   639→            ))}
+   640→          </SelectContent>
+   641→        </Select>
+   642→        <Select value={marginFilter} onValueChange={setMarginFilter}>
+   643→          <SelectTrigger className="w-[150px]">
+   644→            <SelectValue placeholder="Margin" />
+   645→          </SelectTrigger>
+   646→          <SelectContent>
+   647→            <SelectItem value="all">All Margins</SelectItem>
+   648→            <SelectItem value="low">Low (&lt;40%)</SelectItem>
+   649→            <SelectItem value="healthy">Healthy (40-60%)</SelectItem>
+   650→            <SelectItem value="high">High (&gt;60%)</SelectItem>
+   651→          </SelectContent>
+   652→        </Select>
+   653→        {selectedItems.length > 0 && (
+   654→          <Button 
+   655→            variant="outline" 
+   656→            className="border-[#00897B] text-[#00897B]"
+   657→            onClick={() => setBulkUpdateOpen(true)}
+   658→          >
+   659→            <Edit2 className="h-4 w-4 mr-2" />
+   660→            Update {selectedItems.length} Selected
+   661→          </Button>
+   662→        )}
+   663→        <Button variant="outline" onClick={handleExport}>
+   664→          <Download className="h-4 w-4 mr-2" />Export
+   665→        </Button>
+   666→      </div>
+   667→
+   668→      {/* Products Table */}
+   669→      <Card>
+   670→        <ScrollArea className="h-[500px]">
+   671→          <Table>
+   672→            <TableHeader>
+   673→              <TableRow>
+   674→                <TableHead className="w-10">
+   675→                  <input
+   676→                    type="checkbox"
+   677→                    checked={selectedItems.length === filteredItems.length && filteredItems.length > 0}
+   678→                    onChange={handleSelectAll}
+   679→                    className="rounded border-gray-300"
+   680→                  />
+   681→                </TableHead>
+   682→                <TableHead>Product</TableHead>
+   683→                <TableHead>Cost</TableHead>
+   684→                <TableHead>Selling Price</TableHead>
+   685→                <TableHead>Margin</TableHead>
+   686→                <TableHead>Stock</TableHead>
+   687→                <TableHead>Demand</TableHead>
+   688→                <TableHead className="w-20">Actions</TableHead>
+   689→              </TableRow>
+   690→            </TableHeader>
+   691→            <TableBody>
+   692→              {filteredItems.map(item => (
+   693→                <TableRow 
+   694→                  key={item.id}
+   695→                  className={selectedItems.includes(item.id) ? 'bg-[#E0F2F1]' : ''}
+   696→                >
+   697→                  <TableCell>
+   698→                    <input
+   699→                      type="checkbox"
+   700→                      checked={selectedItems.includes(item.id)}
+   701→                      onChange={() => handleSelectItem(item.id)}
+   702→                      className="rounded border-gray-300"
+   703→                    />
+   704→                  </TableCell>
+   705→                  <TableCell>
+   706→                    <div>
+   707→                      <p className="font-medium">{item.name}</p>
+   708→                      <p className="text-xs text-[#757575]">{item.sku} • {item.category}</p>
+   709→                    </div>
+   710→                  </TableCell>
+   711→                  <TableCell>
+   712→                    {editItem?.id === item.id ? (
+   713→                      <Input
+   714→                        type="number"
+   715→                        defaultValue={item.costPrice}
+   716→                        className="w-24"
+   717→                        onBlur={(e) => handleUpdatePrice(item, 'costPrice', Number(e.target.value))}
+   718→                        autoFocus
+   719→                      />
+   720→                    ) : (
+   721→                      <span>R{item.costPrice.toFixed(2)}</span>
+   722→                    )}
+   723→                  </TableCell>
+   724→                  <TableCell>
+   725→                    {editItem?.id === item.id ? (
+   726→                      <Input
+   727→                        type="number"
+   728→                        defaultValue={item.sellingPrice}
+   729→                        className="w-24"
+   730→                        onBlur={(e) => handleUpdatePrice(item, 'sellingPrice', Number(e.target.value))}
+   731→                      />
+   732→                    ) : (
+   733→                      <span className="font-medium">R{item.sellingPrice.toFixed(2)}</span>
+   734→                    )}
+   735→                  </TableCell>
+   736→                  <TableCell>
+   737→                    <div className="flex items-center gap-2">
+   738→                      <span className={`font-bold ${getMarginColor(item.marginPercent)}`}>
+   739→                        {item.marginPercent.toFixed(1)}%
+   740→                      </span>
+   741→                      {item.marginPercent < 30 && (
+   742→                        <AlertTriangle className="h-4 w-4 text-red-500" />
+   743→                      )}
+   744→                    </div>
+   745→                    <p className="text-xs text-[#757575]">R{item.margin.toFixed(2)} profit</p>
+   746→                  </TableCell>
+   747→                  <TableCell>
+   748→                    <span className={item.stock === 0 ? 'text-red-500' : item.stock < 20 ? 'text-orange-500' : ''}>
+   749→                      {item.stock}
+   750→                    </span>
+   751→                  </TableCell>
+   752→                  <TableCell>{getDemandBadge(item.demandLevel)}</TableCell>
+   753→                  <TableCell>
+   754→                    <Button
+   755→                      size="sm"
+   756→                      variant="ghost"
+   757→                      onClick={() => setEditItem(editItem?.id === item.id ? null : item)}
+   758→                    >
+   759→                      {editItem?.id === item.id ? (
+   760→                        <X className="h-4 w-4" />
+   761→                      ) : (
+   762→                        <Edit2 className="h-4 w-4" />
+   763→                      )}
+   764→                    </Button>
+   765→                  </TableCell>
+   766→                </TableRow>
+   767→              ))}
+   768→            </TableBody>
+   769→          </Table>
+   770→        </ScrollArea>
+   771→      </Card>
+   772→    </div>
+   773→  )
+   774→
+   775→  // Render History Tab
+   776→  const renderHistory = () => {
+   777→    const allHistory = pricingData.flatMap(item => 
+   778→      item.priceHistory.map(h => ({ ...h, productName: item.name, sku: item.sku }))
+   779→    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+   780→
+   781→    return (
+   782→      <div className="space-y-4">
+   783→        <Card>
+   784→          <CardHeader>
+   785→            <CardTitle className="text-sm flex items-center gap-2">
+   786→              <History className="h-4 w-4 text-[#00897B]" />
+   787→              Price Change History
+   788→            </CardTitle>
+   789→          </CardHeader>
+   790→          <CardContent>
+   791→            <ScrollArea className="h-[500px]">
+   792→              {allHistory.length === 0 ? (
+   793→                <div className="text-center py-12 text-[#757575]">
+   794→                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-30" />
+   795→                  <p>No price changes recorded yet</p>
+   796→                </div>
+   797→              ) : (
+   798→                <div className="space-y-3">
+   799→                  {allHistory.map((entry, index) => (
+   800→                    <div key={index} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+   801→                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+   802→                        entry.newPrice > entry.oldPrice ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+   803→                      }`}>
+   804→                        {entry.newPrice > entry.oldPrice ? (
+   805→                          <ArrowUpRight className="h-5 w-5" />
+   806→                        ) : (
+   807→                          <ArrowDownRight className="h-5 w-5" />
+   808→                        )}
+   809→                      </div>
+   810→                      <div className="flex-1">
+   811→                        <p className="font-medium">{entry.productName}</p>
+   812→                        <p className="text-xs text-[#757575]">
+   813→                          R{entry.oldPrice.toFixed(2)} → R{entry.newPrice.toFixed(2)} • {entry.reason}
+   814→                        </p>
+   815→                      </div>
+   816→                      <div className="text-right">
+   817→                        <p className="text-xs text-[#757575]">{entry.date}</p>
+   818→                        <p className="text-xs text-[#757575]">by {entry.user}</p>
+   819→                      </div>
+   820→                    </div>
+   821→                  ))}
+   822→                </div>
+   823→              )}
+   824→            </ScrollArea>
+   825→          </CardContent>
+   826→        </Card>
+   827→      </div>
+   828→    )
+   829→  }
+   830→
+   831→  return (
+   832→    <div className="flex flex-col h-full bg-white rounded-lg">
+   833→      {/* Header */}
+   834→      <div className="p-4 border-b border-gray-200">
+   835→        <div className="flex items-center justify-between">
+   836→          <div>
+   837→            <h2 className="text-lg font-bold text-[#1A1A1A] flex items-center gap-2">
+   838→              <Coins className="h-5 w-5 text-[#00897B]" />
+   839→              Pricing Management
+   840→            </h2>
+   841→            <p className="text-xs text-[#757575]">Manage cost prices, selling prices, and margins</p>
+   842→          </div>
+   843→        </div>
+   844→      </div>
+   845→
+   846→      {/* Tabs */}
+   847→      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+   848→        <div className="px-4 pt-4">
+   849→          <TabsList>
+   850→            <TabsTrigger value="overview">Overview</TabsTrigger>
+   851→            <TabsTrigger value="products">Products</TabsTrigger>
+   852→            <TabsTrigger value="history">History</TabsTrigger>
+   853→          </TabsList>
+   854→        </div>
+   855→
+   856→        <div className="flex-1 p-4 overflow-auto">
+   857→          <TabsContent value="overview" className="mt-0">
+   858→            {renderOverview()}
+   859→          </TabsContent>
+   860→          <TabsContent value="products" className="mt-0">
+   861→            {renderProducts()}
+   862→          </TabsContent>
+   863→          <TabsContent value="history" className="mt-0">
+   864→            {renderHistory()}
+   865→          </TabsContent>
+   866→        </div>
+   867→      </Tabs>
+   868→
+   869→      {/* Bulk Update Dialog */}
+   870→      <Dialog open={bulkUpdateOpen} onOpenChange={setBulkUpdateOpen}>
+   871→        <DialogContent>
+   872→          <DialogHeader>
+   873→            <DialogTitle>Bulk Price Update</DialogTitle>
+   874→            <DialogDescription>
+   875→              Update prices for {selectedItems.length} selected items
+   876→            </DialogDescription>
+   877→          </DialogHeader>
+   878→          <div className="space-y-4">
+   879→            <div>
+   880→              <label className="text-sm font-medium">Update Field</label>
+   881→              <Select 
+   882→                value={bulkUpdate.field} 
+   883→                onValueChange={(v) => setBulkUpdate(prev => ({ ...prev, field: v as 'sellingPrice' | 'costPrice' }))}
+   884→              >
+   885→                <SelectTrigger>
+   886→                  <SelectValue />
+   887→                </SelectTrigger>
+   888→                <SelectContent>
+   889→                  <SelectItem value="sellingPrice">Selling Price</SelectItem>
+   890→                  <SelectItem value="costPrice">Cost Price</SelectItem>
+   891→                </SelectContent>
+   892→              </Select>
+   893→            </div>
+   894→            <div>
+   895→              <label className="text-sm font-medium">Operation</label>
+   896→              <Select 
+   897→                value={bulkUpdate.operation} 
+   898→                onValueChange={(v) => setBulkUpdate(prev => ({ ...prev, operation: v as any }))}
+   899→              >
+   900→                <SelectTrigger>
+   901→                  <SelectValue />
+   902→                </SelectTrigger>
+   903→                <SelectContent>
+   904→                  <SelectItem value="set">Set to value</SelectItem>
+   905→                  <SelectItem value="increase">Increase by %</SelectItem>
+   906→                  <SelectItem value="decrease">Decrease by %</SelectItem>
+   907→                  <SelectItem value="margin">Set margin %</SelectItem>
+   908→                </SelectContent>
+   909→              </Select>
+   910→            </div>
+   911→            <div>
+   912→              <label className="text-sm font-medium">
+   913→                {bulkUpdate.operation === 'set' ? 'Value (R)' : 
+   914→                 bulkUpdate.operation === 'margin' ? 'Target Margin %' : 'Percentage %'}
+   915→              </label>
+   916→              <Input
+   917→                type="number"
+   918→                value={bulkUpdate.value || ''}
+   919→                onChange={(e) => setBulkUpdate(prev => ({ ...prev, value: Number(e.target.value) }))}
+   920→                placeholder={bulkUpdate.operation === 'set' ? '0.00' : '0'}
+   921→              />
+   922→            </div>
+   923→            <div>
+   924→              <label className="text-sm font-medium">Reason *</label>
+   925→              <Input
+   926→                value={bulkUpdate.reason}
+   927→                onChange={(e) => setBulkUpdate(prev => ({ ...prev, reason: e.target.value }))}
+   928→                placeholder="e.g., Supplier price increase, inflation adjustment"
+   929→              />
+   930→            </div>
+   931→          </div>
+   932→          <DialogFooter>
+   933→            <Button variant="outline" onClick={() => setBulkUpdateOpen(false)}>Cancel</Button>
+   934→            <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={handleBulkUpdate}>
+   935→              Update {selectedItems.length} Items
+   936→            </Button>
+   937→          </DialogFooter>
+   938→        </DialogContent>
+   939→      </Dialog>
+   940→
+   941→      {/* Toast */}
+   942→      {toast?.show && (
+   943→        <div className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+   944→          toast.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+   945→        }`}>
+   946→          <p className={`font-medium ${toast.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+   947→            {toast.title}
+   948→          </p>
+   949→          <p className={`text-sm ${toast.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+   950→            {toast.message}
+   951→          </p>
+   952→        </div>
+   953→      )}
+   954→    </div>
+   955→  )
+   956→}
+   957→

@@ -1,0 +1,935 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect } from 'react'
+     4→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     5→import { Badge } from '@/components/ui/badge'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Input } from '@/components/ui/input'
+     8→import { Label } from '@/components/ui/label'
+     9→import { Textarea } from '@/components/ui/textarea'
+    10→import { Progress } from '@/components/ui/progress'
+    11→import { ScrollArea } from '@/components/ui/scroll-area'
+    12→import { Separator } from '@/components/ui/separator'
+    13→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    14→import {
+    15→  Select,
+    16→  SelectContent,
+    17→  SelectItem,
+    18→  SelectTrigger,
+    19→  SelectValue,
+    20→} from '@/components/ui/select'
+    21→import {
+    22→  Dialog,
+    23→  DialogContent,
+    24→  DialogDescription,
+    25→  DialogFooter,
+    26→  DialogHeader,
+    27→  DialogTitle,
+    28→} from '@/components/ui/dialog'
+    29→import {
+    30→  BookOpen,
+    31→  GraduationCap,
+    32→  Users,
+    33→  Clock,
+    34→  Award,
+    35→  TrendingUp,
+    36→  Plus,
+    37→  Search,
+    38→  ChevronLeft,
+    39→  ChevronRight,
+    40→  Loader2,
+    41→  PlayCircle,
+    42→  CheckCircle2,
+    43→  BarChart3,
+    44→  UserCheck,
+    45→  FileText,
+    46→  Star,
+    47→  Target,
+    48→  ArrowLeft,
+    49→} from 'lucide-react'
+    50→
+    51→// --- Types ---
+    52→type CourseLevel = 'beginner' | 'intermediate' | 'advanced'
+    53→type CourseStatus = 'active' | 'draft' | 'archived'
+    54→type EnrollmentStatus = 'enrolled' | 'in_progress' | 'completed' | 'failed'
+    55→
+    56→interface Module {
+    57→  id: string
+    58→  title: string
+    59→  duration: string
+    60→  order: number
+    61→}
+    62→
+    63→interface StaffMember {
+    64→  id: string
+    65→  name: string
+    66→  role: string
+    67→  avatar: string
+    68→}
+    69→
+    70→interface Enrollment {
+    71→  id: string
+    72→  staffId: string
+    73→  courseId: string
+    74→  status: EnrollmentStatus
+    75→  progress: number
+    76→  score: number
+    77→  enrolledAt: string
+    78→  completedAt?: string
+    79→}
+    80→
+    81→interface Course {
+    82→  id: string
+    83→  title: string
+    84→  description: string
+    85→  category: string
+    86→  level: CourseLevel
+    87→  duration: string
+    88→  instructor: string
+    89→  status: CourseStatus
+    90→  modules: Module[]
+    91→  enrollments: Enrollment[]
+    92→}
+    93→
+    94→// --- Mock Data ---
+    95→const mockStaff: StaffMember[] = [
+    96→  { id: 's1', name: 'Thandi Mokoena', role: 'Cashier', avatar: 'TM' },
+    97→  { id: 's2', name: 'James van der Berg', role: 'Stock Controller', avatar: 'JB' },
+    98→  { id: 's3', name: 'Priya Naidoo', role: 'Store Manager', avatar: 'PN' },
+    99→  { id: 's4', name: 'David Moloi', role: 'Butcher', avatar: 'DM' },
+   100→  { id: 's5', name: 'Sarah Botha', role: 'Bakery Assistant', avatar: 'SB' },
+   101→  { id: 's6', name: 'Lungi Dlamini', role: 'Cashier', avatar: 'LD' },
+   102→  { id: 's7', name: 'Michael Jacobs', role: 'Delivery Driver', avatar: 'MJ' },
+   103→  { id: 's8', name: 'Nomsa Khumalo', role: 'Produce Manager', avatar: 'NK' },
+   104→]
+   105→
+   106→const mockCourses: Course[] = [
+   107→  {
+   108→    id: 'c1',
+   109→    title: 'Stock Management Basics',
+   110→    description: 'Learn the fundamentals of inventory control, stock rotation (FIFO), ordering procedures, and minimising shrinkage in a retail grocery environment.',
+   111→    category: 'Operations',
+   112→    level: 'beginner',
+   113→    duration: '2 hours',
+   114→    instructor: 'Priya Naidoo',
+   115→    status: 'active',
+   116→    modules: [
+   117→      { id: 'm1', title: 'Introduction to Stock Control', duration: '20 min', order: 1 },
+   118→      { id: 'm2', title: 'FIFO and Stock Rotation', duration: '25 min', order: 2 },
+   119→      { id: 'm3', title: 'Receiving Deliveries', duration: '30 min', order: 3 },
+   120→      { id: 'm4', title: 'Minimising Shrinkage', duration: '25 min', order: 4 },
+   121→      { id: 'm5', title: 'Stocktake Procedures', duration: '20 min', order: 5 },
+   122→    ],
+   123→    enrollments: [
+   124→      { id: 'e1', staffId: 's2', courseId: 'c1', status: 'completed', progress: 100, score: 92, enrolledAt: '2025-01-10', completedAt: '2025-01-12' },
+   125→      { id: 'e2', staffId: 's4', courseId: 'c1', status: 'completed', progress: 100, score: 85, enrolledAt: '2025-01-15', completedAt: '2025-01-17' },
+   126→      { id: 'e3', staffId: 's7', courseId: 'c1', status: 'in_progress', progress: 60, score: 0, enrolledAt: '2025-02-01' },
+   127→      { id: 'e4', staffId: 's1', courseId: 'c1', status: 'enrolled', progress: 0, score: 0, enrolledAt: '2025-02-10' },
+   128→    ],
+   129→  },
+   130→  {
+   131→    id: 'c2',
+   132→    title: 'Food Safety Level 1',
+   133→    description: 'Essential food safety certification covering hygiene standards, temperature control, cross-contamination prevention, and regulatory compliance.',
+   134→    category: 'Compliance',
+   135→    level: 'beginner',
+   136→    duration: '3 hours',
+   137→    instructor: 'Dr. Sarah Pieters',
+   138→    status: 'active',
+   139→    modules: [
+   140→      { id: 'm6', title: 'Food Safety Legislation', duration: '20 min', order: 1 },
+   141→      { id: 'm7', title: 'Personal Hygiene Standards', duration: '30 min', order: 2 },
+   142→      { id: 'm8', title: 'Temperature Control', duration: '35 min', order: 3 },
+   143→      { id: 'm9', title: 'Cross-Contamination Prevention', duration: '30 min', order: 4 },
+   144→      { id: 'm10', title: 'Cleaning & Sanitisation', duration: '25 min', order: 5 },
+   145→      { id: 'm11', title: 'Pest Control Awareness', duration: '20 min', order: 6 },
+   146→    ],
+   147→    enrollments: [
+   148→      { id: 'e5', staffId: 's1', courseId: 'c2', status: 'completed', progress: 100, score: 96, enrolledAt: '2025-01-05', completedAt: '2025-01-07' },
+   149→      { id: 'e6', staffId: 's5', courseId: 'c2', status: 'completed', progress: 100, score: 88, enrolledAt: '2025-01-08', completedAt: '2025-01-10' },
+   150→      { id: 'e7', staffId: 's4', courseId: 'c2', status: 'completed', progress: 100, score: 91, enrolledAt: '2025-01-12', completedAt: '2025-01-14' },
+   151→      { id: 'e8', staffId: 's6', courseId: 'c2', status: 'in_progress', progress: 75, score: 0, enrolledAt: '2025-02-01' },
+   152→      { id: 'e9', staffId: 's7', courseId: 'c2', status: 'enrolled', progress: 0, score: 0, enrolledAt: '2025-02-12' },
+   153→      { id: 'e10', staffId: 's8', courseId: 'c2', status: 'in_progress', progress: 40, score: 0, enrolledAt: '2025-02-05' },
+   154→    ],
+   155→  },
+   156→  {
+   157→    id: 'c3',
+   158→    title: 'Customer Service Excellence',
+   159→    description: 'Master customer engagement techniques, complaint handling, upselling skills, and building lasting customer loyalty in a retail setting.',
+   160→    category: 'Soft Skills',
+   161→    level: 'intermediate',
+   162→    duration: '2.5 hours',
+   163→    instructor: 'Amanda du Plessis',
+   164→    status: 'active',
+   165→    modules: [
+   166→      { id: 'm12', title: 'The Customer Journey', duration: '25 min', order: 1 },
+   167→      { id: 'm13', title: 'Communication Skills', duration: '30 min', order: 2 },
+   168→      { id: 'm14', title: 'Handling Complaints', duration: '35 min', order: 3 },
+   169→      { id: 'm15', title: 'Upselling Techniques', duration: '25 min', order: 4 },
+   170→      { id: 'm16', title: 'Building Loyalty', duration: '25 min', order: 5 },
+   171→    ],
+   172→    enrollments: [
+   173→      { id: 'e11', staffId: 's1', courseId: 'c3', status: 'completed', progress: 100, score: 87, enrolledAt: '2025-01-20', completedAt: '2025-01-22' },
+   174→      { id: 'e12', staffId: 's6', courseId: 'c3', status: 'completed', progress: 100, score: 94, enrolledAt: '2025-01-22', completedAt: '2025-01-24' },
+   175→      { id: 'e13', staffId: 's3', courseId: 'c3', status: 'completed', progress: 100, score: 90, enrolledAt: '2025-01-18', completedAt: '2025-01-20' },
+   176→    ],
+   177→  },
+   178→  {
+   179→    id: 'c4',
+   180→    title: 'Cash Handling Procedures',
+   181→    description: 'Comprehensive training on POS operations, cash register management, card payments, till reconciliation, and fraud prevention.',
+   182→    category: 'Operations',
+   183→    level: 'beginner',
+   184→    duration: '1.5 hours',
+   185→    instructor: 'Priya Naidoo',
+   186→    status: 'active',
+   187→    modules: [
+   188→      { id: 'm17', title: 'POS System Overview', duration: '20 min', order: 1 },
+   189→      { id: 'm18', title: 'Cash Register Operations', duration: '25 min', order: 2 },
+   190→      { id: 'm19', title: 'Card & Digital Payments', duration: '20 min', order: 3 },
+   191→      { id: 'm20', title: 'Till Reconciliation', duration: '25 min', order: 4 },
+   192→    ],
+   193→    enrollments: [
+   194→      { id: 'e14', staffId: 's1', courseId: 'c4', status: 'completed', progress: 100, score: 98, enrolledAt: '2025-01-03', completedAt: '2025-01-04' },
+   195→      { id: 'e15', staffId: 's6', courseId: 'c4', status: 'completed', progress: 100, score: 82, enrolledAt: '2025-01-05', completedAt: '2025-01-06' },
+   196→      { id: 'e16', staffId: 's5', courseId: 'c4', status: 'in_progress', progress: 50, score: 0, enrolledAt: '2025-02-08' },
+   197→    ],
+   198→  },
+   199→  {
+   200→    id: 'c5',
+   201→    title: 'Health & Hygiene Standards',
+   202→    description: 'Advanced compliance training covering workplace health regulations, cleaning protocols, waste management, and maintaining audit-ready standards.',
+   203→    category: 'Compliance',
+   204→    level: 'advanced',
+   205→    duration: '4 hours',
+   206→    instructor: 'Dr. Sarah Pieters',
+   207→    status: 'active',
+   208→    modules: [
+   209→      { id: 'm21', title: 'Workplace Health Regulations', duration: '30 min', order: 1 },
+   210→      { id: 'm22', title: 'Cleaning Protocols', duration: '35 min', order: 2 },
+   211→      { id: 'm23', title: 'Waste Management', duration: '25 min', order: 3 },
+   212→      { id: 'm24', title: 'Audit Preparation', duration: '30 min', order: 4 },
+   213→      { id: 'm25', title: 'Incident Reporting', duration: '20 min', order: 5 },
+   214→      { id: 'm26', title: 'COVID-19 Protocols', duration: '20 min', order: 6 },
+   215→      { id: 'm27', title: 'Practical Assessment', duration: '40 min', order: 7 },
+   216→    ],
+   217→    enrollments: [
+   218→      { id: 'e17', staffId: 's3', courseId: 'c5', status: 'in_progress', progress: 30, score: 0, enrolledAt: '2025-02-01' },
+   219→      { id: 'e18', staffId: 's8', courseId: 'c5', status: 'enrolled', progress: 0, score: 0, enrolledAt: '2025-02-14' },
+   220→    ],
+   221→  },
+   222→  {
+   223→    id: 'c6',
+   224→    title: 'Loss Prevention Strategies',
+   225→    description: 'Learn to identify and prevent retail theft, internal fraud, vendor fraud, and implement effective loss prevention measures.',
+   226→    category: 'Operations',
+   227→    level: 'advanced',
+   228→    duration: '3 hours',
+   229→    instructor: 'Mark Steyn',
+   230→    status: 'draft',
+   231→    modules: [
+   232→      { id: 'm28', title: 'Types of Retail Loss', duration: '25 min', order: 1 },
+   233→      { id: 'm29', title: 'Internal Theft Prevention', duration: '30 min', order: 2 },
+   234→      { id: 'm30', title: 'External Theft Prevention', duration: '30 min', order: 3 },
+   235→      { id: 'm31', title: 'Vendor Fraud Awareness', duration: '25 min', order: 4 },
+   236→      { id: 'm32', title: 'Technology Solutions', duration: '25 min', order: 5 },
+   237→    ],
+   238→    enrollments: [],
+   239→  },
+   240→]
+   241→
+   242→const categories = ['All', 'Operations', 'Compliance', 'Soft Skills']
+   243→const levels: CourseLevel[] = ['beginner', 'intermediate', 'advanced']
+   244→
+   245→const levelColors: Record<CourseLevel, string> = {
+   246→  beginner: 'bg-green-100 text-green-800',
+   247→  intermediate: 'bg-yellow-100 text-yellow-800',
+   248→  advanced: 'bg-red-100 text-red-800',
+   249→}
+   250→
+   251→const statusColors: Record<CourseStatus, string> = {
+   252→  active: 'bg-[#00897B]/10 text-[#00897B]',
+   253→  draft: 'bg-gray-100 text-gray-600',
+   254→  archived: 'bg-gray-100 text-gray-400',
+   255→}
+   256→
+   257→// --- Component ---
+   258→export function LearningManagementView() {
+   259→  const [loading, setLoading] = useState(true)
+   260→  const [courses, setCourses] = useState<Course[]>([])
+   261→  const [activeTab, setActiveTab] = useState('dashboard')
+   262→  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+   263→  const [searchQuery, setSearchQuery] = useState('')
+   264→  const [filterCategory, setFilterCategory] = useState('All')
+   265→  const [filterLevel, setFilterLevel] = useState('all')
+   266→  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+   267→  const [newCourse, setNewCourse] = useState({
+   268→    title: '',
+   269→    description: '',
+   270→    category: 'Operations',
+   271→    level: 'beginner' as CourseLevel,
+   272→    duration: '',
+   273→    instructor: '',
+   274→  })
+   275→
+   276→  // Simulate data fetching
+   277→  useEffect(() => {
+   278→    const timer = setTimeout(() => {
+   279→      setCourses(mockCourses)
+   280→      setLoading(false)
+   281→    }, 800)
+   282→    return () => clearTimeout(timer)
+   283→  }, [])
+   284→
+   285→  // Computed stats
+   286→  const totalCourses = courses.filter((c) => c.status === 'active').length
+   287→  const allEnrollments = courses.flatMap((c) => c.enrollments)
+   288→  const totalEnrolledStaff = new Set(allEnrollments.map((e) => e.staffId)).size
+   289→  const completedEnrollments = allEnrollments.filter((e) => e.status === 'completed')
+   290→  const completionRate = allEnrollments.length > 0
+   291→    ? Math.round((completedEnrollments.length / allEnrollments.length) * 100)
+   292→    : 0
+   293→  const avgScore = completedEnrollments.length > 0
+   294→    ? Math.round(completedEnrollments.reduce((sum, e) => sum + e.score, 0) / completedEnrollments.length)
+   295→    : 0
+   296→
+   297→  // Filtered courses
+   298→  const filteredCourses = courses.filter((c) => {
+   299→    const matchSearch = c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+   300→      c.description.toLowerCase().includes(searchQuery.toLowerCase())
+   301→    const matchCategory = filterCategory === 'All' || c.category === filterCategory
+   302→    const matchLevel = filterLevel === 'all' || c.level === filterLevel
+   303→    return matchSearch && matchCategory && matchLevel
+   304→  })
+   305→
+   306→  // Staff progress data
+   307→  const staffProgress = mockStaff.map((staff) => {
+   308→    const enrollments = allEnrollments.filter((e) => e.staffId === staff.id)
+   309→    const completed = enrollments.filter((e) => e.status === 'completed').length
+   310→    const inProgress = enrollments.filter((e) => e.status === 'in_progress').length
+   311→    const avgStaffScore = enrollments.filter((e) => e.score > 0).length > 0
+   312→      ? Math.round(enrollments.filter((e) => e.score > 0).reduce((s, e) => s + e.score, 0) / enrollments.filter((e) => e.score > 0).length)
+   313→      : 0
+   314→    return { ...staff, enrollments, completed, inProgress, avgScore: avgStaffScore }
+   315→  })
+   316→
+   317→  const handleCreateCourse = () => {
+   318→    const course: Course = {
+   319→      id: `c${Date.now()}`,
+   320→      ...newCourse,
+   321→      status: 'draft',
+   322→      modules: [],
+   323→      enrollments: [],
+   324→    }
+   325→    setCourses((prev) => [...prev, course])
+   326→    setCreateDialogOpen(false)
+   327→    setNewCourse({ title: '', description: '', category: 'Operations', level: 'beginner', duration: '', instructor: '' })
+   328→  }
+   329→
+   330→  const getStaffName = (id: string) => mockStaff.find((s) => s.id === id)?.name ?? 'Unknown'
+   331→
+   332→  if (loading) {
+   333→    return (
+   334→      <div className="flex items-center justify-center min-h-[400px]">
+   335→        <Loader2 className="h-8 w-8 animate-spin text-[#00897B]" />
+   336→        <span className="ml-3 text-gray-500">Loading Learning Academy...</span>
+   337→      </div>
+   338→    )
+   339→  }
+   340→
+   341→  return (
+   342→    <div className="space-y-6">
+   343→      {/* Header */}
+   344→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   345→        <div>
+   346→          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+   347→            <GraduationCap className="h-7 w-7 text-[#00897B]" />
+   348→            Learning Academy
+   349→          </h1>
+   350→          <p className="text-sm text-gray-500 mt-1">Train and upskill your staff with industry-specific courses</p>
+   351→        </div>
+   352→        <Button
+   353→          onClick={() => setCreateDialogOpen(true)}
+   354→          className="bg-[#00897B] hover:bg-[#00695C] text-white"
+   355→        >
+   356→          <Plus className="h-4 w-4 mr-2" />
+   357→          Create Course
+   358→        </Button>
+   359→      </div>
+   360→
+   361→      {/* Tabs */}
+   362→      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSelectedCourse(null) }}>
+   363→        <TabsList className="grid w-full grid-cols-4 max-w-md">
+   364→          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+   365→          <TabsTrigger value="courses">Courses</TabsTrigger>
+   366→          <TabsTrigger value="staff">Staff Progress</TabsTrigger>
+   367→          <TabsTrigger value="detail">Course Detail</TabsTrigger>
+   368→        </TabsList>
+   369→
+   370→        {/* DASHBOARD TAB */}
+   371→        <TabsContent value="dashboard" className="mt-6 space-y-6">
+   372→          {/* Stats Cards */}
+   373→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   374→            <Card className="bg-white rounded-xl shadow-sm">
+   375→              <CardContent className="p-4">
+   376→                <div className="flex items-center justify-between">
+   377→                  <div>
+   378→                    <p className="text-sm text-gray-500">Active Courses</p>
+   379→                    <p className="text-2xl font-bold text-gray-900">{totalCourses}</p>
+   380→                  </div>
+   381→                  <div className="h-10 w-10 rounded-lg bg-[#00897B]/10 flex items-center justify-center">
+   382→                    <BookOpen className="h-5 w-5 text-[#00897B]" />
+   383→                  </div>
+   384→                </div>
+   385→              </CardContent>
+   386→            </Card>
+   387→            <Card className="bg-white rounded-xl shadow-sm">
+   388→              <CardContent className="p-4">
+   389→                <div className="flex items-center justify-between">
+   390→                  <div>
+   391→                    <p className="text-sm text-gray-500">Enrolled Staff</p>
+   392→                    <p className="text-2xl font-bold text-gray-900">{totalEnrolledStaff}</p>
+   393→                  </div>
+   394→                  <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center">
+   395→                    <Users className="h-5 w-5 text-blue-600" />
+   396→                  </div>
+   397→                </div>
+   398→              </CardContent>
+   399→            </Card>
+   400→            <Card className="bg-white rounded-xl shadow-sm">
+   401→              <CardContent className="p-4">
+   402→                <div className="flex items-center justify-between">
+   403→                  <div>
+   404→                    <p className="text-sm text-gray-500">Completion Rate</p>
+   405→                    <p className="text-2xl font-bold text-gray-900">{completionRate}%</p>
+   406→                  </div>
+   407→                  <div className="h-10 w-10 rounded-lg bg-green-50 flex items-center justify-center">
+   408→                    <Target className="h-5 w-5 text-green-600" />
+   409→                  </div>
+   410→                </div>
+   411→              </CardContent>
+   412→            </Card>
+   413→            <Card className="bg-white rounded-xl shadow-sm">
+   414→              <CardContent className="p-4">
+   415→                <div className="flex items-center justify-between">
+   416→                  <div>
+   417→                    <p className="text-sm text-gray-500">Average Score</p>
+   418→                    <p className="text-2xl font-bold text-gray-900">{avgScore}%</p>
+   419→                  </div>
+   420→                  <div className="h-10 w-10 rounded-lg bg-yellow-50 flex items-center justify-center">
+   421→                    <Award className="h-5 w-5 text-yellow-600" />
+   422→                  </div>
+   423→                </div>
+   424→              </CardContent>
+   425→            </Card>
+   426→          </div>
+   427→
+   428→          {/* Recent Activity & Top Performers */}
+   429→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   430→            {/* Recent Completions */}
+   431→            <Card className="bg-white rounded-xl shadow-sm">
+   432→              <CardHeader className="pb-3">
+   433→                <CardTitle className="text-base font-semibold flex items-center gap-2">
+   434→                  <CheckCircle2 className="h-5 w-5 text-[#00897B]" />
+   435→                  Recent Completions
+   436→                </CardTitle>
+   437→              </CardHeader>
+   438→              <CardContent className="p-4 pt-0">
+   439→                <ScrollArea className="h-64">
+   440→                  <div className="space-y-3">
+   441→                    {completedEnrollments
+   442→                      .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))
+   443→                      .slice(0, 8)
+   444→                      .map((e) => (
+   445→                        <div key={e.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+   446→                          <div className="flex items-center gap-3">
+   447→                            <div className="h-8 w-8 rounded-full bg-[#00897B]/10 flex items-center justify-center text-xs font-medium text-[#00897B]">
+   448→                              {mockStaff.find((s) => s.id === e.staffId)?.avatar}
+   449→                            </div>
+   450→                            <div>
+   451→                              <p className="text-sm font-medium text-gray-900">{getStaffName(e.staffId)}</p>
+   452→                              <p className="text-xs text-gray-500">{courses.find((c) => c.id === e.courseId)?.title}</p>
+   453→                            </div>
+   454→                          </div>
+   455→                          <Badge className="bg-green-100 text-green-800 text-xs">{e.score}%</Badge>
+   456→                        </div>
+   457→                      ))}
+   458→                  </div>
+   459→                </ScrollArea>
+   460→              </CardContent>
+   461→            </Card>
+   462→
+   463→            {/* Top Performers */}
+   464→            <Card className="bg-white rounded-xl shadow-sm">
+   465→              <CardHeader className="pb-3">
+   466→                <CardTitle className="text-base font-semibold flex items-center gap-2">
+   467→                  <TrendingUp className="h-5 w-5 text-[#00897B]" />
+   468→                  Staff Leaderboard
+   469→                </CardTitle>
+   470→              </CardHeader>
+   471→              <CardContent className="p-4 pt-0">
+   472→                <ScrollArea className="h-64">
+   473→                  <div className="space-y-3">
+   474→                    {staffProgress
+   475→                      .filter((s) => s.enrollments.length > 0)
+   476→                      .sort((a, b) => b.avgScore - a.avgScore)
+   477→                      .slice(0, 6)
+   478→                      .map((staff, idx) => (
+   479→                        <div key={staff.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+   480→                          <div className="flex items-center gap-3">
+   481→                            <span className="text-sm font-bold text-gray-400 w-5">#{idx + 1}</span>
+   482→                            <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600">
+   483→                              {staff.avatar}
+   484→                            </div>
+   485→                            <div>
+   486→                              <p className="text-sm font-medium text-gray-900">{staff.name}</p>
+   487→                              <p className="text-xs text-gray-500">{staff.completed} completed / {staff.enrollments.length} enrolled</p>
+   488→                            </div>
+   489→                          </div>
+   490→                          <div className="flex items-center gap-1">
+   491→                            <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+   492→                            <span className="text-sm font-semibold text-gray-700">{staff.avgScore}%</span>
+   493→                          </div>
+   494→                        </div>
+   495→                      ))}
+   496→                  </div>
+   497→                </ScrollArea>
+   498→              </CardContent>
+   499→            </Card>
+   500→          </div>
+   501→        </TabsContent>
+   502→
+   503→        {/* COURSES TAB */}
+   504→        <TabsContent value="courses" className="mt-6 space-y-4">
+   505→          {/* Filters */}
+   506→          <div className="flex flex-col sm:flex-row gap-3">
+   507→            <div className="relative flex-1">
+   508→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+   509→              <Input
+   510→                placeholder="Search courses..."
+   511→                value={searchQuery}
+   512→                onChange={(e) => setSearchQuery(e.target.value)}
+   513→                className="pl-9"
+   514→              />
+   515→            </div>
+   516→            <Select value={filterCategory} onValueChange={setFilterCategory}>
+   517→              <SelectTrigger className="w-full sm:w-40">
+   518→                <SelectValue />
+   519→              </SelectTrigger>
+   520→              <SelectContent>
+   521→                {categories.map((cat) => (
+   522→                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+   523→                ))}
+   524→              </SelectContent>
+   525→            </Select>
+   526→            <Select value={filterLevel} onValueChange={setFilterLevel}>
+   527→              <SelectTrigger className="w-full sm:w-40">
+   528→                <SelectValue />
+   529→              </SelectTrigger>
+   530→              <SelectContent>
+   531→                <SelectItem value="all">All Levels</SelectItem>
+   532→                {levels.map((l) => (
+   533→                  <SelectItem key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</SelectItem>
+   534→                ))}
+   535→              </SelectContent>
+   536→            </Select>
+   537→          </div>
+   538→
+   539→          {/* Course Grid */}
+   540→          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   541→            {filteredCourses.map((course) => (
+   542→              <Card
+   543→                key={course.id}
+   544→                className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+   545→                onClick={() => { setSelectedCourse(course); setActiveTab('detail') }}
+   546→              >
+   547→                <CardContent className="p-4">
+   548→                  <div className="flex items-start justify-between mb-3">
+   549→                    <div className="flex-1">
+   550→                      <h3 className="font-semibold text-gray-900 text-sm leading-tight">{course.title}</h3>
+   551→                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{course.description}</p>
+   552→                    </div>
+   553→                    <div className="flex flex-col items-end gap-1 ml-3">
+   554→                      <Badge className={`text-xs ${statusColors[course.status]}`}>{course.status}</Badge>
+   555→                      <Badge className={`text-xs ${levelColors[course.level]}`}>{course.level}</Badge>
+   556→                    </div>
+   557→                  </div>
+   558→                  <Separator className="my-3" />
+   559→                  <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+   560→                    <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" />{course.category}</span>
+   561→                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{course.duration}</span>
+   562→                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{course.enrollments.length}</span>
+   563→                  </div>
+   564→                  <div className="mt-3 flex items-center gap-2">
+   565→                    <div className="flex -space-x-2">
+   566→                      {course.enrollments.slice(0, 3).map((e) => {
+   567→                        const staff = mockStaff.find((s) => s.id === e.staffId)
+   568→                        return (
+   569→                          <div
+   570→                            key={e.id}
+   571→                            className="h-6 w-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-[9px] font-medium text-gray-600"
+   572→                            title={staff?.name}
+   573→                          >
+   574→                            {staff?.avatar}
+   575→                          </div>
+   576→                        )
+   577→                      })}
+   578→                    </div>
+   579→                    {course.enrollments.length > 3 && (
+   580→                      <span className="text-xs text-gray-400">+{course.enrollments.length - 3} more</span>
+   581→                    )}
+   582→                  </div>
+   583→                </CardContent>
+   584→              </Card>
+   585→            ))}
+   586→          </div>
+   587→          {filteredCourses.length === 0 && (
+   588→            <div className="text-center py-12 text-gray-400">
+   589→              <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+   590→              <p>No courses match your filters</p>
+   591→            </div>
+   592→          )}
+   593→        </TabsContent>
+   594→
+   595→        {/* STAFF PROGRESS TAB */}
+   596→        <TabsContent value="staff" className="mt-6">
+   597→          <Card className="bg-white rounded-xl shadow-sm">
+   598→            <CardHeader>
+   599→              <CardTitle className="text-base font-semibold flex items-center gap-2">
+   600→                <UserCheck className="h-5 w-5 text-[#00897B]" />
+   601→                Staff Training Progress
+   602→              </CardTitle>
+   603→            </CardHeader>
+   604→            <CardContent className="p-4 pt-0">
+   605→              <ScrollArea className="h-[500px]">
+   606→                <div className="space-y-4">
+   607→                  {staffProgress.map((staff) => (
+   608→                    <div key={staff.id} className="border border-gray-100 rounded-lg p-4">
+   609→                      <div className="flex items-center justify-between mb-3">
+   610→                        <div className="flex items-center gap-3">
+   611→                          <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-600">
+   612→                            {staff.avatar}
+   613→                          </div>
+   614→                          <div>
+   615→                            <p className="text-sm font-semibold text-gray-900">{staff.name}</p>
+   616→                            <p className="text-xs text-gray-500">{staff.role}</p>
+   617→                          </div>
+   618→                        </div>
+   619→                        <div className="flex items-center gap-3 text-right">
+   620→                          <div>
+   621→                            <p className="text-xs text-gray-400">Avg Score</p>
+   622→                            <p className="text-sm font-bold text-gray-700">{staff.avgScore}%</p>
+   623→                          </div>
+   624→                          <div>
+   625→                            <p className="text-xs text-gray-400">Progress</p>
+   626→                            <p className="text-sm font-bold text-[#00897B]">
+   627→                              {staff.completed}/{staff.enrollments.length}
+   628→                            </p>
+   629→                          </div>
+   630→                        </div>
+   631→                      </div>
+   632→                      {staff.enrollments.length > 0 && (
+   633→                        <div className="space-y-2">
+   634→                          {staff.enrollments.map((enrollment) => {
+   635→                            const course = courses.find((c) => c.id === enrollment.courseId)
+   636→                            if (!course) return null
+   637→                            return (
+   638→                              <div key={enrollment.id} className="flex items-center gap-3 bg-gray-50 rounded-md px-3 py-2">
+   639→                                <BookOpen className="h-4 w-4 text-gray-400 shrink-0" />
+   640→                                <div className="flex-1 min-w-0">
+   641→                                  <p className="text-xs font-medium text-gray-700 truncate">{course.title}</p>
+   642→                                  <Progress value={enrollment.progress} className="h-1.5 mt-1" />
+   643→                                </div>
+   644→                                <div className="flex items-center gap-2 shrink-0">
+   645→                                  {enrollment.status === 'completed' ? (
+   646→                                    <Badge className="bg-green-100 text-green-800 text-[10px]">
+   647→                                      {enrollment.score}%
+   648→                                    </Badge>
+   649→                                  ) : enrollment.status === 'in_progress' ? (
+   650→                                    <Badge className="bg-yellow-100 text-yellow-800 text-[10px]">
+   651→                                      {enrollment.progress}%
+   652→                                    </Badge>
+   653→                                  ) : (
+   654→                                    <Badge className="bg-gray-100 text-gray-600 text-[10px]">Enrolled</Badge>
+   655→                                  )}
+   656→                                </div>
+   657→                              </div>
+   658→                            )
+   659→                          })}
+   660→                        </div>
+   661→                      )}
+   662→                      {staff.enrollments.length === 0 && (
+   663→                        <p className="text-xs text-gray-400 italic">No enrollments yet</p>
+   664→                      )}
+   665→                    </div>
+   666→                  ))}
+   667→                </div>
+   668→              </ScrollArea>
+   669→            </CardContent>
+   670→          </Card>
+   671→        </TabsContent>
+   672→
+   673→        {/* COURSE DETAIL TAB */}
+   674→        <TabsContent value="detail" className="mt-6">
+   675→          {selectedCourse ? (
+   676→            <div className="space-y-4">
+   677→              {/* Course Header */}
+   678→              <div className="flex items-center gap-3">
+   679→                <Button variant="ghost" size="sm" onClick={() => setSelectedCourse(null)}>
+   680→                  <ArrowLeft className="h-4 w-4 mr-1" />
+   681→                  Back
+   682→                </Button>
+   683→              </div>
+   684→              <Card className="bg-white rounded-xl shadow-sm">
+   685→                <CardContent className="p-6">
+   686→                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+   687→                    <div className="flex-1">
+   688→                      <div className="flex items-center gap-2 mb-2">
+   689→                        <h2 className="text-lg font-bold text-gray-900">{selectedCourse.title}</h2>
+   690→                        <Badge className={statusColors[selectedCourse.status]}>{selectedCourse.status}</Badge>
+   691→                      </div>
+   692→                      <p className="text-sm text-gray-600 mb-3">{selectedCourse.description}</p>
+   693→                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+   694→                        <span className="flex items-center gap-1"><FileText className="h-4 w-4" />{selectedCourse.category}</span>
+   695→                        <Badge className={levelColors[selectedCourse.level]}>{selectedCourse.level}</Badge>
+   696→                        <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{selectedCourse.duration}</span>
+   697→                        <span className="flex items-center gap-1"><Users className="h-4 w-4" />{selectedCourse.enrollments.length} enrolled</span>
+   698→                      </div>
+   699→                    </div>
+   700→                    <div className="text-right">
+   701→                      <p className="text-xs text-gray-400">Instructor</p>
+   702→                      <p className="text-sm font-semibold text-gray-700">{selectedCourse.instructor}</p>
+   703→                    </div>
+   704→                  </div>
+   705→                </CardContent>
+   706→              </Card>
+   707→
+   708→              {/* Modules & Enrollments side by side */}
+   709→              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   710→                {/* Modules */}
+   711→                <Card className="bg-white rounded-xl shadow-sm">
+   712→                  <CardHeader>
+   713→                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+   714→                      <PlayCircle className="h-5 w-5 text-[#00897B]" />
+   715→                      Course Modules ({selectedCourse.modules.length})
+   716→                    </CardTitle>
+   717→                  </CardHeader>
+   718→                  <CardContent className="p-4 pt-0">
+   719→                    {selectedCourse.modules.length > 0 ? (
+   720→                      <div className="space-y-2">
+   721→                        {selectedCourse.modules.map((mod) => (
+   722→                          <div key={mod.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+   723→                            <div className="h-8 w-8 rounded-full bg-[#00897B]/10 flex items-center justify-center text-xs font-bold text-[#00897B]">
+   724→                              {mod.order}
+   725→                            </div>
+   726→                            <div className="flex-1">
+   727→                              <p className="text-sm font-medium text-gray-800">{mod.title}</p>
+   728→                            </div>
+   729→                            <span className="text-xs text-gray-400 flex items-center gap-1">
+   730→                              <Clock className="h-3 w-3" />{mod.duration}
+   731→                            </span>
+   732→                          </div>
+   733→                        ))}
+   734→                      </div>
+   735→                    ) : (
+   736→                      <p className="text-sm text-gray-400 italic">No modules added yet</p>
+   737→                    )}
+   738→                  </CardContent>
+   739→                </Card>
+   740→
+   741→                {/* Enrolled Staff */}
+   742→                <Card className="bg-white rounded-xl shadow-sm">
+   743→                  <CardHeader>
+   744→                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+   745→                      <Users className="h-5 w-5 text-[#00897B]" />
+   746→                      Enrolled Staff
+   747→                    </CardTitle>
+   748→                  </CardHeader>
+   749→                  <CardContent className="p-4 pt-0">
+   750→                    {selectedCourse.enrollments.length > 0 ? (
+   751→                      <ScrollArea className="h-64">
+   752→                        <div className="space-y-2">
+   753→                          {selectedCourse.enrollments.map((e) => {
+   754→                            const staff = mockStaff.find((s) => s.id === e.staffId)
+   755→                            return (
+   756→                              <div key={e.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+   757→                                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+   758→                                  {staff?.avatar}
+   759→                                </div>
+   760→                                <div className="flex-1 min-w-0">
+   761→                                  <p className="text-sm font-medium text-gray-800">{staff?.name}</p>
+   762→                                  <p className="text-xs text-gray-500">{staff?.role}</p>
+   763→                                </div>
+   764→                                <div className="text-right shrink-0">
+   765→                                  <Badge
+   766→                                    className={`text-[10px] ${
+   767→                                      e.status === 'completed' ? 'bg-green-100 text-green-800'
+   768→                                        : e.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800'
+   769→                                          : 'bg-gray-100 text-gray-600'
+   770→                                    }`}
+   771→                                  >
+   772→                                    {e.status === 'in_progress' ? `${e.progress}%` : e.status}
+   773→                                  </Badge>
+   774→                                  {e.score > 0 && <p className="text-xs font-semibold text-gray-600 mt-1">{e.score}%</p>}
+   775→                                </div>
+   776→                              </div>
+   777→                            )
+   778→                          })}
+   779→                        </div>
+   780→                      </ScrollArea>
+   781→                    ) : (
+   782→                      <p className="text-sm text-gray-400 italic">No staff enrolled yet</p>
+   783→                    )}
+   784→                  </CardContent>
+   785→                </Card>
+   786→              </div>
+   787→
+   788→              {/* Course Stats */}
+   789→              {selectedCourse.enrollments.length > 0 && (
+   790→                <Card className="bg-white rounded-xl shadow-sm">
+   791→                  <CardHeader>
+   792→                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+   793→                      <BarChart3 className="h-5 w-5 text-[#00897B]" />
+   794→                      Course Statistics
+   795→                    </CardTitle>
+   796→                  </CardHeader>
+   797→                  <CardContent className="p-4 pt-0">
+   798→                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+   799→                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+   800→                        <p className="text-2xl font-bold text-gray-900">{selectedCourse.enrollments.length}</p>
+   801→                        <p className="text-xs text-gray-500">Total Enrolled</p>
+   802→                      </div>
+   803→                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+   804→                        <p className="text-2xl font-bold text-green-600">
+   805→                          {selectedCourse.enrollments.filter((e) => e.status === 'completed').length}
+   806→                        </p>
+   807→                        <p className="text-xs text-gray-500">Completed</p>
+   808→                      </div>
+   809→                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+   810→                        <p className="text-2xl font-bold text-[#00897B]">
+   811→                          {selectedCourse.enrollments.filter((e) => e.status === 'in_progress').length}
+   812→                        </p>
+   813→                        <p className="text-xs text-gray-500">In Progress</p>
+   814→                      </div>
+   815→                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+   816→                        <p className="text-2xl font-bold text-yellow-600">
+   817→                          {completedEnrollments.filter((e) => e.courseId === selectedCourse.id).length > 0
+   818→                            ? Math.round(
+   819→                                completedEnrollments
+   820→                                  .filter((e) => e.courseId === selectedCourse.id)
+   821→                                  .reduce((s, e) => s + e.score, 0) /
+   822→                                  completedEnrollments.filter((e) => e.courseId === selectedCourse.id).length
+   823→                              )
+   824→                            : 0}%
+   825→                        </p>
+   826→                        <p className="text-xs text-gray-500">Avg Score</p>
+   827→                      </div>
+   828→                    </div>
+   829→                  </CardContent>
+   830→                </Card>
+   831→              )}
+   832→            </div>
+   833→          ) : (
+   834→            <div className="text-center py-16">
+   835→              <BookOpen className="h-16 w-16 mx-auto text-gray-200 mb-4" />
+   836→              <p className="text-gray-400 text-lg">Select a course from the Courses tab to view details</p>
+   837→            </div>
+   838→          )}
+   839→        </TabsContent>
+   840→      </Tabs>
+   841→
+   842→      {/* Create Course Dialog */}
+   843→      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+   844→        <DialogContent className="sm:max-w-lg">
+   845→          <DialogHeader>
+   846→            <DialogTitle>Create New Course</DialogTitle>
+   847→            <DialogDescription>Add a new training course for your staff</DialogDescription>
+   848→          </DialogHeader>
+   849→          <div className="space-y-4 py-2">
+   850→            <div className="space-y-2">
+   851→              <Label htmlFor="course-title">Course Title</Label>
+   852→              <Input
+   853→                id="course-title"
+   854→                placeholder="e.g. POS System Training"
+   855→                value={newCourse.title}
+   856→                onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
+   857→              />
+   858→            </div>
+   859→            <div className="space-y-2">
+   860→              <Label htmlFor="course-desc">Description</Label>
+   861→              <Textarea
+   862→                id="course-desc"
+   863→                placeholder="Describe the course content and objectives"
+   864→                rows={3}
+   865→                value={newCourse.description}
+   866→                onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+   867→              />
+   868→            </div>
+   869→            <div className="grid grid-cols-2 gap-4">
+   870→              <div className="space-y-2">
+   871→                <Label>Category</Label>
+   872→                <Select
+   873→                  value={newCourse.category}
+   874→                  onValueChange={(v) => setNewCourse({ ...newCourse, category: v })}
+   875→                >
+   876→                  <SelectTrigger><SelectValue /></SelectTrigger>
+   877→                  <SelectContent>
+   878→                    <SelectItem value="Operations">Operations</SelectItem>
+   879→                    <SelectItem value="Compliance">Compliance</SelectItem>
+   880→                    <SelectItem value="Soft Skills">Soft Skills</SelectItem>
+   881→                  </SelectContent>
+   882→                </Select>
+   883→              </div>
+   884→              <div className="space-y-2">
+   885→                <Label>Level</Label>
+   886→                <Select
+   887→                  value={newCourse.level}
+   888→                  onValueChange={(v) => setNewCourse({ ...newCourse, level: v as CourseLevel })}
+   889→                >
+   890→                  <SelectTrigger><SelectValue /></SelectTrigger>
+   891→                  <SelectContent>
+   892→                    <SelectItem value="beginner">Beginner</SelectItem>
+   893→                    <SelectItem value="intermediate">Intermediate</SelectItem>
+   894→                    <SelectItem value="advanced">Advanced</SelectItem>
+   895→                  </SelectContent>
+   896→                </Select>
+   897→              </div>
+   898→            </div>
+   899→            <div className="grid grid-cols-2 gap-4">
+   900→              <div className="space-y-2">
+   901→                <Label htmlFor="course-duration">Duration</Label>
+   902→                <Input
+   903→                  id="course-duration"
+   904→                  placeholder="e.g. 2 hours"
+   905→                  value={newCourse.duration}
+   906→                  onChange={(e) => setNewCourse({ ...newCourse, duration: e.target.value })}
+   907→                />
+   908→              </div>
+   909→              <div className="space-y-2">
+   910→                <Label htmlFor="course-instructor">Instructor</Label>
+   911→                <Input
+   912→                  id="course-instructor"
+   913→                  placeholder="Instructor name"
+   914→                  value={newCourse.instructor}
+   915→                  onChange={(e) => setNewCourse({ ...newCourse, instructor: e.target.value })}
+   916→                />
+   917→              </div>
+   918→            </div>
+   919→          </div>
+   920→          <DialogFooter>
+   921→            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+   922→            <Button
+   923→              className="bg-[#00897B] hover:bg-[#00695C] text-white"
+   924→              onClick={handleCreateCourse}
+   925→              disabled={!newCourse.title.trim()}
+   926→            >
+   927→              Create Course
+   928→            </Button>
+   929→          </DialogFooter>
+   930→        </DialogContent>
+   931→      </Dialog>
+   932→    </div>
+   933→  )
+   934→}
+   935→

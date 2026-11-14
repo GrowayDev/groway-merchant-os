@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { db } from '@/lib/db'
 import { getUserId, ok, error } from '../_lib/helpers'
@@ -43,18 +43,25 @@ export async function GET(request: NextRequest) {
     const loyalty = await db.consumerLoyalty.findUnique({ where: { userId } })
 
     // Self-heal: create a zero-points bronze account if missing
-    const effective = loyalty ?? (await db.consumerLoyalty.create({
-      data: {
-        id: `loy-${randomBytes(8).toString('hex')}`,
-        userId,
-        tier: 'bronze',
-        points: 0,
-        totalEarned: 0,
-        totalRedeemed: 0,
-        tierProgress: 0,
-        updatedAt: new Date(),
-      },
-    }))
+    let effective = loyalty
+    if (!effective) {
+      effective = await db.consumerLoyalty.create({
+        data: {
+          id: `loy-${randomBytes(8).toString('hex')}`,
+          userId,
+          tier: 'bronze',
+          points: 0,
+          totalEarned: 0,
+          totalRedeemed: 0,
+          tierProgress: 0,
+          tierAchievedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      }).catch(() => null as any)
+    }
+    if (!effective) {
+      return NextResponse.json({ error: 'Failed to load loyalty data' }, { status: 500 })
+    }
 
     const currentPoints = effective.points
     const tier = getTierFromPoints(currentPoints)

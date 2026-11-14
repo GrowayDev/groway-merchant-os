@@ -1,0 +1,683 @@
+   563→  const processPayment = useCallback(async (split: SplitPortion, method: 'cash' | 'card' | 'qr' | 'wallet' | 'mobile') => {
+   564→    if (!staffId) {
+   565→      toast.error('Staff ID not found. Please log in again.')
+   566→      return
+   567→    }
+   568→    
+   569→    if (!propOrderId && !order?.id) {
+   570→      toast.error('Order ID not found')
+   571→      return
+   572→    }
+   573→    
+   574→    setProcessingPayment(true)
+   575→    
+   576→    try {
+   577→      const paymentData: any = {
+   578→        orderId: propOrderId || order?.id,
+   579→        amount: split.subtotal,
+   580→        method: method,
+   581→        tipAmount: split.tip,
+   582→        processedBy: staffId,
+   583→        pin: staffPin || '0000', // Default PIN for demo
+   584→        splitIndex: splits.indexOf(split),
+   585→        notes: `Split payment for ${split.name}`,
+   586→      }
+   587→      
+   588→      if (method === 'cash') {
+   589→        paymentData.cashTendered = cashTendered || split.total
+   590→        paymentData.changeGiven = Math.max(0, (cashTendered || split.total) - split.total)
+   591→      }
+   592→      
+   593→      const response = await fetch('/merchant-os/api/pos/payments', {
+   594→        method: 'POST',
+   595→        headers: { 'Content-Type': 'application/json' },
+   596→        body: JSON.stringify(paymentData)
+   597→      })
+   598→      
+   599→      const data = await response.json()
+   600→      
+   601→      if (data.success) {
+   602→        // Update split as paid
+   603→        setSplits(prev => prev.map(s => 
+   604→          s.id === split.id ? { 
+   605→            ...s, 
+   606→            paid: true, 
+   607→            paymentMethod: method, 
+   608→            paidAt: new Date(),
+   609→            paymentRef: data.data.id 
+   610→          } : s
+   611→        ))
+   612→        
+   613→        setPaymentDialogOpen(false)
+   614→        setSelectedSplitForPayment(null)
+   615→        setCashTendered(0)
+   616→        setStaffPin('')
+   617→        
+   618→        toast.success(`Payment of R${split.total.toFixed(2)} received via ${method}`)
+   619→        
+   620→        // Check if all splits are paid
+   621→        const updatedSplits = splits.map(s => 
+   622→          s.id === split.id ? { ...s, paid: true } : s
+   623→        )
+   624→        
+   625→        if (updatedSplits.every(s => s.paid)) {
+   626→          toast.success('All payments complete!')
+   627→          // Refresh order to get updated status
+   628→          if (propOrderId) {
+   629→            const orderResponse = await fetch(`/merchant-os/api/pos/orders/${propOrderId}`)
+   630→            const orderData = await orderResponse.json()
+   631→            if (orderData.success) {
+   632→              setOrder(orderData.data)
+   633→            }
+   634→          }
+   635→        }
+   636→      } else {
+   637→        toast.error(data.error || 'Payment failed')
+   638→      }
+   639→    } catch (error) {
+   640→      console.error('Payment error:', error)
+   641→      toast.error('Failed to process payment')
+   642→    } finally {
+   643→      setProcessingPayment(false)
+   644→    }
+   645→  }, [staffId, propOrderId, order, staffPin, splits, cashTendered])
+   646→
+   647→  // Reset splits
+   648→  const resetSplits = useCallback(() => {
+   649→    // Check if any splits are paid
+   650→    const paidCount = splits.filter(s => s.paid).length
+   651→    if (paidCount > 0) {
+   652→      toast.error(`Cannot reset: ${paidCount} splits already paid`)
+   653→      return
+   654→    }
+   655→    
+   656→    setSplits([
+   657→      { id: 'split-1', name: 'Person 1', items: [], subtotal: 0, tip: 0, tipPercent: 0, total: 0, paid: false }
+   658→    ])
+   659→    setActiveSplit('split-1')
+   660→    setPercentageInputs({})
+   661→    setCurrentPage(1)
+   662→    setSearchQuery('')
+   663→    toast.success('Splits reset')
+   664→  }, [splits])
+   665→
+   666→  const activeSplitData = splits.find(s => s.id === activeSplit)
+   667→
+   668→  // Loading state
+   669→  if (isLoading) {
+   670→    return (
+   671→      <div className="h-full flex items-center justify-center bg-[#FAFAFA]">
+   672→        <div className="text-center">
+   673→          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#00897B]" />
+   674→          <p className="text-[#757575]">Loading order...</p>
+   675→        </div>
+   676→      </div>
+   677→    )
+   678→  }
+   679→
+   680→  // Error state
+   681→  if (fetchError && !externalItems?.length) {
+   682→    return (
+   683→      <div className="h-full flex items-center justify-center bg-[#FAFAFA]">
+   684→        <div className="text-center">
+   685→          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+   686→          <p className="text-[#1A1A1A] font-medium mb-2">Failed to load order</p>
+   687→          <p className="text-[#757575] text-sm mb-4">{fetchError}</p>
+   688→          <Button onClick={onCancel || onBack} variant="outline">Go Back</Button>
+   689→        </div>
+   690→      </div>
+   691→    )
+   692→  }
+   693→
+   694→  // Empty state
+   695→  if (items.length === 0) {
+   696→    return (
+   697→      <div className="h-full flex items-center justify-center bg-[#FAFAFA]">
+   698→        <div className="text-center">
+   699→          <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+   700→          <p className="text-[#1A1A1A] font-medium mb-2">No items to split</p>
+   701→          <p className="text-[#757575] text-sm mb-4">Add items to the order first</p>
+   702→          <Button onClick={onCancel || onBack} variant="outline">Go Back</Button>
+   703→        </div>
+   704→      </div>
+   705→    )
+   706→  }
+   707→
+   708→  return (
+   709→    <div className="h-full flex flex-col bg-[#FAFAFA]">
+   710→      {/* Header */}
+   711→      <div className="bg-white border-b border-gray-200 p-4">
+   712→        <div className="flex items-center justify-between mb-4">
+   713→          <div>
+   714→            <h1 className="text-xl font-bold text-[#1A1A1A] flex items-center gap-2">
+   715→              <Split className="h-5 w-5 text-[#00897B]" />
+   716→              Bill Splitting
+   717→            </h1>
+   718→            <p className="text-sm text-[#757575]">
+   719→              Table {tableNumber} · {orderId} · {items.length} items
+   720→              {splits.length > SPLITS_PER_PAGE && ` · ${splits.length} splits`}
+   721→            </p>
+   722→          </div>
+   723→          
+   724→          <div className="flex items-center gap-2">
+   725→            <Button variant="outline" size="sm" onClick={resetSplits} disabled={splits.some(s => s.paid)}>
+   726→              <RefreshCw className="h-4 w-4 mr-1" />Reset
+   727→            </Button>
+   728→            
+   729→            <DropdownMenu>
+   730→              <DropdownMenuTrigger asChild>
+   731→                <Button variant="outline" size="sm">
+   732→                  <MoreVertical className="h-4 w-4" />
+   733→                </Button>
+   734→              </DropdownMenuTrigger>
+   735→              <DropdownMenuContent align="end">
+   736→                <DropdownMenuItem onClick={autoAssignItems}>
+   737→                  <ClipboardList className="h-4 w-4 mr-2" />
+   738→                  Auto-assign by category
+   739→                </DropdownMenuItem>
+   740→                <DropdownMenuItem onClick={bulkAssignUnassigned} disabled={unassignedItems.length === 0}>
+   741→                  <Users className="h-4 w-4 mr-2" />
+   742→                  Distribute unassigned ({unassignedItems.length})
+   743→                </DropdownMenuItem>
+   744→                <DropdownMenuSeparator />
+   745→                <DropdownMenuItem onClick={() => addMultipleSplits(5)} disabled={splits.length + 5 > MAX_SPLITS}>
+   746→                  <UserPlus className="h-4 w-4 mr-2" />
+   747→                  Add 5 splits
+   748→                </DropdownMenuItem>
+   749→                <DropdownMenuItem onClick={() => addMultipleSplits(10)} disabled={splits.length + 10 > MAX_SPLITS}>
+   750→                  <UserPlus className="h-4 w-4 mr-2" />
+   751→                  Add 10 splits
+   752→                </DropdownMenuItem>
+   753→              </DropdownMenuContent>
+   754→            </DropdownMenu>
+   755→            
+   756→            {allPaid ? (
+   757→              <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={onComplete}>
+   758→                <CheckCircle2 className="h-4 w-4 mr-1" />Complete
+   759→              </Button>
+   760→            ) : (
+   761→              <Button variant="outline" size="sm" onClick={onCancel || onBack}>
+   762→                Cancel
+   763→              </Button>
+   764→            )}
+   765→          </div>
+   766→        </div>
+   767→
+   768→        {/* Summary Stats */}
+   769→        <div className="grid grid-cols-5 gap-3">
+   770→          <div className="bg-gray-50 rounded-lg p-2 text-center">
+   771→            <p className="text-xl font-bold text-[#1A1A1A]">R{subtotal.toFixed(2)}</p>
+   772→            <p className="text-[10px] text-[#757575]">Subtotal</p>
+   773→          </div>
+   774→          <div className="bg-gray-50 rounded-lg p-2 text-center">
+   775→            <p className="text-xl font-bold text-[#1A1A1A]">R{vat.toFixed(2)}</p>
+   776→            <p className="text-[10px] text-[#757575]">VAT (15%)</p>
+   777→          </div>
+   778→          <div className="bg-[#E0F2F1] rounded-lg p-2 text-center">
+   779→            <p className="text-xl font-bold text-[#00897B]">R{total.toFixed(2)}</p>
+   780→            <p className="text-[10px] text-[#757575]">Total</p>
+   781→          </div>
+   782→          <div className="bg-amber-50 rounded-lg p-2 text-center">
+   783→            <p className="text-xl font-bold text-amber-600">R{unpaidTotal.toFixed(2)}</p>
+   784→            <p className="text-[10px] text-[#757575]">Unpaid</p>
+   785→          </div>
+   786→          <div className={`rounded-lg p-2 text-center ${allPaid ? 'bg-green-50' : partialPayment ? 'bg-amber-50' : 'bg-gray-50'}`}>
+   787→            <p className={`text-xl font-bold ${allPaid ? 'text-green-600' : partialPayment ? 'text-amber-600' : 'text-[#1A1A1A]'}`}>
+   788→              {paidSplits}/{splits.length}
+   789→            </p>
+   790→            <p className="text-[10px] text-[#757575]">Paid</p>
+   791→          </div>
+   792→        </div>
+   793→        
+   794→        {/* Progress bar for many splits */}
+   795→        {splits.length > SPLITS_PER_PAGE && (
+   796→          <div className="mt-3">
+   797→            <div className="flex items-center justify-between text-xs text-[#757575] mb-1">
+   798→              <span>Payment Progress</span>
+   799→              <span>{paidSplits} of {splits.length} paid</span>
+   800→            </div>
+   801→            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+   802→              <div 
+   803→                className="h-full bg-green-500 transition-all duration-300"
+   804→                style={{ width: `${(paidSplits / splits.length) * 100}%` }}
+   805→              />
+   806→            </div>
+   807→          </div>
+   808→        )}
+   809→      </div>
+   810→
+   811→      {/* Main Content */}
+   812→      <div className="flex-1 flex min-h-0">
+   813→        {/* Left Panel - Splits */}
+   814→        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+   815→          <div className="p-3 border-b border-gray-200">
+   816→            <div className="flex items-center justify-between mb-2">
+   817→              <p className="text-xs font-medium text-[#757575]">SPLITS ({splits.length}/{MAX_SPLITS})</p>
+   818→              <div className="flex items-center gap-1">
+   819→                <Button 
+   820→                  variant="ghost" 
+   821→                  size="sm" 
+   822→                  className="h-7 w-7 p-0"
+   823→                  onClick={() => setViewMode(viewMode === 'cards' ? 'list' : 'cards')}
+   824→                >
+   825→                  {viewMode === 'cards' ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+   826→                </Button>
+   827→                <Button variant="ghost" size="sm" className="h-7" onClick={addSplit} disabled={splits.length >= MAX_SPLITS}>
+   828→                  <Plus className="h-4 w-4" />
+   829→                </Button>
+   830→              </div>
+   831→            </div>
+   832→            
+   833→            {/* Search */}
+   834→            <div className="relative">
+   835→              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-[#757575]" />
+   836→              <Input
+   837→                placeholder="Search splits..."
+   838→                value={searchQuery}
+   839→                onChange={(e) => {
+   840→                  setSearchQuery(e.target.value)
+   841→                  setCurrentPage(1) // Reset to first page on search
+   842→                }}
+   843→                className="pl-8 h-8 text-sm"
+   844→              />
+   845→            </div>
+   846→          </div>
+   847→
+   848→          <ScrollArea className="flex-1">
+   849→            <div className="p-3 space-y-2">
+   850→              {paginatedSplits.map((split) => (
+   851→                <Card 
+   852→                  key={split.id}
+   853→                  className={`cursor-pointer transition-all ${
+   854→                    activeSplit === split.id ? 'border-[#00897B] border-2' : 'border-gray-200'
+   855→                  } ${split.paid ? 'bg-green-50' : ''}`}
+   856→                  onClick={() => setActiveSplit(split.id)}
+   857→                >
+   858→                  <CardContent className="p-3">
+   859→                    <div className="flex items-center justify-between mb-2">
+   860→                      <Input
+   861→                        value={split.name}
+   862→                        onChange={(e) => renameSplit(split.id, e.target.value)}
+   863→                        className="h-7 text-sm font-medium border-none p-0 focus-visible:ring-0 bg-transparent"
+   864→                        disabled={split.paid}
+   865→                      />
+   866→                      <div className="flex items-center gap-1">
+   867→                        {split.paid && (
+   868→                          <Badge className="bg-green-600 text-white text-[10px]">
+   869→                            <CheckCircle2 className="h-3 w-3 mr-1" />Paid
+   870→                          </Badge>
+   871→                        )}
+   872→                        {!split.paid && splits.length > 1 && (
+   873→                          <Button 
+   874→                            variant="ghost" 
+   875→                            size="icon" 
+   876→                            className="h-6 w-6 text-red-400 hover:text-red-600"
+   877→                            onClick={(e) => { e.stopPropagation(); removeSplit(split.id) }}
+   878→                          >
+   879→                            <Trash2 className="h-3 w-3" />
+   880→                          </Button>
+   881→                        )}
+   882→                      </div>
+   883→                    </div>
+   884→                    
+   885→                    <div className="text-sm text-[#757575] mb-2">
+   886→                      {split.items.length} items
+   887→                      {split.tip > 0 && <span className="text-green-600 ml-2">+R{split.tip.toFixed(2)} tip</span>}
+   888→                    </div>
+   889→                    
+   890→                    <div className="flex justify-between items-center">
+   891→                      <p className="text-lg font-bold">R{split.total.toFixed(2)}</p>
+   892→                      
+   893→                      {!split.paid && (
+   894→                        <Button 
+   895→                          size="sm" 
+   896→                          className="bg-[#00897B] hover:bg-[#00695C]"
+   897→                          onClick={(e) => { 
+   898→                            e.stopPropagation()
+   899→                            setSelectedSplitForPayment(split)
+   900→                            setPaymentDialogOpen(true)
+   901→                          }}
+   902→                        >
+   903→                          Pay
+   904→                        </Button>
+   905→                      )}
+   906→                    </div>
+   907→                  </CardContent>
+   908→                </Card>
+   909→              ))}
+   910→            </div>
+   911→          </ScrollArea>
+   912→
+   913→          {/* Pagination */}
+   914→          {totalPages > 1 && (
+   915→            <div className="p-3 border-t border-gray-200 flex items-center justify-between">
+   916→              <Button 
+   917→                variant="outline" 
+   918→                size="sm" 
+   919→                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+   920→                disabled={currentPage === 1}
+   921→              >
+   922→                <ChevronLeft className="h-4 w-4" />
+   923→              </Button>
+   924→              <span className="text-sm text-[#757575]">
+   925→                Page {currentPage} of {totalPages}
+   926→              </span>
+   927→              <Button 
+   928→                variant="outline" 
+   929→                size="sm" 
+   930→                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+   931→                disabled={currentPage === totalPages}
+   932→              >
+   933→                <ChevronRight className="h-4 w-4" />
+   934→              </Button>
+   935→            </div>
+   936→          )}
+   937→
+   938→          {/* Quick Split Options */}
+   939→          <div className="p-3 border-t border-gray-200">
+   940→            <p className="text-xs font-medium text-[#757575] mb-2">QUICK SPLIT</p>
+   941→            <div className="flex gap-2 mb-2">
+   942→              <Button 
+   943→                variant={splitMode === 'equal' ? 'default' : 'outline'} 
+   944→                size="sm" 
+   945→                className="flex-1"
+   946→                onClick={() => setSplitMode('equal')}
+   947→              >
+   948→                <Users className="h-4 w-4 mr-1" />Equal
+   949→              </Button>
+   950→              <Button 
+   951→                variant={splitMode === 'percentage' ? 'default' : 'outline'} 
+   952→                size="sm" 
+   953→                className="flex-1"
+   954→                onClick={() => setSplitMode('percentage')}
+   955→              >
+   956→                <Percent className="h-4 w-4 mr-1" />%
+   957→              </Button>
+   958→            </div>
+   959→            
+   960→            {splitMode === 'equal' && (
+   961→              <div className="flex gap-2">
+   962→                <Input 
+   963→                  type="number" 
+   964→                  value={equalParts} 
+   965→                  onChange={(e) => setEqualParts(Math.min(MAX_SPLITS, Math.max(1, parseInt(e.target.value) || 1)))}
+   966→                  className="h-8"
+   967→                  min={1}
+   968→                  max={MAX_SPLITS}
+   969→                />
+   970→                <Button size="sm" className="bg-[#00897B] hover:bg-[#00695C]" onClick={splitEqually}>
+   971→                  Split
+   972→                </Button>
+   973→              </div>
+   974→            )}
+   975→            
+   976→            {splitMode === 'percentage' && (
+   977→              <div className="space-y-2">
+   978→                {splits.filter(s => !s.paid).slice(0, 5).map(split => (
+   979→                  <div key={split.id} className="flex items-center gap-2">
+   980→                    <span className="text-xs flex-1 truncate">{split.name}</span>
+   981→                    <Input 
+   982→                      type="number"
+   983→                      className="w-16 h-7 text-xs"
+   984→                      value={percentageInputs[split.id] || ''}
+   985→                      onChange={(e) => setPercentageInputs(prev => ({
+   986→                        ...prev,
+   987→                        [split.id]: parseFloat(e.target.value) || 0
+   988→                      }))}
+   989→                      placeholder="%"
+   990→                    />
+   991→                  </div>
+   992→                ))}
+   993→                <Button size="sm" className="w-full bg-[#00897B] hover:bg-[#00695C]" onClick={splitByPercentage}>
+   994→                  Apply Percentages
+   995→                </Button>
+   996→              </div>
+   997→            )}
+   998→          </div>
+   999→        </div>
+  1000→
+  1001→        {/* Center Panel - Unassigned Items */}
+  1002→        <div className="flex-1 flex flex-col min-w-0">
+  1003→          <div className="p-3 border-b border-gray-200 bg-white flex items-center justify-between">
+  1004→            <p className="text-xs font-medium text-[#757575]">
+  1005→              UNASSIGNED ITEMS ({unassignedItems.length})
+  1006→            </p>
+  1007→            {unassignedItems.length > 0 && (
+  1008→              <Button size="sm" variant="outline" onClick={bulkAssignUnassigned}>
+  1009→                Distribute All
+  1010→              </Button>
+  1011→            )}
+  1012→          </div>
+  1013→          
+  1014→          <ScrollArea className="flex-1 p-3">
+  1015→            <div className="space-y-2">
+  1016→              {unassignedItems.map((item) => (
+  1017→                <Card key={item.id} className="border-gray-200 hover:border-[#00897B] transition-colors">
+  1018→                  <CardContent className="p-3 flex items-center justify-between">
+  1019→                    <div className="flex-1 min-w-0">
+  1020→                      <p className="font-medium text-sm truncate">{item.name}</p>
+  1021→                      <p className="text-xs text-[#757575]">{item.category} · Qty: {item.quantity}</p>
+  1022→                    </div>
+  1023→                    <div className="flex items-center gap-3">
+  1024→                      <p className="font-bold text-sm">R{(item.price * item.quantity).toFixed(2)}</p>
+  1025→                      <Select
+  1026→                        value=""
+  1027→                        onValueChange={(splitId) => addItemToSplit(item.id, splitId)}
+  1028→                      >
+  1029→                        <SelectTrigger className="w-28 h-8 text-xs">
+  1030→                          <SelectValue placeholder="Assign to..." />
+  1031→                        </SelectTrigger>
+  1032→                        <SelectContent>
+  1033→                          {splits.filter(s => !s.paid).map(split => (
+  1034→                            <SelectItem key={split.id} value={split.id}>
+  1035→                              {split.name}
+  1036→                            </SelectItem>
+  1037→                          ))}
+  1038→                        </SelectContent>
+  1039→                      </Select>
+  1040→                    </div>
+  1041→                  </CardContent>
+  1042→                </Card>
+  1043→              ))}
+  1044→              
+  1045→              {unassignedItems.length === 0 && (
+  1046→                <div className="text-center py-8 text-[#757575]">
+  1047→                  <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+  1048→                  <p>All items assigned</p>
+  1049→                </div>
+  1050→              )}
+  1051→            </div>
+  1052→          </ScrollArea>
+  1053→        </div>
+  1054→
+  1055→        {/* Right Panel - Active Split Details */}
+  1056→        <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
+  1057→          <div className="p-3 border-b border-gray-200 flex items-center justify-between">
+  1058→            <p className="text-xs font-medium text-[#757575]">
+  1059→              {activeSplitData?.name} - ASSIGNED ITEMS
+  1060→            </p>
+  1061→            {activeSplitData && !activeSplitData.paid && (
+  1062→              <Button 
+  1063→                size="sm" 
+  1064→                variant="ghost" 
+  1065→                className="h-7 text-xs"
+  1066→                onClick={() => assignAllToSplit(activeSplitData.id)}
+  1067→              >
+  1068→                Assign All
+  1069→              </Button>
+  1070→            )}
+  1071→          </div>
+  1072→          
+  1073→          {activeSplitData && (
+  1074→            <>
+  1075→              <ScrollArea className="flex-1 p-3">
+  1076→                <div className="space-y-2">
+  1077→                  {items
+  1078→                    .filter(item => activeSplitData.items.includes(item.id))
+  1079→                    .map((item) => (
+  1080→                      <Card key={item.id} className="border-gray-200">
+  1081→                        <CardContent className="p-3 flex items-center justify-between">
+  1082→                          <div className="flex-1 min-w-0">
+  1083→                            <p className="font-medium text-sm truncate">{item.name}</p>
+  1084→                            <p className="text-xs text-[#757575]">Qty: {item.quantity}</p>
+  1085→                          </div>
+  1086→                          <div className="flex items-center gap-2">
+  1087→                            <p className="font-bold text-sm">R{(item.price * item.quantity).toFixed(2)}</p>
+  1088→                            {!activeSplitData.paid && (
+  1089→                              <Button 
+  1090→                                variant="ghost" 
+  1091→                                size="icon" 
+  1092→                                className="h-7 w-7 text-red-400 hover:text-red-600"
+  1093→                                onClick={() => removeItemFromSplit(item.id, activeSplitData.id)}
+  1094→                              >
+  1095→                                <Minus className="h-4 w-4" />
+  1096→                              </Button>
+  1097→                            )}
+  1098→                          </div>
+  1099→                        </CardContent>
+  1100→                      </Card>
+  1101→                    ))}
+  1102→                  
+  1103→                  {activeSplitData.items.length === 0 && (
+  1104→                    <div className="text-center py-8 text-[#757575]">
+  1105→                      <User className="h-12 w-12 mx-auto mb-2 opacity-50" />
+  1106→                      <p>No items assigned</p>
+  1107→                      <p className="text-xs">Select items to assign</p>
+  1108→                    </div>
+  1109→                  )}
+  1110→                </div>
+  1111→              </ScrollArea>
+  1112→
+  1113→              {/* Totals and Tip */}
+  1114→              <div className="p-3 border-t border-gray-200 space-y-3">
+  1115→                <div className="flex justify-between text-sm">
+  1116→                  <span className="text-[#757575]">Subtotal + VAT</span>
+  1117→                  <span>R{activeSplitData.subtotal.toFixed(2)}</span>
+  1118→                </div>
+  1119→                
+  1120→                {!activeSplitData.paid && (
+  1121→                  <div>
+  1122→                    <p className="text-xs text-[#757575] mb-2">Add Tip</p>
+  1123→                    <div className="flex gap-2">
+  1124→                      {[0, 10, 15, 18, 20].map(pct => (
+  1125→                        <Button
+  1126→                          key={pct}
+  1127→                          variant={activeSplitData.tipPercent === pct ? 'default' : 'outline'}
+  1128→                          size="sm"
+  1129→                          className={`h-7 text-xs ${activeSplitData.tipPercent === pct ? 'bg-[#00897B] hover:bg-[#00695C]' : ''}`}
+  1130→                          onClick={() => addTip(activeSplitData.id, pct)}
+  1131→                        >
+  1132→                          {pct}%
+  1133→                        </Button>
+  1134→                      ))}
+  1135→                    </div>
+  1136→                  </div>
+  1137→                )}
+  1138→                
+  1139→                {activeSplitData.tip > 0 && (
+  1140→                  <div className="flex justify-between text-sm">
+  1141→                    <span className="text-green-600">Tip ({activeSplitData.tipPercent}%)</span>
+  1142→                    <span className="text-green-600">+R{activeSplitData.tip.toFixed(2)}</span>
+  1143→                  </div>
+  1144→                )}
+  1145→                
+  1146→                <Separator />
+  1147→                
+  1148→                <div className="flex justify-between text-lg font-bold">
+  1149→                  <span>Total</span>
+  1150→                  <span>R{activeSplitData.total.toFixed(2)}</span>
+  1151→                </div>
+  1152→
+  1153→                {!activeSplitData.paid && (
+  1154→                  <Button 
+  1155→                    className="w-full bg-[#00897B] hover:bg-[#00695C]"
+  1156→                    onClick={() => {
+  1157→                      setSelectedSplitForPayment(activeSplitData)
+  1158→                      setPaymentDialogOpen(true)
+  1159→                    }}
+  1160→                    disabled={activeSplitData.items.length === 0 && activeSplitData.subtotal === 0}
+  1161→                  >
+  1162→                    <CreditCard className="h-4 w-4 mr-2" />Take Payment
+  1163→                  </Button>
+  1164→                )}
+  1165→              </div>
+  1166→            </>
+  1167→          )}
+  1168→        </div>
+  1169→      </div>
+  1170→
+  1171→      {/* Payment Dialog */}
+  1172→      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+  1173→        <DialogContent className="sm:max-w-md">
+  1174→          <DialogHeader>
+  1175→            <DialogTitle>Payment for {selectedSplitForPayment?.name}</DialogTitle>
+  1176→            <DialogDescription>
+  1177→              Total due: R{selectedSplitForPayment?.total.toFixed(2)}
+  1178→            </DialogDescription>
+  1179→          </DialogHeader>
+  1180→          
+  1181→          <div className="py-4 space-y-4">
+  1182→            {/* Order Summary */}
+  1183→            {selectedSplitForPayment && selectedSplitForPayment.items.length > 0 && (
+  1184→              <div className="bg-gray-50 rounded-lg p-3 text-sm max-h-32 overflow-y-auto">
+  1185→                <p className="font-medium mb-2">Items:</p>
+  1186→                {items
+  1187→                  .filter(item => selectedSplitForPayment.items.includes(item.id))
+  1188→                  .map(item => (
+  1189→                    <div key={item.id} className="flex justify-between text-[#757575]">
+  1190→                      <span>{item.name} x{item.quantity}</span>
+  1191→                      <span>R{(item.price * item.quantity).toFixed(2)}</span>
+  1192→                    </div>
+  1193→                  ))}
+  1194→              </div>
+  1195→            )}
+  1196→            
+  1197→            <p className="text-sm text-[#757575]">Select payment method:</p>
+  1198→            <div className="grid grid-cols-2 gap-3">
+  1199→              {paymentMethods.map((method) => (
+  1200→                <Button
+  1201→                  key={method.id}
+  1202→                  variant="outline"
+  1203→                  className={`h-16 flex flex-col gap-1 border-2 ${method.color}`}
+  1204→                  onClick={() => processPayment(selectedSplitForPayment!, method.id as any)}
+  1205→                  disabled={processingPayment}
+  1206→                >
+  1207→                  {processingPayment ? (
+  1208→                    <Loader2 className="h-5 w-5 animate-spin" />
+  1209→                  ) : (
+  1210→                    <method.icon className="h-5 w-5" />
+  1211→                  )}
+  1212→                  <span className="text-xs font-medium">{method.label}</span>
+  1213→                </Button>
+  1214→              ))}
+  1215→            </div>
+  1216→            
+  1217→            {/* Cash tendered for cash payments */}
+  1218→            <div className="space-y-2">
+  1219→              <Label className="text-sm">Cash Tendered (for cash payments)</Label>
+  1220→              <Input
+  1221→                type="number"
+  1222→                value={cashTendered || ''}
+  1223→                onChange={(e) => setCashTendered(parseFloat(e.target.value) || 0)}
+  1224→                placeholder="Enter cash amount"
+  1225→                className="h-10"
+  1226→              />
+  1227→              {cashTendered > 0 && selectedSplitForPayment && (
+  1228→                <p className="text-sm text-green-600">
+  1229→                  Change: R{(cashTendered - selectedSplitForPayment.total).toFixed(2)}
+  1230→                </p>
+  1231→              )}
+  1232→            </div>
+  1233→          </div>
+  1234→          
+  1235→          <DialogFooter>
+  1236→            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+  1237→              Cancel
+  1238→            </Button>
+  1239→          </DialogFooter>
+  1240→        </DialogContent>
+  1241→      </Dialog>
+  1242→    </div>
+  1243→  )
+  1244→}
+  1245→

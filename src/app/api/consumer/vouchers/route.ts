@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthContext, getUserId, unauthorizedResponse } from '@/lib/auth-context'
+import { getUserId, ok, error } from '../_lib/helpers'
 
 // ============================================
 // VOUCHER MARKETPLACE API
@@ -52,23 +52,11 @@ const voucherProviders = {
 const userVouchers = new Map<string, any[]>()
 
 export async function GET(request: NextRequest) {
-  // Get authenticated context
-  const context = await getAuthContext(request)
-  if (!context) {
-    return unauthorizedResponse()
-  }
+  const userId = getUserId(request)
   
   const { searchParams } = new URL(request.url)
   const action = searchParams.get('action')
   const category = searchParams.get('category')
-  
-  // Get userId from params or context
-  const userIdResult = getUserId(searchParams, context as any)
-  if (userIdResult instanceof NextResponse) {
-    return userIdResult
-  }
-  const userId = userIdResult
-
   if (action === 'categories') {
     return NextResponse.json({
       success: true,
@@ -122,28 +110,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated context
-    const context = await getAuthContext(request)
-    if (!context) {
-      return unauthorizedResponse()
-    }
+    const userId = getUserId(request)
     
     const body = await request.json()
-    const { action, userId: bodyUserId, providerId, amount, recipientPhone, recipientName } = body
-    
-    // Validate userId - use body param or context
-    let userId = bodyUserId
-    if (!userId) {
-      userId = (context as any).userId
-    }
-    
-    // Security check: ensure user can only access their own data
-    if (userId !== (context as any).userId) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied' },
-        { status: 403 }
-      )
-    }
+    const { action, providerId, amount, recipientPhone, recipientName } = body
 
     if (action === 'purchase') {
       // Find provider

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280, initial-scale=1">
+<title>Groway Merchant OS — Traction &amp; Milestones</title>
+<link rel="stylesheet" href="global.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:var(--bg); }
+  .slide { display:flex; flex-direction:column; padding:52px 64px 42px; }
+  .headline { font-family:var(--font-heading); font-size:var(--fs-h1); font-weight:700; line-height:1.12; letter-spacing:-0.015em; color:var(--ink); margin:0; }
+  .col-label { font-family:var(--font-heading); font-size:var(--fs-h3); font-weight:600; color:var(--ink); }
+  .big-num { font-family:var(--font-num); font-size:var(--fs-display); font-weight:600; line-height:1; letter-spacing:-0.03em; color:var(--primary); font-variant-numeric:tabular-nums; }
+  .stat-desc { font-size:var(--fs-body); line-height:1.5; color:var(--ink-soft); margin:0; }
+  .card-target { background:var(--bg-soft); border:1.5px dashed var(--line); border-radius:14px; }
+  .card-shipped { background:var(--white); border:1px solid var(--line); border-left:3px solid var(--primary); border-radius:14px; }
+  .num-slot { width:176px; flex:none; display:flex; align-items:center; }
+  .v-div { width:1px; align-self:stretch; background:var(--line); margin:20px 0 20px 24px; flex:none; }
+  .mini-chain { display:flex; align-items:center; }
+  .mini-chain .dot { width:8px; height:8px; border-radius:9999px; background:var(--primary); box-shadow:0 0 0 3px var(--primary-soft); }
+  .mini-chain .seg { width:26px; height:1px; background:var(--line); }
+</style>
+</head>
+<body>
+<div class="slide">
+
+  <!-- Header -->
+  <header class="flex items-start justify-between">
+    <div>
+      <div class="kicker">Traction &amp; Milestones</div>
+      <h1 class="headline mt-2"><span class="text-primary">Traction:</span> pilot programme and what we must prove</h1>
+    </div>
+    <div class="mini-chain mt-2" aria-hidden="true" data-decor>
+      <span class="dot"></span><span class="seg"></span><span class="dot"></span><span class="seg"></span><span class="dot"></span>
+    </div>
+  </header>
+
+  <!-- Body: two columns -->
+  <main class="flex-1 min-h-0 mt-6" style="display:grid; grid-template-columns:1fr 1fr; gap:28px;">
+
+    <!-- Left: pilot targets (forward-looking) -->
+    <section class="flex flex-col min-h-0">
+      <div class="flex items-center gap-2 pb-3">
+        <i class="material-icons" aria-hidden="true" style="font-size:20px; color:var(--accent);">flag</i>
+        <span class="col-label">Pilot targets (12-month plan)</span>
+      </div>
+      <div class="flex-1 flex flex-col gap-3.5 min-h-0">
+        <div class="card-target flex-1 flex items-center" style="padding:0 26px;">
+          <div class="num-slot"><span class="big-num">12K</span></div>
+          <div class="v-div"></div>
+          <p class="stat-desc" style="padding-left:24px;">merchants onboarded across 3 cities</p>
+        </div>
+        <div class="card-target flex-1 flex items-center" style="padding:0 26px;">
+          <div class="num-slot"><span class="big-num">R8.5M</span></div>
+          <div class="v-div"></div>
+          <p class="stat-desc" style="padding-left:24px;">GMV processed through digital rails</p>
+        </div>
+        <div class="card-target flex-1 flex items-center" style="padding:0 26px;">
+          <div class="num-slot"><span class="big-num">85%</span></div>
+          <div class="v-div"></div>
+          <p class="stat-desc" style="padding-left:24px;">merchant retention target</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: shipped & verifiable today -->
+    <section class="flex flex-col min-h-0">
+      <div class="flex items-center gap-2 pb-3">
+        <i class="material-icons text-primary" aria-hidden="true" style="font-size:20px;">verified</i>
+        <span class="col-label">Platform shipped (verifiable today)</span>
+      </div>
+      <div class="flex-1 flex flex-col gap-3.5 min-h-0">
+        <div class="card-shipped flex-1 flex items-center" style="padding:0 26px;">
+          <div class="num-slot"><span class="big-num">685</span></div>
+          <div class="v-div"></div>
+          <p class="stat-desc" style="padding-left:24px;">API endpoints across POS, payments, credit, provenance</p>
+        </div>
+        <div class="card-shipped flex-1 flex items-center" style="padding:0 26px;">
+          <div class="num-slot"><span class="big-num">16</span></div>
+          <div class="v-div"></div>
+          <p class="stat-desc" style="padding-left:24px;">SAPE provenance models live with hash-anchored custody</p>
+        </div>
+        <div class="card-shipped flex-1 flex items-center" style="padding:0 26px;">
+          <div class="num-slot">
+            <span style="width:62px; height:62px; border-radius:9999px; background:var(--primary-soft); display:flex; align-items:center; justify-content:center;">
+              <i class="material-icons text-primary" aria-hidden="true" style="font-size:30px;">public</i>
+            </span>
+          </div>
+          <div class="v-div"></div>
+          <p class="stat-desc" style="padding-left:24px;">Public consumer verification page in production</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Honest-labelling note -->
+  <footer class="card-accent flex items-center gap-3 mt-5" style="padding:13px 22px;">
+    <i class="material-icons" aria-hidden="true" style="font-size:20px; color:var(--accent);">info</i>
+    <p style="font-size:var(--fs-small); line-height:1.5; color:var(--ink-soft); margin:0;">
+      <strong style="color:var(--ink); font-weight:700;">Honest labelling — </strong>Traction figures are forward-looking pilot targets, not historical audited results; platform capability figures are verifiable in the deployed codebase.
+    </p>
+  </footer>
+
+</div>
+</body>
+</html>

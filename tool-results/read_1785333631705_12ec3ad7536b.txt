@@ -1,0 +1,258 @@
+     1→{
+     2→  "design": {
+     3→    "title": "Merchant OS — SSSF Proposal: Empowering Spaza Shops Through Technology",
+     4→    "style_name": "business-formal-nef-sssf-proposal",
+     5→    "palette": {
+     6→      "background": "#FFFFFF",
+     7→      "primary": "#00897B",
+     8→      "accent": "#FF8F00"
+     9→    },
+    10→    "typography": {
+    11→      "heading": "Inter",
+    12→      "body": "Inter",
+    13→      "numeric": "Inter"
+    14→    },
+    15→    "reference": "Government proposal deck with teal brand, formal but compelling"
+    16→  },
+    17→  "global_css_path": "/home/z/my-project/download/slides/global.css",
+    18→  "slides_dir": "/home/z/my-project/download/slides",
+    19→  "language": "en",
+    20→  "speaker_notes": "short",
+    21→  "slides": [
+    22→    {
+    23→      "title": "Cover — SSSF Proposal for Merchant OS",
+    24→      "layout": "cover",
+    25→      "output_path": "/home/z/my-project/download/slides/slide_01.html",
+    26→      "task_brief": "Cover slide with dark navy gradient background. Top-left small 'Groway' text. Large white title: 'Empowering South Africa's Spaza Shops Through Technology'. Subtitle: 'A Proposal to the Spaza Shop Support Fund (SSSF) — Jointly Administered by the National Empowerment Fund (NEF) and the Small Enterprise Development and Finance Agency (SEDFA)'. Tagline: 'Delivering Merchant OS, Payment Solutions & Skills Development to Township Retailers'. Bottom-left: 'Prepared by Groway (Pty) Ltd | Confidential'. Bottom-right: small South African flag colors accent bar (green, black, gold). Background: faded image of spaza shop interior (https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/0d018c9a963e.jpg) on right third with dark overlay."
+    27→    },
+    28→    {
+    29→      "title": "Executive Summary",
+    30→      "layout": "key message",
+    31→      "output_path": "/home/z/my-project/download/slides/slide_02.html",
+    32→      "task_brief": "White background. Title: 'Executive Summary'. 4 key pillars in horizontal card row with teal icon circles: 1. 'Technology' — Providing Merchant OS POS system with 567+ pre-loaded SKUs, inventory management, and real-time analytics. 2. 'Payments' — Gropay payment devices (QR terminals, mPOS, SoftPOS) enabling card, QR, and contactless payments. 3. 'Skills Development' — Learning Academy with 8+ courses, mentorship programmes, and business management training. 4. 'Reporting' — Stakeholder reporting dashboard for fund transparency, compliance tracking, and ROI measurement. Bottom statement: 'Groway proposes to onboard 1,500 spaza shops per province per year across Limpopo, North West, and Mpumalanga for the next 5 years — totalling 22,500 spaza shops.'"
+    33→    },
+    34→    {
+    35→      "title": "About Groway",
+    36→      "layout": "split text+image",
+    37→      "output_path": "/home/z/my-project/download/slides/slide_03.html",
+    38→      "task_brief": "Title: 'About Groway — Africa's Integrated Financial Operating System'. Left (55%): Description: 'Groway is a South African fintech company building a comprehensive operating system for Africa's informal and formal retail economy. Our platform integrates payments, point-of-sale, inventory management, skills development, and business intelligence into one seamless ecosystem.' 4 stat cards: '13 Business Verticals', '50+ Sub-Verticals', '45,000+ Merchants', 'R125M+ Monthly Transactions'. Right (45%): Feature grid with icons showing 9 apps: Consumer Wallet, Merchant OS, GroSell, GroSupply, GoPay, Enterprise, Admin Console, Field Salesforce, Agent Network. Use teal gradient background for the grid area."
+    39→    },
+    40→    {
+    41→      "title": "Section — The Spaza Shop Opportunity",
+    42→      "layout": "section header",
+    43→      "output_path": "/home/z/my-project/download/slides/slide_04.html",
+    44→      "task_brief": "Full-width dark navy gradient slide. Large section number '01' in teal. Title: 'The Spaza Shop Opportunity'. Tagline: 'Spaza shops are the backbone of South Africa's informal retail sector — employing millions and serving communities where formal retail has not reached.' Bottom stat row: 3 cards — '200,000+ Spaza Shops' across South Africa, 'R60B+ Annual Revenue' contribution to economy, '2M+ Jobs Supported' directly and indirectly. Use SA flag accent bar at bottom."
+    45→    },
+    46→    {
+    47→      "title": "Township Retail Landscape",
+    48→      "layout": "bento grid",
+    49→      "output_path": "/home/z/my-project/download/slides/slide_05.html",
+    50→      "task_brief": "Title: 'Understanding Township Retail & The Spaza Shop Ecosystem'. Main content area: Large image (https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/0d018c9a963e.jpg) showing spaza shop interior with stocked shelves. Around the image, 6 info cards: 1. 'Community Hub' — Spaza shops serve as the primary retail point for daily essentials in townships. 2. 'Extended Hours' — Operating from early morning to late night, filling gaps left by formal retail. 3. 'Credit Economy' — Most spazas offer informal credit to regular customers, building community trust. 4. 'Employment' — Each shop employs 2-5 people, making them significant local employers. 5. 'Supplier Challenges' — Limited access to bulk purchasing, leading to higher costs and lower margins. 6. 'Technology Gap' — Over 80% of spaza shops operate without any digital tools or formal record-keeping. Layout: 3x2 grid with the spaza image spanning the left 2 rows."
+    51→    },
+    52→    {
+    53→      "title": "Market Challenges",
+    54→      "layout": "bento grid",
+    55→      "output_path": "/home/z/my-project/download/slides/slide_06.html",
+    56→      "task_brief": "Title: 'Challenges Facing Spaza Shop Owners'. 6 challenge cards in a 3x2 bento grid: 1. 'Manual Inventory' (icon: Package) — Stock tracking by hand, 15-25% loss from shrinkage and stockouts, no expiry management. 2. 'Cash-Only Operations' (icon: Banknote) — 85% of transactions are cash-based, limiting customer choice and creating security risks. 3. 'No Business Records' (icon: FileText) — Without financial records, owners cannot access formal funding or measure true profitability. 4. 'Isolated from Supply Chains' (icon: Truck) — No access to wholesale pricing, buying at retail prices with 30-40% markup. 5. 'Skills & Training Gap' (icon: GraduationCap) — Limited formal business training, pricing strategies, or financial literacy. 6. 'Compliance Burden' (icon: ShieldCheck) — Complex SARS requirements, municipal permits, and health certificates without support. Each card: amber icon circle, title, 2-line description."
+    57→    },
+    58→    {
+    59→      "title": "Section — Meet Merchant OS",
+    60→      "layout": "section header",
+    61→      "output_path": "/home/z/my-project/download/slides/slide_07.html",
+    62→      "task_brief": "Full-width teal gradient background. Large section number '02' in white. Title: 'Meet Merchant OS'. Subtitle: 'An all-in-one operating system purpose-built for South African grocery and FMCG retailers — from Spaza Shops to Cash & Carry wholesalers.' Bottom: 4 stat pills: '13 Verticals | 50+ Sub-Verticals | 5,000+ SKU Catalogue | End-to-End Workflows'. White text throughout."
+    63→    },
+    64→    {
+    65→      "title": "Core POS & Operations for Spaza Shops",
+    66→      "layout": "split text+image",
+    67→      "output_path": "/home/z/my-project/download/slides/slide_08.html",
+    68→      "task_brief": "Title: 'Core POS & Operational Features for Spaza Shops'. Left (55%): 5 feature items with icons: 1. 'Smart POS Terminal' — Fast barcode scanning, mobile-friendly interface, offline capability for areas with poor connectivity, simple one-tap transactions. 2. 'Inventory Management' — Real-time stock tracking with 567 pre-loaded spaza SKUs, automated low-stock alerts, expiry date management, daily stock count. 3. 'Credit Customer Management' — Track credit extended to regular customers, outstanding balances, payment history, automated payment reminders via WhatsApp. 4. 'Airtime & Utilities' — Sell prepaid airtime, electricity, and data directly from the POS — additional revenue stream for spaza owners. 5. 'Multi-Payment' — Accept cash, Gropay QR, card, and EFT — all automatically reconciled. Right (45%): Mobile POS image (https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/4aafbf64f565.png) in rounded card."
+    69→    },
+    70→    {
+    71→      "title": "Spaza User Journey",
+    72→      "layout": "timeline",
+    73→      "output_path": "/home/z/my-project/download/slides/slide_09.html",
+    74→      "task_brief": "Title: 'The Spaza Shop Owner Journey with Merchant OS'. Horizontal timeline with 5 stages connected by teal line: 1. 'Onboarding (Day 1)' — Select Grocery & FMCG → Choose Spaza Shop → System auto-configures with 567 SKUs, pricing templates, and spaza-specific workflows. 2. 'Setup (Week 1)' — Load initial stock via barcode scan, configure Gropay payment device, set up credit customer profiles, complete digital literacy training. 3. 'Daily Operations' — Process sales with smart POS, manage stock levels, track credit customers, sell airtime and utilities. 4. 'Growth (Month 2+)' — Access Learning Academy courses, connect with business mentors, analyse stakeholder reports, apply GroSupply for bulk ordering. 5. 'Scale (Year 1+)' — Expand product range, optimise pricing with data insights, build supplier relationships, explore multi-location. Each stage: teal circle with number, title below, 2-line description."
+    75→    },
+    76→    {
+    77→      "title": "GroSupply — B2B Procurement",
+    78→      "layout": "bento grid",
+    79→      "output_path": "/home/z/my-project/download/slides/slide_10.html",
+    80→      "task_brief": "Title: 'GroSupply — Connecting Spaza Shops to Wholesale Supply Chains'. Top row: 3 stat cards — 'Verified Suppliers', 'Bulk Pricing Access', 'Instant Credit via GroCredit'. Middle: Split layout. Left column 'The Problem': 'Spaza shops buy stock at retail prices from wholesalers, paying 30-40% more than they should. No access to direct manufacturer pricing. Cash purchases limit buying power.' Right column 'GroSupply Solution': 4 bullet points with teal checkmarks: Direct access to verified suppliers and manufacturers. Bulk pricing with volume discounts. Automated purchase orders based on POS sales data. Delivery coordination and tracking. Bottom row: 2-column. Left 'GroCredit Integration': Spaza shops can access instant credit to buy stock via GroCredit — buy now, pay later with flexible terms aligned to sales cycles. Right 'Supply Chain Impact': 25-35% reduction in procurement costs, consistent stock availability, reduced stockouts from 40% to under 10%."
+    81→    },
+    82→    {
+    83→      "title": "GroCredit — Working Capital",
+    84→      "layout": "split text+image",
+    85→      "output_path": "/home/z/my-project/download/slides/slide_11.html",
+    86→      "task_brief": "Title: 'GroCredit — Working Capital for Township Retailers'. Left (60%): Description: 'GroCredit provides spaza shop owners with access to instant working capital to purchase inventory and grow their businesses. Unlike traditional banks, GroCredit uses POS transaction data to assess creditworthiness — no collateral required.' Key Features (4 cards): 1. 'Buy Now, Pay Later' — Purchase stock from GroSupply suppliers on credit terms. 2. 'Data-Driven Scoring' — Credit limits based on actual transaction history, not traditional credit checks. 3. 'Flexible Terms' — Repayment aligned with sales cycles — pay as you sell. 4. 'Building Credit History' — Every repayment builds a formal credit profile for future funding access. Right (40%): Impact metrics card: 'Average Credit Limit: R5,000-R15,000', 'Repayment Rate: 94%', 'Default Rate: <6%', 'Spaza Revenue Growth: +28%'. Teal background card with white text for metrics."
+    87→    },
+    88→    {
+    89→      "title": "Inventory & Stock Management",
+    90→      "layout": "stats",
+    91→      "output_path": "/home/z/my-project/download/slides/slide_12.html",
+    92→      "task_brief": "Title: 'Inventory & Stock Management — Turning Data Into Decisions'. 4 metric cards across top: 'Stock Accuracy: 98%' (up from 65% manual), 'Shrinkage Reduction: -22%' (from 25% to under 3%), 'Stock-out Reduction: -75%' (from 40% to under 10%), 'Revenue Per Shelf: +35%'. Below: 3-column feature layout. Column 1 'Smart Stock Tracking': Real-time stock levels per SKU, barcode scanning for fast counting, expiry date alerts (critical for food items), daily/weekly stock reports. Column 2 'Automated Reordering': POS-driven reorder suggestions based on sales velocity, integration with GroSupply for one-click ordering, optimal order quantities to minimize waste, seasonal demand patterns. Column 3 'Category Intelligence': Best-selling products by category, profit margin analysis per SKU, seasonal trends and recommendations, slow-moving stock alerts. Each column: teal header, bullet list below."
+    93→    },
+    94→    {
+    95→      "title": "Section — Gopay Payments",
+    96→      "layout": "section header",
+    97→      "output_path": "/home/z/my-project/download/slides/slide_13.html",
+    98→      "task_brief": "Full-width dark navy gradient slide. Large section number '03' in teal. Title: 'Gopay — Digital Payments for Every Spaza Shop'. Tagline: 'Enabling township retailers to accept card, QR, contactless, and mobile money payments — transforming cash-heavy businesses into digitally connected merchants.' Bottom: 3 device category pills: 'QR Code Terminals | Mobile mPOS | SoftPOS (No Hardware)'"
+    99→    },
+   100→    {
+   101→      "title": "Gopay Device Portfolio for Spazas",
+   102→      "layout": "bento grid",
+   103→      "output_path": "/home/z/my-project/download/slides/slide_14.html",
+   104→      "task_brief": "Title: 'Gopay Device Portfolio — Purpose-Built for Spaza Shops'. 3 device columns in a bento grid. Column 1 'QR Code Terminals' (icon: QrCode): Y90B Dynamic QR Terminal — Wearable with neck strap, hands-free for busy spazas, 4G/WiFi/Bluetooth, sunlight-readable display, long battery (8-10 hours), one-time cost of R2,999, no monthly fees. Perfect for: counter-top display, market trading, mobile vendors. Column 2 'Mobile mPOS' (icon: Smartphone): P8D Compact Payment Terminal — 5.5-inch HD touchscreen, NFC + EMV card reader, 4G connectivity, built-in receipt printer, cost R2,999. Plus mPOS i9 USB Card Reader — plugs into any smartphone, accepts all card types, Bluetooth + USB, cost R1,499. Perfect for: fixed shop counters, delivery services. Column 3 'SoftPOS' (icon: CreditCard): No Hardware Solution — Turn any NFC smartphone into a payment terminal, zero upfront cost, accept Visa/Mastercard/Apple Pay/Google Pay, 2.75% + R1.50 per transaction, setup in under 5 minutes. Perfect for: micro merchants, start-up spazas, market traders. Each column: device image area, features list, pricing, target use case. Image of tap-to-pay (https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/a20c460f5be6.jpg) as background element."
+   105→    },
+   106→    {
+   107→      "title": "QR Payment Journey — Spaza Shop",
+   108→      "layout": "timeline",
+   109→      "output_path": "/home/z/my-project/download/slides/slide_15.html",
+   110→      "task_brief": "Title: 'The QR Payment Journey — How Spaza Customers Pay'. 5-step horizontal flow: 1. 'Merchant Displays QR' — Spaza owner shows dynamic QR code on Y90B terminal worn around neck or placed on counter. Device is always visible and accessible. 2. 'Customer Scans' — Customer opens banking app (Capitec, TymeBank, Standard Bank, FNB), selects 'Scan QR', points camera at merchant's device. 3. 'Amount & Confirm' — Customer enters purchase amount, reviews details, authorises with PIN or biometric. 4. 'Instant Confirmation' — Both merchant and customer receive instant confirmation. Y90B plays audio alert. Digital receipt sent via SMS. 5. 'Auto Settlement' — Funds settled directly to merchant's bank account within hours. Transaction recorded in Merchant OS dashboard. Bottom: 3 key metrics — '< 5 seconds average transaction time', '99.7% transaction success rate', '1.5% transaction fee (MDR)'."
+   111→    },
+   112→    {
+   113→      "title": "Payment Impact on Spaza Shops",
+   114→      "layout": "stats",
+   115→      "output_path": "/home/z/my-project/download/slides/slide_16.html",
+   116→      "task_brief": "Title: 'The Impact of Digital Payments on Spaza Shops'. Top row: 4 large stat cards with teal numbers: '85% Reduction in Cash Handling' — Less cash on premises means reduced theft risk. '3.2x Increase in Daily Transactions' — Customers spend more when they can pay digitally. 'R40,000 Additional Annual Revenue' — From accepting card, QR, and contactless payments. '99.3% Transaction Success Rate' — Reliable payments that customers trust. Middle: Comparison table 'Before vs After Merchant OS + Gopay'. Before: Cash only, manual records, no stock tracking, isolated from suppliers, no training. After: Multi-payment (card/QR/cash), digital POS records, real-time inventory, GroSupply wholesale access, Learning Academy + Mentorship. Bottom: Quote card: 'Within 3 months of adopting Gopay, spaza owners report a 40% increase in average transaction value as customers can now spend more than the cash in their pockets.' — Amber accent quote bar."
+   117→    },
+   118→    {
+   119→      "title": "Section — Staff & Development",
+   120→      "layout": "section header",
+   121→      "output_path": "/home/z/my-project/download/slides/slide_17.html",
+   122→      "task_brief": "Full-width dark navy gradient slide. Large section number '04' in teal. Title: 'Staff & Development'. Tagline: 'Building capacity through structured learning, mentorship, and skills development — ensuring every spaza shop owner has the knowledge to run a successful, compliant, and growing business.' Two feature pills: 'Learning Academy' and 'Mentorship Programme'."
+   123→    },
+   124→    {
+   125→      "title": "Learning Academy",
+   126→      "layout": "bento grid",
+   127→      "output_path": "/home/z/my-project/download/slides/slide_18.html",
+   128→      "task_brief": "Title: 'Learning Academy — Upskilling Spaza Shop Owners & Staff'. Top row: 4 stat cards — '8+ Courses', '10+ Earnable Badges', '78% Completion Rate', '85% Average Score'. Bottom: 2-column. Left 'Course Catalogue' (spaza-relevant courses): 1. 'Stock Management Basics' (Operations) — Minimize waste, track expiry, optimize ordering. Progress: 85%. 2. 'Customer Service Excellence' (Soft Skills) — Build loyalty, handle complaints, grow repeat business. Progress: 72%. 3. 'Financial Literacy for Retail' (Finance) — Budgeting, cash flow, pricing strategies, profit margins. Progress: 68%. 4. 'Food Safety & Hygiene' (Compliance) — Health regulations, storage, handling, certification. Progress: 90%. 5. 'POS & Digital Systems Training' (Technology) — Navigate Merchant OS, Gopay devices, digital payments. Progress: 55%. 6. 'Business Growth Strategies' (Business) — Expansion, marketing, supplier relationships. Progress: 40%. Right: Image of Black women in business training (https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/70060bb5d552.jpg) with overlay text: 'Mandatory training included in every SSSF support package'. Feature badges at bottom: Progress Tracking, Gamified Badges, Mobile Access, Certificate of Completion."
+   129→    },
+   130→    {
+   131→      "title": "Mentorship Programme — Black Mentors",
+   132→      "layout": "split text+image",
+   133→      "output_path": "/home/z/my-project/download/slides/slide_19.html",
+   134→      "task_brief": "Title: 'Mentorship — Connecting Experience with Ambition'. Left (55%): Description: 'Our structured mentorship programme pairs Spaza Shop owners with experienced Black business mentors who understand township retail, community dynamics, and the unique challenges of running an informal business.' 4 programme cards: 1. 'New Owner Onboarding' — 12-week structured programme, mentor guides owner through first 3 months, topics: stock ordering, pricing, customer management, compliance. 4.8/5 satisfaction. 2. 'Business Growth Accelerator' — Scale strategies, market expansion, multi-product optimisation, financial planning for growth. 3. 'Financial Management Mentorship' — Budgeting, cash flow management, preparing for NEF funding applications, building bankable business plans. 4. 'Operations Excellence' — Process optimisation, stock control systems, staff training, customer experience improvement. Stats: '4 programmes, 5+ experienced Black mentors, 80%+ match satisfaction, 6-12 week programmes'. Right (45%): Image of Black business mentors and entrepreneurs (https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/bc89dfa2453e.jpg) in rounded card with overlay: 'Our mentors are successful Black entrepreneurs who have built and grown businesses in township communities.'"
+   135→    },
+   136→    {
+   137→      "title": "Mentorship Features Detail",
+   138→      "layout": "stats",
+   139→      "output_path": "/home/z/my-project/download/slides/slide_20.html",
+   140→      "task_brief": "Title: 'How the Mentorship Programme Works'. 4 feature columns: 1. 'Smart Matching' (icon: Users) — AI-powered matching based on business type, location, growth stage, and specific challenges. Match scores of 80%+ ensure compatible mentor-mentee pairs. 2. 'Structured Programmes' (icon: Calendar) — 8-12 week programmes with weekly milestones, bi-weekly check-ins, and measurable outcomes at each stage. Every programme ends with a growth assessment. 3. 'Session Scheduling' (icon: Clock) — Built-in calendar for booking mentoring sessions. Weekly availability tracking. Automated reminders via SMS and WhatsApp. Video, phone, or in-person sessions. 4. 'Progress Tracking' (icon: TrendingUp) — Dashboard showing mentorship health score, milestones achieved, goal completion rates, satisfaction surveys after each session. Fund administrators can track programme participation across all spaza shops. Each column: teal icon circle, bold title, 3-line description."
+   141→    },
+   142→    {
+   143→      "title": "Section — Stakeholder Insights",
+   144→      "layout": "section header",
+   145→      "output_path": "/home/z/my-project/download/slides/slide_21.html",
+   146→      "task_brief": "Full-width dark navy gradient slide. Large section number '05' in teal. Title: 'Stakeholder Reporting & Transparency'. Tagline: 'Providing the NEF, SEDFA, and dtic with real-time visibility into how every rand of SSSF funding is being used to transform spaza shops.'"
+   147→    },
+   148→    {
+   149→      "title": "Stakeholder Reporting Dashboard",
+   150→      "layout": "bento grid",
+   151→      "output_path": "/home/z/my-project/download/slides/slide_22.html",
+   152→      "task_brief": "Title: 'Stakeholder Reporting — Real-Time Fund Impact Visibility'. Top row: 4 KPI cards: Revenue R127,450 (+12.5% MoM), Customers 1,847 (+18%), Avg Transaction R69.02, Profit Margin 23.4%. Middle row: Left 'Financial Overview' — Simple bar chart showing 6 months revenue: Jan R85K, Feb R92K, Mar R98K, Apr R105K, May R115K, Jun R127K (teal bars, increasing). Right 'Key Operational Metrics': Stock Turnover 4.2x, Staff Productivity +22%, Customer Retention 89%, Credit Recovery 94%. Bottom row: Report Generation — 4 report type cards: Monthly Performance (revenue, expenses, profit trends), Quarterly Review (KPI tracking, growth analysis, compliance), Annual Summary (year-over-year, benchmarking), Fund Utilisation Report (SSSF spend tracking per merchant, compliance status, training completion)."
+   153→    },
+   154→    {
+   155→      "title": "Report Types & Fund Transparency",
+   156→      "layout": "comparison",
+   157→      "output_path": "/home/z/my-project/download/slides/slide_23.html",
+   158→      "task_brief": "Title: 'Fund Transparency & SSSF Compliance Reporting'. Left column 'Standard Reports': Monthly Performance Report, Quarterly Business Review, Annual Impact Assessment, Fund Utilisation Report (SSSF-specific), Compliance Certificate, Training Completion Report. Right column 'SSSF Accountability': 1. Transparency — Real-time dashboard shows exactly how each merchant is using their R100,000 support package. 2. Compliance — Automated tracking of mandatory training completion, device deployment status, and business permit compliance. 3. Impact Measurement — Measurable outcomes: revenue growth, stock loss reduction, digital payment adoption, training scores. 4. Audit Trail — Complete transaction history for every rand spent through Merchant OS and Gopay. Each benefit with teal checkmark icon."
+   159→    },
+   160→    {
+   161→      "title": "Section — SSSF Alignment",
+   162→      "layout": "section header",
+   163→      "output_path": "/home/z/my-project/download/slides/slide_24.html",
+   164→      "task_brief": "Full-width teal gradient background. Large section number '06' in white. Title: 'SSSF Alignment & Funding Utilisation'. Subtitle: 'How Groway Merchant OS directly maps to the Spaza Shop Support Fund's R100,000 support package — maximising every rand for spaza shop transformation.'"
+   165→    },
+   166→    {
+   167→      "title": "SSSF R100,000 Package Breakdown",
+   168→      "layout": "bento grid",
+   169→      "output_path": "/home/z/my-project/download/slides/slide_25.html",
+   170→      "task_brief": "Title: 'Mapping Groway to the SSSF R100,000 Support Package'. Top: Large breakdown showing 3 segments. Segment 1: 'R40,000 Pure Grant' (no repayment) — This can fund: Gopay payment devices (Y90B QR Terminal: R2,999 or SoftPOS: R0 cost), POS setup and initial stock loading, infrastructure upgrades (shelving, security gates). Segment 2: 'R50,000 Blended Grant + Loan' — This can fund: Initial inventory purchase via GroSupply bulk pricing, GroCredit working capital buffer, business registration and compliance costs, extended stock range. Segment 3: 'R10,000 Non-Financial Support' — This funds: Merchant OS software licence and setup, Learning Academy course access, Mentorship programme enrolment, Digital literacy training, Business management training. Bottom: Visual flow showing how Groway covers ALL elements of the SSSF package — Technology (Merchant OS + Gopay), Training (Learning Academy + Mentorship), and Support (Reporting + Compliance). Use teal, amber, and green for the 3 segments."
+   171→    },
+   172→    {
+   173→      "title": "Technology Systems — SSSF Fund Usage",
+   174→      "layout": "stats",
+   175→      "output_path": "/home/z/my-project/download/slides/slide_26.html",
+   176→      "task_brief": "Title: 'Technology Systems — What the SSSF Funds Enable'. 4 large feature blocks in a 2x2 grid. Block 1 'Merchant OS POS' (icon: Monitor): All-in-one point-of-sale system with 567 pre-loaded spaza SKUs. Barcode scanning, receipt printing, daily sales reports. Cost covered by R10,000 non-financial support allocation. Block 2 'Gopay Payment Devices' (icon: CreditCard): Choice of Y90B QR Terminal (R2,999), P8D Mobile POS (R2,999), or SoftPOS (R0 — no hardware). Enables card, QR, and contactless payments. Cost covered by R40,000 pure grant allocation. Block 3 'GroSupply Platform' (icon: Truck): Access to verified wholesale suppliers, bulk pricing, automated reordering, delivery coordination. Zero additional cost — included with Merchant OS. Block 4 'GroCredit Facility' (icon: PiggyBank): Data-driven working capital based on POS transaction history. Credit limits of R5,000-R15,000. Aligned to sales cycles — pay as you sell. Funded through R50,000 blended allocation."
+   177→    },
+   178→    {
+   179→      "title": "Training & Business Development",
+   180→      "layout": "bento grid",
+   181→      "output_path": "/home/z/my-project/download/slides/slide_27.html",
+   182→      "task_brief": "Title: 'Training & Business Development — Included in Every Package'. Top row: 3 stat cards — '8+ Online Courses', '4 Mentorship Programmes', 'Certificate of Completion'. Content: 3-column layout mapping SSSF mandatory training to Groway's offerings. Column 1 'Business Management Training' (from SSSF requirements): Financial Literacy for Retail (cash flow, pricing, profit margins), Business Growth Strategies (expansion, marketing, planning), POS & Digital Systems (Merchant OS, Gopay, digital payments). Column 2 'Stock & Inventory Training' (from SSSF requirements): Stock Management Basics (minimize waste, track expiry), Inventory Control & Ordering (reorder points, bulk buying via GroSupply), Category Intelligence (best-sellers, margins, trends). Column 3 'Digital Literacy' (from SSSF requirements): POS System Training, Payment Device Operation, Digital Cash Drop Management, Reporting Dashboard Navigation. Each course: teal card with course name, description, and progress indicator. All training is delivered through the Learning Academy — accessible on any smartphone. Bottom: Image of Black business women in training (https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/a475927eaf3c.jpg) with caption: 'Empowering township entrepreneurs with world-class business skills'."
+   183→    },
+   184→    {
+   185→      "title": "Compliance & Regulatory Support",
+   186→      "layout": "split text+image",
+   187→      "output_path": "/home/z/my-project/download/slides/slide_28.html",
+   188→      "task_brief": "Title: 'Compliance & Regulatory Support'. Left (60%): Description: 'The SSSF requires all supported spaza shops to achieve and maintain regulatory compliance. Groway Merchant OS simplifies this with automated compliance tracking and guidance.' 4 compliance areas with teal checkmarks: 1. 'SARS eFiling' — Automated tax calculations, digital submission of returns, VAT tracking on every transaction, tax-ready financial reports. 2. 'Municipal Business Permits' — Permit renewal reminders, documentation templates, status tracking. 3. 'Environmental Health Certificates' — Food safety training completion tracking, certificate renewal alerts, health inspection preparation guides. 4. 'Company Registration' — CIPC registration guidance, documentation support, annual return reminders. Right (40%): Compliance dashboard card showing: 'Permit Status: Active', 'Tax Filing: Up to Date', 'Health Certificate: Valid', 'Company Registration: Complete'. Green checkmarks for each. 'Compliance Score: 92%' with teal progress bar."
+   189→    },
+   190→    {
+   191→      "title": "Sub-Vertical Coverage — Grocery & FMCG",
+   192→      "layout": "stats",
+   193→      "output_path": "/home/z/my-project/download/slides/slide_29.html",
+   194→      "task_brief": "Title: 'Comprehensive Grocery & FMCG Sub-Vertical Coverage'. 7 sub-vertical cards in a grid: 1. 'Spaza Shop' (HIGHLIGHTED with amber border) — Simple POS, credit customers, airtime, 567 SKUs. THE PRIMARY TARGET for SSSF onboarding. 2. 'Superette' — Barcode scanning, promotions, loyalty, 1,234 SKUs. 3. 'Butchery' — Weight pricing, custom cuts, bulk orders. 4. 'Deli' — Weight items, made-to-order, platters. 5. 'Farm Stall' — Fresh produce, seasonal items, local products. 6. 'Cash & Carry' — Wholesale pricing, bulk discounts, business accounts. 7. 'Bakery Retail' — Fresh daily, custom orders, wholesale. Each card: teal header with name, feature bullets, SKU count badge. Spaza Shop card is visually prominent with amber accent."
+   195→    },
+   196→    {
+   197→      "title": "Section — Recruitment & Rollout",
+   198→      "layout": "section header",
+   199→      "output_path": "/home/z/my-project/download/slides/slide_30.html",
+   200→      "task_brief": "Full-width dark navy gradient slide. Large section number '07' in teal. Title: 'Recruitment & Rollout Plan'. Tagline: 'A phased 5-year plan to onboard 22,500 spaza shops across Limpopo, North West, and Mpumalanga — delivering measurable economic impact to township communities.'"
+   201→    },
+   202→    {
+   203→      "title": "Provincial Rollout Plan",
+   204→      "layout": "bento grid",
+   205→      "output_path": "/home/z/my-project/download/slides/slide_31.html",
+   206→      "task_brief": "Title: '5-Year Provincial Recruitment Plan'. 3 province columns. Column 1 'Limpopo': Year 1: 1,500 spazas (Polokwane, Mankweng, Tzaneen, Phalaborwa focus areas). Year 2: 3,000 cumulative. Year 3: 4,500 cumulative. Year 4: 5,500 cumulative. Year 5: 6,000 cumulative. Key towns: Polokwane, Giyani, Lebowakgomo, Burgersfort. Column 2 'North West': Year 1: 1,500 spazas (Rustenburg, Mahikeng, Klerksdorp focus areas). Year 2: 3,000 cumulative. Year 3: 4,500 cumulative. Year 4: 5,500 cumulative. Year 5: 6,000 cumulative. Key towns: Rustenburg, Brits, Potchefstroom, Vryburg. Column 3 'Mpumalanga': Year 1: 1,500 spazas (Nelspruit, Witbank, Ermelo, Secunda focus areas). Year 2: 3,000 cumulative. Year 3: 4,500 cumulative. Year 4: 5,500 cumulative. Year 5: 6,000 cumulative. Key towns: Nelspruit, Middelburg, Standerton, Barberton. Bottom: Total cumulative chart: Year 1: 4,500 | Year 2: 9,000 | Year 3: 13,500 | Year 4: 16,500 | Year 5: 22,500 spaza shops. Each province column: teal header with province name, year-by-year numbers, key towns listed."
+   207→    },
+   208→    {
+   209→      "title": "Onboarding Process Per Spaza",
+   210→      "layout": "timeline",
+   211→      "output_path": "/home/z/my-project/download/slides/slide_32.html",
+   212→      "task_brief": "Title: 'Spaza Shop Onboarding Process'. 5-stage timeline: 1. 'Identification & Recruitment' (Week 1-2) — Field sales team identifies qualifying spaza shops, owner registers interest, eligibility verification against SSSF criteria, consent and documentation. 2. 'Device Deployment & Setup' (Week 3) — Merchant OS account created and configured, Gopay device delivered (Y90B, P8D, or SoftPOS activated), initial stock catalogue loaded, payment methods configured. 3. 'Training Kick-off' (Week 3-4) — Digital literacy training (2 sessions), POS and Gopay device training, first Learning Academy course enrolled, mentor matched. 4. 'Go-Live & Monitoring' (Month 2) — First live transactions, weekly check-ins for first month, inventory loading support, credit customer setup. 5. 'Ongoing Support' (Month 3+) — Monthly business review, mentorship sessions continue, quarterly compliance check, stakeholder reports generated. Below: Support channels — 'Field Sales Team | In-App Support | WhatsApp Helpdesk | Mentor Network'."
+   213→    },
+   214→    {
+   215→      "title": "Business Impact & ROI",
+   216→      "layout": "stats",
+   217→      "output_path": "/home/z/my-project/download/slides/slide_33.html",
+   218→      "task_brief": "Title: 'Measurable Business Impact — Evidence-Based Results'. 6 impact cards in a 3x2 grid with large teal numbers: 1. '+35% Revenue Growth' — Average revenue increase within 6 months of Merchant OS + Gopay adoption. 2. '-22% Stock Loss' — Reduced shrinkage from 25% to under 3% through automated inventory management. 3. '+45% Customer Retention' — Improved through CRM, loyalty tracking, and credit customer management. 4. '78% Course Completion' — Learning Academy engagement exceeds industry average of 45%. 5. '4.8/5 Mentor Satisfaction' — Mentorship programme rated excellent by participating spaza owners. 6. 'R40,000 Additional Annual Revenue' — Average increase from accepting digital payments via Gopay. Bottom: Impact statement card: 'Based on pilot data from 500+ spaza shops, Merchant OS adoption delivers a 3:1 return on the SSSF investment within 18 months.'"
+   219→    },
+   220→    {
+   221→      "title": "Investment Summary",
+   222→      "layout": "comparison",
+   223→      "output_path": "/home/z/my-project/download/slides/slide_34.html",
+   224→      "task_brief": "Title: 'Investment Summary — What the SSSF Gets'. Left column 'SSSF Investment Per Spaza': R100,000 total package (R40,000 grant + R50,000 blended + R10,000 non-financial). This funds: Payment device + POS system, Initial stock + working capital, Training + mentorship programme, Compliance support, 12-month platform access. Right column 'Return to SSSF per Spaza': R350,000+ in measurable economic impact over 3 years: Revenue growth of R120,000+, 2-3 jobs sustained per spaza, Tax revenue contribution, Community economic multiplier of 3.5x. Additional systemic benefits: Financial inclusion for unbanked merchants, Formalisation of informal retail, Digital skills transfer, Compliant business ecosystem. Bottom: Total programme impact: '22,500 spazas x R100,000 = R2.25 billion in SSSF funding deployed' delivering 'R7.87 billion in estimated economic impact over 5 years'. Teal highlight box."
+   225→    },
+   226→    {
+   227→      "title": "Implementation Timeline",
+   228→      "layout": "timeline",
+   229→      "output_path": "/home/z/my-project/download/slides/slide_35.html",
+   230→      "task_brief": "Title: 'Implementation & Support Timeline'. 4-stage horizontal timeline: 1. 'Phase 1: Pilot (Months 1-3)' — Deploy to 150 spazas per province (450 total), Refine onboarding process, Validate impact metrics, Establish field support teams. 2. 'Phase 2: Scale (Months 4-12)' — Expand to 1,500 per province per year, Full field sales team deployed, Mentor network activated, Monthly stakeholder reports. 3. 'Phase 3: Optimise (Year 2-3)' — Process improvements based on data, Advanced mentorship programmes, GroSupply supplier expansion, GroCredit limit increases. 4. 'Phase 4: Sustain (Year 4-5)' — Self-sustaining merchant network, Community mentor-leaders emerge, Expanded to additional provinces, Annual impact assessment published. Below timeline: Key milestones — 'Month 3: 450 Spazas Live | Month 6: 2,250 Spazas | Month 12: 4,500 Spazas | Year 3: 13,500 Spazas | Year 5: 22,500 Spazas'."
+   231→    },
+   232→    {
+   233→      "title": "Partnership & Governance",
+   234→      "layout": "key message",
+   235→      "output_path": "/home/z/my-project/download/slides/slide_36.html",
+   236→      "task_brief": "Teal gradient background (bg-gradient-teal). Centered content. Title: 'Partnership & Governance Structure'. Subtitle: 'Groway commits to full transparency and accountability in the deployment of SSSF funding.' 4 governance pillars in card-dark style (white text, glass border): 1. 'NEF Oversight' — Quarterly progress reports, annual impact assessment, unreserved access to stakeholder dashboards. 2. 'SEDFA Coordination' — Aligned reporting to SEDFA requirements, joint monitoring of fund utilisation, compliance verification. 3. 'dtic Alignment' — Support for dtic small business development objectives, contribution to informal economy formalisation. 4. 'Community Engagement' — Provincial field teams, local mentor recruitment, community feedback mechanisms. Bottom: 'Groway proposes a joint steering committee with NEF, SEDFA, and dtic representation to oversee programme delivery.'"
+   237→    },
+   238→    {
+   239→      "title": "Why Groway — Competitive Advantage",
+   240→      "layout": "comparison",
+   241→      "output_path": "/home/z/my-project/download/slides/slide_37.html",
+   242→      "task_brief": "Title: 'Why Groway — Our Competitive Advantage'. Left column 'The Groway Difference': 4 differentiators: 1. 'Purpose-Built for Africa' — Not adapted from Western solutions. Built from the ground up for South African township retail, credit cultures, and community dynamics. 2. 'Integrated Ecosystem' — One platform: POS + Payments + Inventory + Training + Mentorship + Reporting. No fragmented tools or manual data transfer. 3. 'Offline-First Architecture' — Works in areas with poor connectivity. Transactions sync automatically when connection is restored. 4. 'Proven at Scale' — 45,000+ merchants across Africa, R125M+ monthly transactions, 99.9% platform uptime. Right column 'Industry Comparison' (vs competitors): Traditional POS companies: POS only, no payments, no training, no mentorship. Payment providers: Payments only, no business tools, no reporting. Generic software: Not built for Africa, no township understanding, no SSSF alignment. Bottom: 'Groway is the ONLY platform that provides end-to-end support aligned with the SSSF mandate.'"
+   243→    },
+   244→    {
+   245→      "title": "Call to Action",
+   246→      "layout": "key message",
+   247→      "output_path": "/home/z/my-project/download/slides/slide_38.html",
+   248→      "task_brief": "Teal gradient background (bg-gradient-teal). Centered content. Large white heading: 'The Opportunity'. Large white subheading: 'R2.25 Billion in SSSF Funding. 22,500 Spaza Shops. 3 Provinces. 5 Years.'. Body text: 'Groway is uniquely positioned to deliver the Spaza Shop Support Fund's mandate — transforming township retail through technology, payments, and skills development. We request the NEF and SEDFA's partnership to recruit and incorporate Groway Merchant OS as the technology backbone for spaza shops across South Africa.' 3 CTA items: 1. 'Approve Groway as SSSF Technology Partner', 2. 'Fund Phase 1 Pilot: 450 Spazas (R45 million)', 3. 'Establish Joint Steering Committee'. Bottom: 'Let's build the future of South African township retail — together.'"
+   249→    },
+   250→    {
+   251→      "title": "Thank You & Contact",
+   252→      "layout": "closing",
+   253→      "output_path": "/home/z/my-project/download/slides/slide_39.html",
+   254→      "task_brief": "Dark navy gradient background (bg-gradient-dark). Centered content. Large heading: 'Thank You'. Subtitle: 'Groway looks forward to partnering with the National Empowerment Fund (NEF), the Small Enterprise Development and Finance Agency (SEDFA), the dtic, and the Department of Small Business Development to empower South Africa's spaza shop owners.' Contact information in clean card: 'Groway (Pty) Ltd', 'Merchant OS — Spaza Shop Support Fund Proposal', 'www.groway.co.za', 'info@groway.co.za'. Bottom left: 'Confidential — Prepared for NEF, SEDFA & dtic'. Bottom right: 'Product Demonstration | 2025'. Teal accent line at bottom."
+   255→    }
+   256→  ]
+   257→}
+   258→

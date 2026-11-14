@@ -1,0 +1,2002 @@
+     1→# Tshepo and Groway: complete source listing
+     2→
+     3→**11 November 2026 · Companion to the Groway and Tshepo Master Build Document v2.0**
+     4→
+     5→Every file in the `tshepo-groway-integration` bundle is reproduced below, in the order shown in the index. 64 tests pass and the TypeScript compiles with no errors. The converted Postgres schema (`groway-changes/prisma/schema.prisma`, 302 models) is a mechanical conversion of Groway's own 296-model schema plus the six Tshepo models, so it is listed in the bundle but not reproduced here.
+     6→
+     7→## Index
+     8→
+     9→**Application code: src/lib/tshepo**
+    10→
+    11→- `src/lib/tshepo/capital/funding.ts` (119 lines)
+    12→- `src/lib/tshepo/consent/consent.ts` (22 lines)
+    13→- `src/lib/tshepo/decisioning/orchestrator.ts` (87 lines)
+    14→- `src/lib/tshepo/edge/envelope.ts` (50 lines)
+    15→- `src/lib/tshepo/gopay/settlement.ts` (85 lines)
+    16→- `src/lib/tshepo/ledger/ledger.ts` (90 lines)
+    17→- `src/lib/tshepo/ledger/prisma-ledger-repo.ts` (51 lines)
+    18→- `src/lib/tshepo/repayment/waterfall.ts` (23 lines)
+    19→- `src/lib/tshepo/shared/ids.ts` (12 lines)
+    20→- `src/lib/tshepo/shared/money.ts` (17 lines)
+    21→- `src/lib/tshepo/topup/orchestrator.ts` (44 lines)
+    22→- `src/lib/tshepo/topup/presets.ts` (41 lines)
+    23→- `src/lib/tshepo/topup/products.ts` (85 lines)
+    24→- `src/lib/tshepo/topup/service.ts` (158 lines)
+    25→- `src/lib/tshepo/vending/catalogue.ts` (33 lines)
+    26→- `src/lib/tshepo/vending/http-adapter.ts` (67 lines)
+    27→- `src/lib/tshepo/vending/mock.ts` (31 lines)
+    28→- `src/lib/tshepo/vending/paychangu.ts` (53 lines)
+    29→- `src/lib/tshepo/vending/router.ts` (77 lines)
+    30→- `src/lib/tshepo/vending/types.ts` (32 lines)
+    31→
+    32→**Tests: **tests**/tshepo**
+    33→
+    34→- `__tests__/tshepo/consent-decision-edge.test.ts` (94 lines)
+    35→- `__tests__/tshepo/funding-delivery.test.ts` (111 lines)
+    36→- `__tests__/tshepo/gopay.test.ts` (81 lines)
+    37→- `__tests__/tshepo/ledger.test.ts` (48 lines)
+    38→- `__tests__/tshepo/prisma-ledger-repo.test.ts` (44 lines)
+    39→- `__tests__/tshepo/topup.test.ts` (112 lines)
+    40→- `__tests__/tshepo/vending.test.ts` (120 lines)
+    41→
+    42→**Database: Prisma models and SQL guards**
+    43→
+    44→- `prisma/tshepo.models.prisma` (84 lines)
+    45→- `prisma/tshepo-ledger-guards.sql` (23 lines)
+    46→
+    47→**Groway changes: database client and helper scripts**
+    48→
+    49→- `groway-changes/src/lib/db.ts` (16 lines)
+    50→- `groway-changes/setup-groway-postgres.sh` (98 lines)
+    51→- `groway-changes/build-groway.sh` (17 lines)
+    52→- `groway-changes/start-groway.sh` (12 lines)
+    53→- `groway-changes/backup-groway.sh` (11 lines)
+    54→
+    55→**Project files**
+    56→
+    57→- `package.json` (15 lines)
+    58→- `tsconfig.json` (19 lines)
+    59→- `vitest.config.ts` (2 lines)
+    60→- `README.md` (15 lines)
+    61→- `INTEGRATION.md` (19 lines)
+    62→- `groway-changes/MAC_SERVER_SETUP.md` (25 lines)
+    63→
+    64→Total files listed: 40
+    65→
+    66→## Application code: src/lib/tshepo
+    67→
+    68→### `src/lib/tshepo/capital/funding.ts`
+    69→
+    70→```ts
+    71→import { LedgerService } from '../ledger/ledger';
+    72→import { mulBps } from '../shared/money';
+    73→
+    74→/**
+    75→ * Funding is a mesh of facilities, not one lender. Each facility has its own currency, scope, limit, price and
+    76→ * performance triggers, all held as data, so a new funder (bank, development lender, pension fund, impact
+    77→ * fund or a digital-native source) is added by configuration. Funding is matched to the currency of the asset,
+    78→ * so a kwacha advance is never funded from a rand facility.
+    79→ */
+    80→export interface Facility {
+    81→  id: string; funder: string; countries: ('ZA' | 'MW')[]; currency: string; products: string[] | '*';
+    82→  limitMinor: bigint; drawnMinor: bigint;
+    83→  /** Lower number is used first. */
+    84→  priority: number;
+    85→  /** Funder's cost on each advance, in basis points of principal (a flat simplification). */
+    86→  costBps: number;
+    87→  /** Performance triggers: breaching either suspends new draws. */
+    88→  minRecoveryRateBps?: number; maxChargeOffBps?: number;
+    89→  status: 'active' | 'suspended' | 'amortising';
+    90→}
+    91→export interface Allocation { requestId: string; facilityId: string; principalMinor: bigint; costBps: number; repaidMinor: bigint }
+    92→
+    93→export interface FacilityRepo {
+    94→  list(): Promise<Facility[]>;
+    95→  save(f: Facility): Promise<void>;
+    96→  allocation(requestId: string): Promise<Allocation | undefined>;
+    97→  saveAllocation(a: Allocation): Promise<void>;
+    98→}
+    99→export class InMemoryFacilityRepo implements FacilityRepo {
+   100→  private f = new Map<string, Facility>(); private a = new Map<string, Allocation>();
+   101→  constructor(facilities: Facility[] = []) { facilities.forEach((x) => this.f.set(x.id, { ...x })); }
+   102→  async list() { return [...this.f.values()]; }
+   103→  async save(x: Facility) { this.f.set(x.id, x); }
+   104→  async allocation(r: string) { return this.a.get(r); }
+   105→  async saveAllocation(x: Allocation) { this.a.set(x.requestId, x); }
+   106→}
+   107→
+   108→export class FundingError extends Error { constructor(public readonly code: string, m: string) { super(m); } }
+   109→
+   110→export const fundingAcct = {
+   111→  supplier: (commodity: string) => `supplier_payable:${commodity}`,
+   112→  funder: (facilityId: string) => `funder_payable:${facilityId}`,
+   113→  cost: 'funding_cost_expense',
+   114→  clearing: 'collections_clearing',
+   115→};
+   116→
+   117→/** Peak float needed: daily advances times the days they stay outstanding, plus a safety buffer. */
+   118→export function estimateFloat(p: { dailyAdvancesMinor: bigint; avgDaysOutstanding: number; bufferBps: number }): bigint {
+   119→  if (p.avgDaysOutstanding < 0 || p.bufferBps < 0) throw new RangeError('inputs must be non-negative');
+   120→  return (p.dailyAdvancesMinor * BigInt(Math.ceil(p.avgDaysOutstanding)) * BigInt(10000 + p.bufferBps)) / 10000n;
+   121→}
+   122→
+   123→export class FundingService {
+   124→  constructor(private ledger: LedgerService, private repo: FacilityRepo) {}
+   125→
+   126→  /** Choose a facility for an advance and move the obligation from the supplier to the funder. Idempotent per request. */
+   127→  async allocate(a: { tenantId: string; requestId: string; productId: string; country: 'ZA' | 'MW'; currency: string; commodity: string; principalMinor: bigint }) {
+   128→    const prior = await this.repo.allocation(a.requestId);
+   129→    if (prior) return { facilityId: prior.facilityId, replayed: true };
+   130→    const eligible = (await this.repo.list())
+   131→      .filter((f) => f.status === 'active' && f.currency === a.currency && f.countries.includes(a.country)
+   132→        && (f.products === '*' || f.products.includes(a.productId)) && f.limitMinor - f.drawnMinor >= a.principalMinor)
+   133→      .sort((x, y) => x.priority - y.priority || Number((x.drawnMinor * 10000n) / (x.limitMinor || 1n) - (y.drawnMinor * 10000n) / (y.limitMinor || 1n)));
+   134→    const f = eligible[0];
+   135→    if (!f) throw new FundingError('FUNDING_UNAVAILABLE', 'no facility can fund this advance');
+   136→    await this.ledger.post({
+   137→      tenantId: a.tenantId, idempotencyKey: `${a.requestId}:funded`, reason: 'advance_funded', correlationId: a.requestId, currency: a.currency,
+   138→      lines: [{ account: fundingAcct.supplier(a.commodity), amount: a.principalMinor }, { account: fundingAcct.funder(f.id), amount: -a.principalMinor }],
+   139→    });
+   140→    f.drawnMinor += a.principalMinor; await this.repo.save(f);
+   141→    await this.repo.saveAllocation({ requestId: a.requestId, facilityId: f.id, principalMinor: a.principalMinor, costBps: f.costBps, repaidMinor: 0n });
+   142→    return { facilityId: f.id, replayed: false };
+   143→  }
+   144→
+   145→  /** Funding fell through (delivery failed): release the draw. */
+   146→  async release(a: { tenantId: string; requestId: string; currency: string; commodity: string }) {
+   147→    const al = await this.repo.allocation(a.requestId);
+   148→    if (!al || al.repaidMinor > 0n) return;
+   149→    await this.ledger.post({
+   150→      tenantId: a.tenantId, idempotencyKey: `${a.requestId}:funding_released`, reason: 'advance_funding_released', correlationId: a.requestId, currency: a.currency,
+   151→      lines: [{ account: fundingAcct.funder(al.facilityId), amount: al.principalMinor }, { account: fundingAcct.supplier(a.commodity), amount: -al.principalMinor }],
+   152→    });
+   153→    const f = (await this.repo.list()).find((x) => x.id === al.facilityId)!;
+   154→    f.drawnMinor -= al.principalMinor; await this.repo.save(f);
+   155→    await this.repo.saveAllocation({ ...al, repaidMinor: al.principalMinor });
+   156→  }
+   157→
+   158→  /** Pay the funder its principal share, plus its cost, out of what was recovered from the customer. */
+   159→  async repayFromRecovery(a: { tenantId: string; requestId: string; topupRef: string; currency: string; takenMinor: bigint; principalMinor: bigint; feeMinor: bigint }) {
+   160→    const al = await this.repo.allocation(a.requestId);
+   161→    if (!al) return { paid: 0n };
+   162→    const share = (a.takenMinor * a.principalMinor) / (a.principalMinor + a.feeMinor);
+   163→    const principalPart = share > al.principalMinor - al.repaidMinor ? al.principalMinor - al.repaidMinor : share;
+   164→    if (principalPart <= 0n) return { paid: 0n };
+   165→    const cost = mulBps(principalPart, BigInt(al.costBps));
+   166→    const lines = [{ account: fundingAcct.funder(al.facilityId), amount: principalPart }, { account: fundingAcct.clearing, amount: -(principalPart + cost) }];
+   167→    if (cost > 0n) lines.splice(1, 0, { account: fundingAcct.cost, amount: cost });
+   168→    await this.ledger.post({ tenantId: a.tenantId, idempotencyKey: `${a.topupRef}:funder`, reason: 'funder_repaid', correlationId: a.topupRef, currency: a.currency, lines });
+   169→    const f = (await this.repo.list()).find((x) => x.id === al.facilityId)!;
+   170→    f.drawnMinor -= principalPart; await this.repo.save(f);
+   171→    await this.repo.saveAllocation({ ...al, repaidMinor: al.repaidMinor + principalPart });
+   172→    return { paid: principalPart + cost };
+   173→  }
+   174→
+   175→  /** Performance triggers as code: suspend new draws on a breach, resume when performance recovers. */
+   176→  async applyPerformance(stats: { recoveryRateBps: number; chargeOffBps: number }) {
+   177→    for (const f of await this.repo.list()) {
+   178→      if (f.status === 'amortising') continue;
+   179→      const breach = (f.minRecoveryRateBps !== undefined && stats.recoveryRateBps < f.minRecoveryRateBps)
+   180→        || (f.maxChargeOffBps !== undefined && stats.chargeOffBps > f.maxChargeOffBps);
+   181→      const next = breach ? 'suspended' : 'active';
+   182→      if (next !== f.status) { f.status = next; await this.repo.save(f); }
+   183→    }
+   184→  }
+   185→
+   186→  async headroom(currency: string) {
+   187→    return (await this.repo.list()).filter((f) => f.status === 'active' && f.currency === currency).reduce((s, f) => s + (f.limitMinor - f.drawnMinor), 0n);
+   188→  }
+   189→}
+   190→```
+   191→
+   192→### `src/lib/tshepo/consent/consent.ts`
+   193→
+   194→```ts
+   195→export type Purpose = 'credit_underwriting' | 'wifi_billing' | 'marketing';
+   196→interface ConsentEvent { subject: string; purpose: Purpose; kind: 'grant' | 'revoke'; at: Date; expiresAt?: Date }
+   197→
+   198→/** Append-only consent log. Latest event per (subject, purpose) wins. */
+   199→export class ConsentService {
+   200→  private log: ConsentEvent[] = [];
+   201→  grant(subject: string, purpose: Purpose, at = new Date(), expiresAt?: Date) {
+   202→    this.log.push({ subject, purpose, kind: 'grant', at, expiresAt });
+   203→  }
+   204→  revoke(subject: string, purpose: Purpose, at = new Date()) {
+   205→    this.log.push({ subject, purpose, kind: 'revoke', at });
+   206→  }
+   207→  isAllowed(subject: string, purpose: Purpose, now = new Date()): boolean {
+   208→    for (let i = this.log.length - 1; i >= 0; i--) {
+   209→      const e = this.log[i]!;
+   210→      if (e.subject !== subject || e.purpose !== purpose || e.at > now) continue;
+   211→      if (e.kind === 'revoke') return false;
+   212→      return !e.expiresAt || e.expiresAt > now;
+   213→    }
+   214→    return false;
+   215→  }
+   216→}
+   217→```
+   218→
+   219→### `src/lib/tshepo/decisioning/orchestrator.ts`
+   220→
+   221→```ts
+   222→import { ConsentService } from '../consent/consent';
+   223→import { fmtRand, mulBps, minOf } from '../shared/money';
+   224→
+   225→export interface FeatureStore { get(subject: string, names: string[]): Promise<Record<string, number | undefined>> }
+   226→
+   227→export interface Policy {
+   228→  version: string;
+   229→  modelVersion: string;
+   230→  minTenureDays: number;
+   231→  minLimit: bigint;
+   232→  maxLimit: bigint;
+   233→  /** Limit as a share of trailing 30-day sales, in basis points. */
+   234→  limitShareOfSalesBps: number;
+   235→}
+   236→
+   237→export type Outcome = 'approve' | 'decline' | 'refer';
+   238→export interface TraceStep { step: string; result: 'pass' | 'fail' | 'skip'; detail: string }
+   239→export interface Decision {
+   240→  outcome: Outcome;
+   241→  limit: bigint;
+   242→  reasonCodes: string[];
+   243→  /** Plain-language explanation and what would change the outcome. */
+   244→  explanation: string[];
+   245→  counterfactual: string[];
+   246→  trace: TraceStep[];
+   247→  versions: { policy: string; model: string };
+   248→}
+   249→
+   250→const FEATURES = ['sales_30d_minor', 'tenure_days', 'arrears_minor', 'kyc_verified'] as const;
+   251→
+   252→export class DecisionOrchestrator {
+   253→  constructor(private consent: ConsentService, private features: FeatureStore, private policy: Policy) {}
+   254→
+   255→  async decide(subject: string, now = new Date()): Promise<Decision> {
+   256→    const trace: TraceStep[] = [];
+   257→    const versions = { policy: this.policy.version, model: this.policy.modelVersion };
+   258→    const out = (o: Outcome, limit: bigint, codes: string[], why: string[], cf: string[]): Decision =>
+   259→      ({ outcome: o, limit, reasonCodes: codes, explanation: why, counterfactual: cf, trace, versions });
+   260→
+   261→    // 1. Consent is checked before any feature is read.
+   262→    if (!this.consent.isAllowed(subject, 'credit_underwriting', now)) {
+   263→      trace.push({ step: 'consent', result: 'fail', detail: 'no valid credit_underwriting consent' });
+   264→      return out('refer', 0n, ['CONSENT_MISSING'], ['We need your permission to use your trading data for a credit check.'], ['Give consent for credit checks.']);
+   265→    }
+   266→    trace.push({ step: 'consent', result: 'pass', detail: 'credit_underwriting granted' });
+   267→
+   268→    // 2. Features. A missing critical feature means refer, never guess.
+   269→    const f = await this.features.get(subject, [...FEATURES]);
+   270→    const missing = FEATURES.filter((n) => f[n] === undefined);
+   271→    if (missing.length) {
+   272→      trace.push({ step: 'features', result: 'fail', detail: `missing: ${missing.join(', ')}` });
+   273→      return out('refer', 0n, ['DATA_INCOMPLETE'], ['We do not yet have enough information to decide.'], ['A reviewer will check your details.']);
+   274→    }
+   275→    trace.push({ step: 'features', result: 'pass', detail: 'all critical features present' });
+   276→    const sales = BigInt(f.sales_30d_minor!);
+   277→    const tenure = f.tenure_days!;
+   278→    const arrears = BigInt(f.arrears_minor!);
+   279→
+   280→    // 3. Hard stops.
+   281→    if (f.kyc_verified !== 1) {
+   282→      trace.push({ step: 'hard_stops', result: 'fail', detail: 'KYC not verified' });
+   283→      return out('refer', 0n, ['KYC_PENDING'], ['Your identity check is not complete.'], ['Complete identity verification.']);
+   284→    }
+   285→    if (arrears > 0n) {
+   286→      trace.push({ step: 'hard_stops', result: 'fail', detail: `arrears ${fmtRand(arrears)}` });
+   287→      return out('decline', 0n, ['ARREARS_PRESENT'], ['You have an overdue amount on another account.'], [`Clear the overdue ${fmtRand(arrears)} and apply again.`]);
+   288→    }
+   289→    if (tenure < this.policy.minTenureDays) {
+   290→      const more = Math.ceil(this.policy.minTenureDays - tenure);
+   291→      trace.push({ step: 'hard_stops', result: 'fail', detail: `tenure ${tenure} days` });
+   292→      return out('decline', 0n, ['TENURE_TOO_SHORT'], ['You have not been trading with us long enough yet.'], [`Keep trading for ${more} more days and apply again.`]);
+   293→    }
+   294→    trace.push({ step: 'hard_stops', result: 'pass', detail: 'kyc, arrears, tenure ok' });
+   295→
+   296→    // 4. Affordability and limit (illustrative scorecard stand-in: share of recent sales).
+   297→    const raw = mulBps(sales, BigInt(this.policy.limitShareOfSalesBps));
+   298→    const limit = minOf(raw, this.policy.maxLimit);
+   299→    if (limit < this.policy.minLimit) {
+   300→      const needed = (this.policy.minLimit * 10000n + BigInt(this.policy.limitShareOfSalesBps) - 1n) / BigInt(this.policy.limitShareOfSalesBps);
+   301→      trace.push({ step: 'affordability', result: 'fail', detail: `limit ${fmtRand(limit)} below minimum` });
+   302→      return out('decline', 0n, ['AFFORDABILITY_LOW'], ['Your recent sales do not support the smallest advance we offer.'],
+   303→        [`Monthly sales of at least ${fmtRand(needed)} would qualify.`]);
+   304→    }
+   305→    trace.push({ step: 'affordability', result: 'pass', detail: `limit ${fmtRand(limit)}` });
+   306→    return out('approve', limit, ['APPROVED'], [`You are approved for up to ${fmtRand(limit)}.`], []);
+   307→  }
+   308→}
+   309→```
+   310→
+   311→### `src/lib/tshepo/edge/envelope.ts`
+   312→
+   313→```ts
+   314→import { createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, KeyObject } from 'node:crypto';
+   315→
+   316→export interface EnvelopePayload {
+   317→  envelopeId: string; subject: string; tenant: string; product: string;
+   318→  maxOfflineAmountMinor: string; currency: string;
+   319→  validFrom: string; expiresAt: string; policyVersion: string; modelVersion: string;
+   320→  alg: 'Ed25519'; kid: string;
+   321→}
+   322→export interface SignedEnvelope { payload: EnvelopePayload; signature: string }
+   323→
+   324→const canonical = (p: EnvelopePayload) =>
+   325→  JSON.stringify(Object.fromEntries(Object.entries(p).sort(([a], [b]) => (a < b ? -1 : 1))));
+   326→
+   327→export function newKeyPair() {
+   328→  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+   329→  return { publicKey, privateKey };
+   330→}
+   331→export const exportPublic = (k: KeyObject) => k.export({ type: 'spki', format: 'pem' }).toString();
+   332→export const importPublic = (pem: string) => createPublicKey(pem);
+   333→export const importPrivate = (pem: string) => createPrivateKey(pem);
+   334→
+   335→export function signEnvelope(payload: EnvelopePayload, privateKey: KeyObject): SignedEnvelope {
+   336→  return { payload, signature: sign(null, Buffer.from(canonical(payload)), privateKey).toString('base64') };
+   337→}
+   338→
+   339→export type VerifyResult = { ok: true } | { ok: false; reason: 'UNKNOWN_KEY' | 'BAD_SIGNATURE' | 'NOT_YET_VALID' | 'EXPIRED' | 'WRONG_TENANT' };
+   340→
+   341→/** What an edge node runs before every offline decision: signature, validity window, tenant, key ID. */
+   342→export function verifyEnvelope(env: SignedEnvelope, keys: Map<string, KeyObject>, tenant: string, now = new Date()): VerifyResult {
+   343→  const key = keys.get(env.payload.kid);
+   344→  if (!key) return { ok: false, reason: 'UNKNOWN_KEY' };
+   345→  if (!verify(null, Buffer.from(canonical(env.payload)), key, Buffer.from(env.signature, 'base64'))) return { ok: false, reason: 'BAD_SIGNATURE' };
+   346→  if (env.payload.tenant !== tenant) return { ok: false, reason: 'WRONG_TENANT' };
+   347→  if (now < new Date(env.payload.validFrom)) return { ok: false, reason: 'NOT_YET_VALID' };
+   348→  if (now >= new Date(env.payload.expiresAt)) return { ok: false, reason: 'EXPIRED' };
+   349→  return { ok: true };
+   350→}
+   351→
+   352→/** Tracks offline spend against the envelope cap; reported to the core on sync. */
+   353→export class EdgeSpendTracker {
+   354→  private spent = new Map<string, bigint>();
+   355→  tryReserve(env: SignedEnvelope, amount: bigint): boolean {
+   356→    const cap = BigInt(env.payload.maxOfflineAmountMinor);
+   357→    const next = (this.spent.get(env.payload.envelopeId) ?? 0n) + amount;
+   358→    if (amount <= 0n || next > cap) return false;
+   359→    this.spent.set(env.payload.envelopeId, next);
+   360→    return true;
+   361→  }
+   362→  spentFor(id: string) { return this.spent.get(id) ?? 0n; }
+   363→}
+   364→```
+   365→
+   366→### `src/lib/tshepo/gopay/settlement.ts`
+   367→
+   368→```ts
+   369→import { LedgerService } from '../ledger/ledger';
+   370→import { mulBps, minOf } from '../shared/money';
+   371→import { splitAtSettlement } from '../repayment/waterfall';
+   372→
+   373→export type Rail = 'qr_payshap' | 'instant_eft' | 'debit_card' | 'credit_card';
+   374→/** Merchant discount rate in basis points, from the GoPay five-rail structure (four rails modelled). */
+   375→export const MDR_BPS: Record<Rail, number> = { qr_payshap: 100, instant_eft: 120, debit_card: 150, credit_card: 190 };
+   376→
+   377→export interface GoPayConfig {
+   378→  /** Stays false until GoPay is licensed and live. The split route refuses to run while false. */
+   379→  goPayLive: boolean;
+   380→  route: 'split' | 'debit';
+   381→  shareBps: number;
+   382→}
+   383→export interface Sale { tenantId: string; merchantId: string; saleId: string; amount: bigint; rail: Rail; currency?: string }
+   384→
+   385→export class GoPayNotLiveError extends Error {
+   386→  constructor() { super('GoPay settlement split is disabled until GoPay is live and licensed'); }
+   387→}
+   388→
+   389→export const acct = {
+   390→  clearing: 'partner_clearing',
+   391→  trust: 'trust_bank',
+   392→  mdr: 'mdr_revenue',
+   393→  wallet: (m: string) => `merchant_wallet:${m}`,
+   394→  loan: (m: string) => `loan_receivable:${m}`,
+   395→};
+   396→
+   397→export interface SettleResult { fee: bigint; net: bigint; repaid: bigint; payout: bigint; replayed: boolean }
+   398→
+   399→export async function settleSale(ledger: LedgerService, cfg: GoPayConfig, s: Sale): Promise<SettleResult> {
+   400→  if (cfg.route === 'split' && !cfg.goPayLive) throw new GoPayNotLiveError();
+   401→  if (s.amount <= 0n) throw new RangeError('sale amount must be positive');
+   402→  const cur = s.currency ?? 'ZAR';
+   403→  const fee = mulBps(s.amount, BigInt(MDR_BPS[s.rail]));
+   404→  const net = s.amount - fee;
+   405→  const base = { tenantId: s.tenantId, correlationId: s.saleId, currency: cur };
+   406→  const key = (step: string) => `${s.saleId}:${step}`;
+   407→
+   408→  // Replay safety: if the final step exists, rebuild the result from stored entries and post nothing.
+   409→  const done = await ledger.get(s.tenantId, key('payout'));
+   410→  if (done) {
+   411→    const rep = await ledger.get(s.tenantId, key('repayment'));
+   412→    const repaid = rep ? rep.lines.find((l) => l.account === acct.wallet(s.merchantId))!.amount : 0n;
+   413→    return { fee, net, repaid, payout: net - repaid, replayed: true };
+   414→  }
+   415→
+   416→  await ledger.post({ ...base, idempotencyKey: key('captured'), reason: 'payment_captured',
+   417→    lines: [{ account: acct.clearing, amount: s.amount }, { account: acct.wallet(s.merchantId), amount: -s.amount }] });
+   418→  await ledger.post({ ...base, idempotencyKey: key('mdr'), reason: 'merchant_fee',
+   419→    lines: [{ account: acct.wallet(s.merchantId), amount: fee }, { account: acct.mdr, amount: -fee }] });
+   420→  await ledger.post({ ...base, idempotencyKey: key('settled'), reason: 'partner_settlement',
+   421→    lines: [{ account: acct.trust, amount: s.amount }, { account: acct.clearing, amount: -s.amount }] });
+   422→
+   423→  let repaid = 0n;
+   424→  if (cfg.route === 'split') {
+   425→    const outstanding = await ledger.balance(s.tenantId, acct.loan(s.merchantId));
+   426→    repaid = splitAtSettlement(net, cfg.shareBps, outstanding);
+   427→    if (repaid > 0n) {
+   428→      await ledger.post({ ...base, idempotencyKey: key('repayment'), reason: 'repayment_split',
+   429→        lines: [{ account: acct.wallet(s.merchantId), amount: repaid }, { account: acct.loan(s.merchantId), amount: -repaid }] });
+   430→    }
+   431→  }
+   432→  const payout = net - repaid;
+   433→  await ledger.post({ ...base, idempotencyKey: key('payout'), reason: 'merchant_payout',
+   434→    lines: [{ account: acct.wallet(s.merchantId), amount: payout }, { account: acct.trust, amount: -payout }] });
+   435→  return { fee, net, repaid, payout, replayed: false };
+   436→}
+   437→
+   438→/** Wave 1 route: scheduled debit order collected through a licensed partner. */
+   439→export async function collectDebit(ledger: LedgerService, p: { tenantId: string; merchantId: string; debitId: string; instalment: bigint }) {
+   440→  const outstanding = await ledger.balance(p.tenantId, acct.loan(p.merchantId));
+   441→  const amount = minOf(outstanding, p.instalment);
+   442→  if (amount <= 0n) return { collected: 0n };
+   443→  await ledger.post({ tenantId: p.tenantId, idempotencyKey: `${p.debitId}:collected`, reason: 'debit_order_collected',
+   444→    correlationId: p.debitId, currency: 'ZAR',
+   445→    lines: [{ account: acct.trust, amount }, { account: acct.loan(p.merchantId), amount: -amount }] });
+   446→  return { collected: amount };
+   447→}
+   448→
+   449→/** A failed debit order posts nothing to the ledger: it raises arrears and starts the collections workflow. */
+   450→export async function failedDebit(ledger: LedgerService, p: { tenantId: string; merchantId: string; instalment: bigint }) {
+   451→  const outstanding = await ledger.balance(p.tenantId, acct.loan(p.merchantId));
+   452→  return { arrears: minOf(outstanding, p.instalment), nextAction: 'collections_contact_then_hardship_offer' as const };
+   453→}
+   454→```
+   455→
+   456→### `src/lib/tshepo/ledger/ledger.ts`
+   457→
+   458→```ts
+   459→import { uuidv7 } from '../shared/ids';
+   460→
+   461→/** Signed amounts: debit positive, credit negative. Every entry must sum to zero. */
+   462→export interface Line { account: string; amount: bigint }
+   463→export interface EntryInput {
+   464→  tenantId: string;
+   465→  idempotencyKey: string;
+   466→  reason: string;
+   467→  correlationId: string;
+   468→  currency: string;
+   469→  lines: Line[];
+   470→}
+   471→export interface Entry extends EntryInput { id: string; postedAt: Date }
+   472→export interface OutboxEvent { id: string; topic: string; payload: unknown }
+   473→
+   474→/** Port. A Postgres/Prisma adapter must write the entry and outbox row in ONE transaction. */
+   475→export interface LedgerRepo {
+   476→  findByKey(tenantId: string, key: string): Promise<Entry | undefined>;
+   477→  appendWithOutbox(entry: Entry, event: OutboxEvent): Promise<void>;
+   478→  entries(tenantId: string): Promise<readonly Entry[]>;
+   479→}
+   480→
+   481→export class LedgerError extends Error {
+   482→  constructor(public readonly code: string, message: string) { super(message); }
+   483→}
+   484→
+   485→const fingerprint = (i: EntryInput) =>
+   486→  [i.reason, i.currency, ...i.lines.map((l) => `${l.account}:${l.amount}`)].join('|');
+   487→
+   488→export class InMemoryLedgerRepo implements LedgerRepo {
+   489→  private byKey = new Map<string, Entry>();
+   490→  private byTenant = new Map<string, Entry[]>();
+   491→  readonly outbox: OutboxEvent[] = [];
+   492→
+   493→  async findByKey(t: string, k: string) { return this.byKey.get(`${t}/${k}`); }
+   494→  async appendWithOutbox(e: Entry, ev: OutboxEvent) {
+   495→    this.byKey.set(`${e.tenantId}/${e.idempotencyKey}`, e);
+   496→    const list = this.byTenant.get(e.tenantId) ?? [];
+   497→    list.push(e);
+   498→    this.byTenant.set(e.tenantId, list);
+   499→    this.outbox.push(ev);
+   500→  }
+   501→  async entries(t: string) { return this.byTenant.get(t) ?? []; }
+   502→}
+   503→
+   504→export class LedgerService {
+   505→  constructor(private readonly repo: LedgerRepo) {}
+   506→
+   507→  async post(input: EntryInput): Promise<{ entry: Entry; replayed: boolean }> {
+   508→    if (!/^[A-Z]{3}$/.test(input.currency)) throw new LedgerError('BAD_CURRENCY', 'currency must be ISO 4217');
+   509→    if (input.lines.length < 2) throw new LedgerError('TOO_FEW_LINES', 'an entry needs at least two lines');
+   510→    let sum = 0n;
+   511→    for (const l of input.lines) {
+   512→      if (!l.account) throw new LedgerError('NO_ACCOUNT', 'every line needs an account');
+   513→      if (l.amount === 0n) throw new LedgerError('ZERO_AMOUNT', 'zero-amount lines are not allowed');
+   514→      sum += l.amount;
+   515→    }
+   516→    if (sum !== 0n) throw new LedgerError('UNBALANCED', `entry sums to ${sum}, expected 0`);
+   517→
+   518→    const existing = await this.repo.findByKey(input.tenantId, input.idempotencyKey);
+   519→    if (existing) {
+   520→      if (fingerprint(existing) !== fingerprint(input)) {
+   521→        throw new LedgerError('IDEMPOTENCY_CONFLICT', 'same key reused with different content');
+   522→      }
+   523→      return { entry: existing, replayed: true };
+   524→    }
+   525→    const entry: Entry = { ...input, id: uuidv7(), postedAt: new Date() };
+   526→    await this.repo.appendWithOutbox(entry, {
+   527→      id: uuidv7(),
+   528→      topic: 'ledger.entry.posted',
+   529→      payload: { entryId: entry.id, tenantId: entry.tenantId, reason: entry.reason, correlationId: entry.correlationId },
+   530→    });
+   531→    return { entry, replayed: false };
+   532→  }
+   533→
+   534→  async get(tenantId: string, key: string) { return this.repo.findByKey(tenantId, key); }
+   535→
+   536→  async balance(tenantId: string, account: string): Promise<bigint> {
+   537→    let b = 0n;
+   538→    for (const e of await this.repo.entries(tenantId)) for (const l of e.lines) if (l.account === account) b += l.amount;
+   539→    return b;
+   540→  }
+   541→
+   542→  /** Sum of all lines across the tenant. Must always be zero. */
+   543→  async trialBalanceTotal(tenantId: string): Promise<bigint> {
+   544→    let t = 0n;
+   545→    for (const e of await this.repo.entries(tenantId)) for (const l of e.lines) t += l.amount;
+   546→    return t;
+   547→  }
+   548→}
+   549→```
+   550→
+   551→### `src/lib/tshepo/ledger/prisma-ledger-repo.ts`
+   552→
+   553→```ts
+   554→import type { Entry, LedgerRepo, OutboxEvent } from './ledger';
+   555→
+   556→/** Minimal structural types so this adapter compiles without importing the generated Prisma client. */
+   557→/* eslint-disable @typescript-eslint/no-explicit-any */
+   558→export interface TshepoTx {
+   559→  tshepoJournalEntry: { findUnique(a: any): Promise<any>; create(a: any): Promise<any>; findMany(a: any): Promise<any[]> };
+   560→  tshepoAccount: { upsert(a: any): Promise<{ id: string }> };
+   561→  tshepoOutbox: { create(a: any): Promise<any> };
+   562→}
+   563→export interface TshepoDb extends TshepoTx { $transaction<T>(fn: (tx: TshepoTx) => Promise<T>): Promise<T> }
+   564→
+   565→const toEntry = (r: any): Entry => ({
+   566→  id: r.id, tenantId: r.tenantId, idempotencyKey: r.idempotencyKey, reason: r.reason,
+   567→  correlationId: r.correlationId, currency: r.currency, postedAt: r.postedAt,
+   568→  lines: r.lines.map((l: any) => ({ account: l.account.code, amount: BigInt(l.amountMinor) })),
+   569→});
+   570→const include = { lines: { include: { account: true } } };
+   571→
+   572→/** Prisma-backed ledger. The entry, its lines and its outbox row commit in ONE transaction. */
+   573→export class PrismaLedgerRepo implements LedgerRepo {
+   574→  constructor(private readonly db: TshepoDb) {}
+   575→
+   576→  async findByKey(tenantId: string, key: string) {
+   577→    const r = await this.db.tshepoJournalEntry.findUnique({ where: { tenantId_idempotencyKey: { tenantId, idempotencyKey: key } }, include });
+   578→    return r ? toEntry(r) : undefined;
+   579→  }
+   580→
+   581→  async appendWithOutbox(entry: Entry, event: OutboxEvent) {
+   582→    await this.db.$transaction(async (tx) => {
+   583→      const lines = [];
+   584→      for (const l of entry.lines) {
+   585→        const acc = await tx.tshepoAccount.upsert({
+   586→          where: { tenantId_code: { tenantId: entry.tenantId, code: l.account } },
+   587→          create: { id: `${entry.tenantId}:${l.account}`, tenantId: entry.tenantId, code: l.account, kind: l.account.split(':')[0], currency: entry.currency },
+   588→          update: {},
+   589→        });
+   590→        lines.push({ id: `${entry.id}:${lines.length}`, accountId: acc.id, amountMinor: l.amount, currency: entry.currency });
+   591→      }
+   592→      await tx.tshepoJournalEntry.create({
+   593→        data: { id: entry.id, tenantId: entry.tenantId, idempotencyKey: entry.idempotencyKey, reason: entry.reason,
+   594→          correlationId: entry.correlationId, currency: entry.currency, postedAt: entry.postedAt, lines: { create: lines } },
+   595→      });
+   596→      await tx.tshepoOutbox.create({ data: { id: event.id, tenantId: entry.tenantId, topic: event.topic, payload: Buffer.from(JSON.stringify(event.payload)) } });
+   597→    });
+   598→  }
+   599→
+   600→  async entries(tenantId: string) {
+   601→    const rows = await this.db.tshepoJournalEntry.findMany({ where: { tenantId }, include, orderBy: { postedAt: 'asc' } });
+   602→    return rows.map(toEntry);
+   603→  }
+   604→}
+   605→```
+   606→
+   607→### `src/lib/tshepo/repayment/waterfall.ts`
+   608→
+   609→```ts
+   610→import { mulBps, minOf } from '../shared/money';
+   611→
+   612→export interface Bucket { name: string; due: bigint }
+   613→
+   614→/** Allocate a payment across buckets in the configured order. Order is product config approved by compliance. */
+   615→export function allocateWaterfall(amount: bigint, buckets: Bucket[]) {
+   616→  if (amount < 0n) throw new RangeError('amount must be non-negative');
+   617→  let left = amount;
+   618→  const allocations: Record<string, bigint> = {};
+   619→  for (const b of buckets) {
+   620→    const take = minOf(left, b.due < 0n ? 0n : b.due);
+   621→    allocations[b.name] = take;
+   622→    left -= take;
+   623→  }
+   624→  return { allocations, unapplied: left };
+   625→}
+   626→
+   627→/** GoPay settlement split: share of net sale, never more than the amount outstanding. */
+   628→export function splitAtSettlement(net: bigint, shareBps: number, outstanding: bigint): bigint {
+   629→  if (shareBps < 0 || shareBps > 10000) throw new RangeError('shareBps out of range');
+   630→  if (outstanding <= 0n || net <= 0n) return 0n;
+   631→  return minOf(outstanding, mulBps(net, BigInt(shareBps)));
+   632→}
+   633→```
+   634→
+   635→### `src/lib/tshepo/shared/ids.ts`
+   636→
+   637→```ts
+   638→import { randomBytes } from 'node:crypto';
+   639→
+   640→/** UUIDv7: 48-bit millisecond timestamp, then random bits. Sortable by creation time. */
+   641→export function uuidv7(now: number = Date.now()): string {
+   642→  const b = randomBytes(16);
+   643→  const ts = BigInt(now);
+   644→  for (let i = 0; i < 6; i++) b[i] = Number((ts >> BigInt(40 - 8 * i)) & 0xffn);
+   645→  b[6] = (b[6]! & 0x0f) | 0x70;
+   646→  b[8] = (b[8]! & 0x3f) | 0x80;
+   647→  const h = b.toString('hex');
+   648→  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+   649→}
+   650→```
+   651→
+   652→### `src/lib/tshepo/shared/money.ts`
+   653→
+   654→```ts
+   655→/** All money is integer minor units (cents) held as bigint. Never floating point. */
+   656→export type Minor = bigint;
+   657→
+   658→/** amount * bps / 10_000, rounded half-up. Amounts must be non-negative. */
+   659→export function mulBps(amount: Minor, bps: bigint): Minor {
+   660→  if (amount < 0n || bps < 0n) throw new RangeError('mulBps expects non-negative inputs');
+   661→  return (amount * bps + 5000n) / 10000n;
+   662→}
+   663→
+   664→export const minOf = (a: Minor, b: Minor): Minor => (a < b ? a : b);
+   665→
+   666→export function fmtRand(c: Minor): string {
+   667→  const neg = c < 0n;
+   668→  const abs = neg ? -c : c;
+   669→  const whole = (abs / 100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+   670→  return `${neg ? '-' : ''}R${whole}.${(abs % 100n).toString().padStart(2, '0')}`;
+   671→}
+   672→```
+   673→
+   674→### `src/lib/tshepo/topup/orchestrator.ts`
+   675→
+   676→```ts
+   677→import { VendRequest } from '../vending/types';
+   678→import { VendingRouter } from '../vending/router';
+   679→import { History } from './products';
+   680→import { TopUpCredit } from './service';
+   681→
+   682→export type DeliveryResult =
+   683→  | { status: 'delivered'; token?: string; providerRef: string; replayed: boolean }
+   684→  | { status: 'pending'; reason: string }
+   685→  | { status: 'cancelled'; code: string }
+   686→  | { status: 'declined'; code: string };
+   687→
+   688→export interface AdvanceRequest {
+   689→  tenantId: string; subjectId: string; productId: string; amountMinor: bigint; requestId: string; history: History; now?: Date;
+   690→  /** Where to deliver: msisdn for airtime and data, meterNumber for electricity. */
+   691→  target: Pick<VendRequest, 'msisdn' | 'operator' | 'meterNumber' | 'municipality' | 'customerName'>;
+   692→}
+   693→
+   694→/** Issue the advance, deliver the airtime or token, and keep the books right whatever the delivery outcome. */
+   695→export class AdvanceDelivery {
+   696→  constructor(private credit: TopUpCredit, private router: VendingRouter) {}
+   697→
+   698→  async request(a: AdvanceRequest): Promise<DeliveryResult> {
+   699→    const p = this.credit.getProduct(a.productId);
+   700→    let issued;
+   701→    try { issued = await this.credit.issue(a); }
+   702→    catch (e: any) { return { status: 'declined', code: e?.code ?? 'ERROR' }; }
+   703→
+   704→    const out = await this.router.vend({
+   705→      reference: a.requestId, country: p.jurisdiction, commodity: p.commodity, amountMinor: a.amountMinor, currency: p.currency, ...a.target,
+   706→    });
+   707→    if (out.status === 'success') return { status: 'delivered', token: out.token, providerRef: out.providerRef, replayed: issued.replayed };
+   708→    if (out.status === 'failed') { await this.credit.cancel(a.tenantId, a.requestId); return { status: 'cancelled', code: out.code }; }
+   709→    await this.credit.markPending(a.tenantId, a.requestId);
+   710→    return { status: 'pending', reason: out.reason };
+   711→  }
+   712→
+   713→  /** Daily job and manual tool: look up deliveries whose outcome was unknown and settle them. */
+   714→  async settlePending(tenantId: string, requestId: string): Promise<DeliveryResult> {
+   715→    const out = await this.router.resolve(requestId);
+   716→    if (out.status === 'success') { await this.credit.confirm(tenantId, requestId); return { status: 'delivered', token: out.token, providerRef: out.providerRef, replayed: false }; }
+   717→    if (out.status === 'failed') { await this.credit.cancel(tenantId, requestId); return { status: 'cancelled', code: out.code }; }
+   718→    return { status: 'pending', reason: out.reason };
+   719→  }
+   720→}
+   721→```
+   722→
+   723→### `src/lib/tshepo/topup/presets.ts`
+   724→
+   725→```ts
+   726→import { Product } from './products';
+   727→
+   728→/**
+   729→ * ILLUSTRATIVE starting points taken from public product descriptions. Every number must be confirmed
+   730→ * with the operator or vendor and with counsel before launch (see master build document, section 16).
+   731→ * Amounts are minor units: rand in cents, kwacha in tambala.
+   732→ */
+   733→export const PRESETS: Product[] = [
+   734→  { // South Africa airtime: Vodacom-style menu, fee per R10 or part thereof, repaid in full on next recharge
+   735→    id: 'za-airtime', jurisdiction: 'ZA', commodity: 'airtime', currency: 'ZAR',
+   736→    menuMinor: [500n, 1000n, 1500n, 2000n],
+   737→    fee: { kind: 'per_block', blockMinor: 1000n, feePerBlockMinor: 120n },
+   738→    recovery: { mode: 'full_first' },
+   739→    minTenureDays: 90, minMonths: 3, minMonthlyRechargeMinor: 2900n, limitShareBps: 3000,
+   740→    dueAfterDays: 30, overdueAction: 'add_to_bill',
+   741→  },
+   742→  { // South Africa electricity: share of each future purchase goes to the advance until repaid
+   743→    id: 'za-electricity', jurisdiction: 'ZA', commodity: 'electricity', currency: 'ZAR',
+   744→    menuMinor: [5000n, 10000n, 15000n, 30000n],
+   745→    fee: { kind: 'percent_bps', bps: 1000 },
+   746→    recovery: { mode: 'capped_share', capBps: 5000 },
+   747→    minTenureDays: 90, minMonths: 2, minMonthlyRechargeMinor: 15000n, limitShareBps: 3000,
+   748→    dueAfterDays: 60, overdueAction: 'write_off',
+   749→  },
+   750→  { // Malawi airtime: kwacha menu, 10% fee, repaid on next recharge
+   751→    id: 'mw-airtime', jurisdiction: 'MW', commodity: 'airtime', currency: 'MWK',
+   752→    menuMinor: [5000n, 10000n, 20000n, 50000n, 100000n, 200000n],
+   753→    fee: { kind: 'percent_bps', bps: 1000 },
+   754→    recovery: { mode: 'full_first' },
+   755→    minTenureDays: 90, minMonths: 2, minMonthlyRechargeMinor: 100000n, limitShareBps: 3000,
+   756→    dueAfterDays: 30, overdueAction: 'write_off',
+   757→  },
+   758→  { // Malawi electricity (prepaid units): share of each purchase until repaid
+   759→    id: 'mw-electricity', jurisdiction: 'MW', commodity: 'electricity', currency: 'MWK',
+   760→    menuMinor: [500000n, 1000000n, 2000000n],
+   761→    fee: { kind: 'percent_bps', bps: 1000 },
+   762→    recovery: { mode: 'capped_share', capBps: 5000 },
+   763→    minTenureDays: 90, minMonths: 2, minMonthlyRechargeMinor: 500000n, limitShareBps: 3000,
+   764→    dueAfterDays: 60, overdueAction: 'write_off',
+   765→  },
+   766→];
+   767→```
+   768→
+   769→### `src/lib/tshepo/topup/products.ts`
+   770→
+   771→```ts
+   772→import { mulBps } from '../shared/money';
+   773→
+   774→export type Jurisdiction = 'ZA' | 'MW';
+   775→export type Commodity = 'airtime' | 'data' | 'electricity';
+   776→
+   777→/** How the access fee is charged. Illustrative defaults are in presets.ts and must be confirmed with each partner. */
+   778→export type FeeModel =
+   779→  | { kind: 'flat'; feeMinor: bigint }                                   // e.g. a fixed access fee per advance
+   780→  | { kind: 'per_block'; blockMinor: bigint; feePerBlockMinor: bigint }  // e.g. fee per R10 or part thereof
+   781→  | { kind: 'percent_bps'; bps: number };                                // e.g. 10% = 1000 bps
+   782→
+   783→/** full_first: the whole top-up goes to the advance until it is repaid. capped_share: only a share of each purchase. */
+   784→export interface RecoveryRule { mode: 'full_first' | 'capped_share'; capBps?: number }
+   785→
+   786→export interface Product {
+   787→  id: string;
+   788→  jurisdiction: Jurisdiction;
+   789→  commodity: Commodity;
+   790→  currency: string;
+   791→  /** The advance amounts the customer may choose from (the USSD or app menu). */
+   792→  menuMinor: bigint[];
+   793→  fee: FeeModel;
+   794→  /** Hard ceiling on the fee for one advance, set from the rules that apply to the product. Checked at quote time. */
+   795→  maxFeeMinor?: bigint;
+   796→  recovery: RecoveryRule;
+   797→  minTenureDays: number;
+   798→  /** Eligibility: at least minMonths of the last 3 calendar months with recharges totalling minMonthlyRechargeMinor. */
+   799→  minMonths: number;
+   800→  minMonthlyRechargeMinor: bigint;
+   801→  /** Largest advance as a share of average monthly recharge, in basis points. */
+   802→  limitShareBps: number;
+   803→  /** After this many days unrecovered, the overdue action applies. */
+   804→  dueAfterDays: number;
+   805→  overdueAction: 'add_to_bill' | 'write_off';
+   806→}
+   807→
+   808→export function quoteFee(p: Product, principal: bigint): bigint {
+   809→  if (principal <= 0n) throw new RangeError('principal must be positive');
+   810→  let fee: bigint;
+   811→  switch (p.fee.kind) {
+   812→    case 'flat': fee = p.fee.feeMinor; break;
+   813→    case 'per_block': fee = ((principal + p.fee.blockMinor - 1n) / p.fee.blockMinor) * p.fee.feePerBlockMinor; break;
+   814→    case 'percent_bps': fee = mulBps(principal, BigInt(p.fee.bps)); break;
+   815→  }
+   816→  if (p.maxFeeMinor !== undefined && fee > p.maxFeeMinor) {
+   817→    throw new RangeError(`fee ${fee} exceeds the product ceiling ${p.maxFeeMinor}`);
+   818→  }
+   819→  return fee;
+   820→}
+   821→
+   822→export interface History {
+   823→  tenureDays: number;
+   824→  recharges: { amountMinor: bigint; at: Date }[];
+   825→  arrearsMinor: bigint;
+   826→  /** Electricity: meter registered and linked to the customer. Airtime: SIM registered. */
+   827→  identityOk: boolean;
+   828→}
+   829→
+   830→export interface Eligibility { ok: boolean; maxMinor: bigint; reasons: string[] }
+   831→
+   832→export function assessEligibility(p: Product, h: History, now: Date): Eligibility {
+   833→  const reasons: string[] = [];
+   834→  if (!h.identityOk) reasons.push('IDENTITY_NOT_VERIFIED');
+   835→  if (h.arrearsMinor > 0n) reasons.push('ARREARS_PRESENT');
+   836→  if (h.tenureDays < p.minTenureDays) reasons.push('TENURE_TOO_SHORT');
+   837→
+   838→  const since = new Date(now.getTime() - 90 * 86400000);
+   839→  const byMonth = new Map<string, bigint>();
+   840→  let total = 0n;
+   841→  for (const r of h.recharges) {
+   842→    if (r.at < since || r.at > now) continue;
+   843→    const k = `${r.at.getUTCFullYear()}-${r.at.getUTCMonth()}`;
+   844→    byMonth.set(k, (byMonth.get(k) ?? 0n) + r.amountMinor);
+   845→    total += r.amountMinor;
+   846→  }
+   847→  const goodMonths = [...byMonth.values()].filter((v) => v >= p.minMonthlyRechargeMinor).length;
+   848→  if (goodMonths < p.minMonths) reasons.push('RECHARGE_HISTORY_TOO_THIN');
+   849→
+   850→  const avgMonthly = total / 3n;
+   851→  const cap = mulBps(avgMonthly, BigInt(p.limitShareBps));
+   852→  const eligibleMenu = p.menuMinor.filter((m) => m <= cap);
+   853→  const maxMinor = eligibleMenu.length ? eligibleMenu.reduce((a, b) => (a > b ? a : b)) : 0n;
+   854→  if (maxMinor === 0n && !reasons.includes('RECHARGE_HISTORY_TOO_THIN')) reasons.push('LIMIT_BELOW_SMALLEST_ADVANCE');
+   855→  return { ok: reasons.length === 0, maxMinor, reasons };
+   856→}
+   857→```
+   858→
+   859→### `src/lib/tshepo/topup/service.ts`
+   860→
+   861→```ts
+   862→import { LedgerService } from '../ledger/ledger';
+   863→import { uuidv7 } from '../shared/ids';
+   864→import { mulBps, minOf } from '../shared/money';
+   865→import { History, Product, assessEligibility, quoteFee } from './products';
+   866→
+   867→export interface AdvanceRecord {
+   868→  id: string; tenantId: string; subjectId: string; productId: string; requestId: string;
+   869→  principal: bigint; fee: bigint; recovered: bigint; issuedAt: Date;
+   870→  status: 'pending' | 'open' | 'repaid' | 'billed' | 'written_off' | 'cancelled';
+   871→}
+   872→export interface AdvanceRepo {
+   873→  byRequest(tenantId: string, requestId: string): Promise<AdvanceRecord | undefined>;
+   874→  openFor(tenantId: string, subjectId: string): Promise<AdvanceRecord | undefined>;
+   875→  save(r: AdvanceRecord): Promise<void>;
+   876→}
+   877→export class InMemoryAdvanceRepo implements AdvanceRepo {
+   878→  private rows: AdvanceRecord[] = [];
+   879→  async byRequest(t: string, id: string) { return this.rows.find((r) => r.tenantId === t && r.requestId === id); }
+   880→  async openFor(t: string, s: string) { return this.rows.find((r) => r.tenantId === t && r.subjectId === s && (r.status === 'open' || r.status === 'pending')); }
+   881→  async save(r: AdvanceRecord) { const i = this.rows.findIndex((x) => x.id === r.id); if (i >= 0) this.rows[i] = r; else this.rows.push(r); }
+   882→}
+   883→
+   884→export class TopUpCreditError extends Error {
+   885→  constructor(public readonly code: string, message: string) { super(message); }
+   886→}
+   887→
+   888→export const topupAcct = {
+   889→  receivable: (subject: string) => `advance_receivable:${subject}`,
+   890→  supplier: (commodity: string) => `supplier_payable:${commodity}`,
+   891→  fee: 'fee_income:topup',
+   892→  clearing: 'collections_clearing',
+   893→  badDebt: 'bad_debt_expense',
+   894→};
+   895→
+   896→export class TopUpCredit {
+   897→  private products: Map<string, Product>;
+   898→  constructor(private ledger: LedgerService, private repo: AdvanceRepo, products: Product[]) {
+   899→    this.products = new Map(products.map((p) => [p.id, p]));
+   900→  }
+   901→  getProduct(id: string) { return this.product(id); }
+   902→  private product(id: string) {
+   903→    const p = this.products.get(id);
+   904→    if (!p) throw new TopUpCreditError('UNKNOWN_PRODUCT', id);
+   905→    return p;
+   906→  }
+   907→
+   908→  /** Everything the customer sees before accepting: amount, fee, total to repay. */
+   909→  quote(productId: string, amountMinor: bigint) {
+   910→    const p = this.product(productId);
+   911→    if (!p.menuMinor.includes(amountMinor)) throw new TopUpCreditError('NOT_ON_MENU', 'amount is not an offered advance');
+   912→    const fee = quoteFee(p, amountMinor);
+   913→    return { principal: amountMinor, fee, totalDue: amountMinor + fee };
+   914→  }
+   915→
+   916→  /** Issue an advance. The commodity (airtime, data or a meter token) is delivered by the operator or vendor adapter. */
+   917→  async issue(a: { tenantId: string; subjectId: string; productId: string; amountMinor: bigint; requestId: string; history: History; now?: Date }) {
+   918→    const now = a.now ?? new Date();
+   919→    const existing = await this.repo.byRequest(a.tenantId, a.requestId);
+   920→    if (existing) return { record: existing, replayed: true };
+   921→    const p = this.product(a.productId);
+   922→    if (await this.repo.openFor(a.tenantId, a.subjectId)) throw new TopUpCreditError('OPEN_ADVANCE', 'one advance at a time');
+   923→    const el = assessEligibility(p, a.history, now);
+   924→    if (!el.ok) throw new TopUpCreditError('NOT_ELIGIBLE', el.reasons.join(','));
+   925→    if (a.amountMinor > el.maxMinor) throw new TopUpCreditError('ABOVE_LIMIT', `limit is ${el.maxMinor}`);
+   926→    const q = this.quote(a.productId, a.amountMinor);
+   927→    await this.ledger.post({
+   928→      tenantId: a.tenantId, idempotencyKey: `${a.requestId}:issued`, reason: 'advance_issued', correlationId: a.requestId, currency: p.currency,
+   929→      lines: [
+   930→        { account: topupAcct.receivable(a.subjectId), amount: q.totalDue },
+   931→        { account: topupAcct.supplier(p.commodity), amount: -q.principal },
+   932→        { account: topupAcct.fee, amount: -q.fee },
+   933→      ],
+   934→    });
+   935→    const record: AdvanceRecord = { id: uuidv7(), tenantId: a.tenantId, subjectId: a.subjectId, productId: p.id, requestId: a.requestId,
+   936→      principal: q.principal, fee: q.fee, recovered: 0n, issuedAt: now, status: 'open' };
+   937→    await this.repo.save(record);
+   938→    return { record, replayed: false };
+   939→  }
+   940→
+   941→  /**
+   942→   * Called on every top-up or purchase by the subject (the clawback). Takes what the product rule allows,
+   943→   * posts it, and tells the vending adapter how much of the purchase to pass through as normal value.
+   944→   */
+   945→  async recover(a: { tenantId: string; subjectId: string; topupRef: string; topupAmountMinor: bigint }) {
+   946→    if (a.topupAmountMinor <= 0n) throw new RangeError('top-up amount must be positive');
+   947→    const key = `${a.topupRef}:recovered`;
+   948→    const done = await this.ledger.get(a.tenantId, key);
+   949→    if (done) {
+   950→      const taken = -done.lines.find((l) => l.account === topupAcct.receivable(a.subjectId))!.amount;
+   951→      return { taken, passThrough: a.topupAmountMinor - taken, replayed: true, repaid: false };
+   952→    }
+   953→    const open = await this.repo.openFor(a.tenantId, a.subjectId);
+   954→    if (!open || open.status !== 'open') return { taken: 0n, passThrough: a.topupAmountMinor, replayed: false, repaid: false };
+   955→    const p = this.product(open.productId);
+   956→    const due = open.principal + open.fee - open.recovered;
+   957→    const room = p.recovery.mode === 'capped_share' ? mulBps(a.topupAmountMinor, BigInt(p.recovery.capBps ?? 10000)) : a.topupAmountMinor;
+   958→    const taken = minOf(due, room);
+   959→    if (taken > 0n) {
+   960→      await this.ledger.post({
+   961→        tenantId: a.tenantId, idempotencyKey: key, reason: 'advance_recovered', correlationId: a.topupRef, currency: p.currency,
+   962→        lines: [{ account: topupAcct.clearing, amount: taken }, { account: topupAcct.receivable(a.subjectId), amount: -taken }],
+   963→      });
+   964→      open.recovered += taken;
+   965→      if (open.recovered === open.principal + open.fee) open.status = 'repaid';
+   966→      await this.repo.save(open);
+   967→    }
+   968→    return { taken, passThrough: a.topupAmountMinor - taken, replayed: false, repaid: open.status === 'repaid' };
+   969→  }
+   970→
+   971→  /** Delivery outcome unknown: keep the advance, block a second one, and do not recover until delivery is confirmed. */
+   972→  async markPending(tenantId: string, requestId: string) {
+   973→    const r = await this.repo.byRequest(tenantId, requestId);
+   974→    if (r && r.status === 'open') { r.status = 'pending'; await this.repo.save(r); }
+   975→    return r;
+   976→  }
+   977→  /** Delivery confirmed after an unknown outcome. */
+   978→  async confirm(tenantId: string, requestId: string) {
+   979→    const r = await this.repo.byRequest(tenantId, requestId);
+   980→    if (r && r.status === 'pending') { r.status = 'open'; await this.repo.save(r); }
+   981→    return r;
+   982→  }
+   983→  /** Delivery definitely failed: reverse the issue entry exactly, so nothing is owed. Not allowed once any recovery has happened. */
+   984→  async cancel(tenantId: string, requestId: string) {
+   985→    const r = await this.repo.byRequest(tenantId, requestId);
+   986→    if (!r || r.status === 'cancelled') return r;
+   987→    if (r.recovered > 0n || (r.status !== 'open' && r.status !== 'pending')) throw new TopUpCreditError('CANNOT_CANCEL', 'advance already in repayment or closed');
+   988→    const p = this.product(r.productId);
+   989→    await this.ledger.post({
+   990→      tenantId, idempotencyKey: `${requestId}:cancelled`, reason: 'advance_cancelled', correlationId: requestId, currency: p.currency,
+   991→      lines: [
+   992→        { account: topupAcct.supplier(p.commodity), amount: r.principal },
+   993→        { account: topupAcct.fee, amount: r.fee },
+   994→        { account: topupAcct.receivable(r.subjectId), amount: -(r.principal + r.fee) },
+   995→      ],
+   996→    });
+   997→    r.status = 'cancelled'; await this.repo.save(r);
+   998→    return r;
+   999→  }
+  1000→
+  1001→  /** Daily job: what to do with advances not recovered within the product's period. */
+  1002→  async applyOverdue(tenantId: string, subjectId: string, now: Date) {
+  1003→    const open = await this.repo.openFor(tenantId, subjectId);
+  1004→    if (!open || open.status !== 'open') return { action: 'none' as const };
+  1005→    const p = this.product(open.productId);
+  1006→    if (now.getTime() - open.issuedAt.getTime() < p.dueAfterDays * 86400000) return { action: 'none' as const };
+  1007→    const owing = open.principal + open.fee - open.recovered;
+  1008→    if (p.overdueAction === 'add_to_bill') {
+  1009→      open.status = 'billed'; await this.repo.save(open);
+  1010→      return { action: 'add_to_bill' as const, amountMinor: owing };
+  1011→    }
+  1012→    await this.ledger.post({
+  1013→      tenantId, idempotencyKey: `${open.requestId}:written_off`, reason: 'advance_written_off', correlationId: open.requestId, currency: p.currency,
+  1014→      lines: [{ account: topupAcct.badDebt, amount: owing }, { account: topupAcct.receivable(subjectId), amount: -owing }],
+  1015→    });
+  1016→    open.status = 'written_off'; await this.repo.save(open);
+  1017→    return { action: 'write_off' as const, amountMinor: owing };
+  1018→  }
+  1019→}
+  1020→```
+  1021→
+  1022→### `src/lib/tshepo/vending/catalogue.ts`
+  1023→
+  1024→```ts
+  1025→import { Country, VendCommodity } from './types';
+  1026→
+  1027→export interface ProviderProfile {
+  1028→  id: string; name: string; country: Country | 'ZA+MW'; role: 'aggregator' | 'operator' | 'utility' | 'network';
+  1029→  commodities: VendCommodity[];
+  1030→  integration: 'adapter_built' | 'public_docs' | 'partner_gated' | 'in_negotiation';
+  1031→  notes: string;
+  1032→}
+  1033→
+  1034→/** Providers named in public sources (see master build document, section 17). Commercial terms and API access must be confirmed with each. */
+  1035→export const PROVIDERS: ProviderProfile[] = [
+  1036→  { id: 'blue-label', name: 'Blue Label Telecoms (Cigicell platform, Ringas)', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'partner_gated', notes: 'Reported to handle over 60% of prepaid top-ups; also runs BlueAdvance, a competing advance product' },
+  1037→  { id: 'easypay', name: 'EasyPay (Lesaka group)', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'partner_gated', notes: 'Switching and bill payments; named as an electricity aggregator' },
+  1038→  { id: 'kazang', name: 'Kazang (Connect Group)', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'partner_gated', notes: 'About 68,000 active devices; also sells international electricity vouchers including Malawi ESCOM; corporate integration offered' },
+  1039→  { id: 'flash', name: 'Flash', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'partner_gated', notes: 'Named as a national prepaid competitor' },
+  1040→  { id: 'prepaid24', name: 'Prepaid24', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'public_docs', notes: 'Electricity for over 94% of municipalities; offers API integration for platforms' },
+  1041→  { id: 'syntell', name: 'Syntell', country: 'ZA', role: 'aggregator', commodities: ['electricity'], integration: 'partner_gated', notes: 'Named as an electricity vending aggregator' },
+  1042→  { id: 'contour', name: 'Contour', country: 'ZA', role: 'aggregator', commodities: ['electricity'], integration: 'partner_gated', notes: 'Named as an electricity vending aggregator' },
+  1043→  { id: 'ontec', name: 'Ontec', country: 'ZA', role: 'aggregator', commodities: ['electricity'], integration: 'partner_gated', notes: 'Named as an electricity vending aggregator' },
+  1044→  { id: 'ipay', name: 'iPay', country: 'ZA', role: 'aggregator', commodities: ['electricity'], integration: 'partner_gated', notes: 'Named as an electricity vending aggregator' },
+  1045→  { id: 'pay-at', name: 'Pay@', country: 'ZA', role: 'aggregator', commodities: ['electricity'], integration: 'partner_gated', notes: 'Municipal bill payments' },
+  1046→  { id: 'cellair', name: 'CellAir', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Named as a prepaid player' },
+  1047→  { id: 'ra-cellular', name: 'RA Cellular', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Named as a prepaid player' },
+  1048→  { id: 'vodacom', name: 'Vodacom (direct)', country: 'ZA', role: 'operator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Runs Airtime Advance already; direct supply for the later operator-embedded model' },
+  1049→  { id: 'mtn-za', name: 'MTN South Africa (direct)', country: 'ZA', role: 'operator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'XtraTime; reported to be reducing advances' },
+  1050→  { id: 'cell-c', name: 'Cell C (direct)', country: 'ZA', role: 'operator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Fixed fee per advance, no interest' },
+  1051→  { id: 'telkom', name: 'Telkom Mobile (direct)', country: 'ZA', role: 'operator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Reported to lean on airtime advances' },
+  1052→  { id: 'eskom-vendors', name: 'Eskom national vendors and municipal vending systems', country: 'ZA', role: 'utility', commodities: ['electricity'], integration: 'partner_gated', notes: 'Tokens are requested in real time from the utility vending server through contracted vendors' },
+  1053→  { id: 'tnm', name: 'TNM (Telekom Networks Malawi) and TNM Mpamba', country: 'MW', role: 'operator', commodities: ['airtime', 'data'], integration: 'in_negotiation', notes: 'In discussions; runs Pasavute with Net1 and Supa Pesa today' },
+  1054→  { id: 'airtel-mw', name: 'Airtel Malawi and Airtel Money', country: 'MW', role: 'operator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Runs Kutapa and Kutchova' },
+  1055→  { id: 'escom', name: 'ESCOM (Electricity Supply Corporation of Malawi)', country: 'MW', role: 'utility', commodities: ['electricity'], integration: 'in_negotiation', notes: 'Negotiations under way; prepaid tokens' },
+  1056→  { id: 'paychangu', name: 'PayChangu bill payments', country: 'MW', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'adapter_built', notes: 'Documented API for Airtel and TNM airtime and ESCOM tokens, paid from a pre-funded wallet' },
+  1057→];
+  1058→```
+  1059→
+  1060→### `src/lib/tshepo/vending/http-adapter.ts`
+  1061→
+  1062→```ts
+  1063→import { Country, MeterInfo, VendCommodity, VendOutcome, VendRequest, VendingProvider } from './types';
+  1064→
+  1065→export interface HttpCall { method: 'GET' | 'POST'; path: string; body?: unknown }
+  1066→
+  1067→/**
+  1068→ * A provider integration is configuration: how to build each call and how to read each reply.
+  1069→ * Onboarding a new aggregator means writing one config object once its partner documentation is in hand.
+  1070→ */
+  1071→export interface HttpAdapterConfig {
+  1072→  id: string;
+  1073→  baseUrl: string;
+  1074→  headers: () => Record<string, string>;
+  1075→  supported: { commodity: VendCommodity; country: Country }[];
+  1076→  buildVend(req: VendRequest): HttpCall;
+  1077→  mapVend(httpStatus: number, body: any, req: VendRequest): VendOutcome;
+  1078→  buildStatus?(reference: string): HttpCall;
+  1079→  mapStatus?(httpStatus: number, body: any, reference: string): VendOutcome;
+  1080→  buildValidate?(meterNumber: string, country: Country, municipality?: string): HttpCall;
+  1081→  mapValidate?(httpStatus: number, body: any): MeterInfo;
+  1082→  timeoutMs?: number;
+  1083→  fetchImpl?: typeof fetch;
+  1084→}
+  1085→
+  1086→export class HttpVendingAdapter implements VendingProvider {
+  1087→  readonly id: string;
+  1088→  constructor(private cfg: HttpAdapterConfig) { this.id = cfg.id; }
+  1089→
+  1090→  supports(c: VendCommodity, country: Country) { return this.cfg.supported.some((s) => s.commodity === c && s.country === country); }
+  1091→
+  1092→  private async call(c: HttpCall): Promise<{ status: number; body: any }> {
+  1093→    const f = this.cfg.fetchImpl ?? fetch;
+  1094→    const ctl = new AbortController();
+  1095→    const timer = setTimeout(() => ctl.abort(), this.cfg.timeoutMs ?? 15_000);
+  1096→    try {
+  1097→      const res = await f(this.cfg.baseUrl + c.path, {
+  1098→        method: c.method, signal: ctl.signal,
+  1099→        headers: { 'content-type': 'application/json', accept: 'application/json', ...this.cfg.headers() },
+  1100→        body: c.body === undefined ? undefined : JSON.stringify(c.body),
+  1101→      });
+  1102→      let body: any = undefined;
+  1103→      try { body = await res.json(); } catch { body = undefined; }
+  1104→      return { status: res.status, body };
+  1105→    } finally { clearTimeout(timer); }
+  1106→  }
+  1107→
+  1108→  /** No answer, a timeout or a server error means we cannot know whether it was delivered, so the result is unknown. */
+  1109→  async vend(req: VendRequest): Promise<VendOutcome> {
+  1110→    let r: { status: number; body: any };
+  1111→    try { r = await this.call(this.cfg.buildVend(req)); }
+  1112→    catch (e) { return { status: 'unknown', providerId: this.id, reason: `NO_RESPONSE: ${String(e)}` }; }
+  1113→    if (r.status >= 500) return { status: 'unknown', providerId: this.id, reason: `HTTP_${r.status}` };
+  1114→    if (r.status === 429) return { status: 'failed', providerId: this.id, code: 'RATE_LIMITED', message: 'rate limited', retryable: true };
+  1115→    return this.cfg.mapVend(r.status, r.body, req);
+  1116→  }
+  1117→
+  1118→  async status(reference: string): Promise<VendOutcome> {
+  1119→    if (!this.cfg.buildStatus || !this.cfg.mapStatus) return { status: 'unknown', providerId: this.id, reason: 'STATUS_ENDPOINT_NOT_CONFIGURED' };
+  1120→    try { const r = await this.call(this.cfg.buildStatus(reference)); return this.cfg.mapStatus(r.status, r.body, reference); }
+  1121→    catch (e) { return { status: 'unknown', providerId: this.id, reason: `NO_RESPONSE: ${String(e)}` }; }
+  1122→  }
+  1123→
+  1124→  async validateMeter(meterNumber: string, country: Country, municipality?: string): Promise<MeterInfo> {
+  1125→    if (!this.cfg.buildValidate || !this.cfg.mapValidate) return { valid: false };
+  1126→    const r = await this.call(this.cfg.buildValidate(meterNumber, country, municipality));
+  1127→    return this.cfg.mapValidate(r.status, r.body);
+  1128→  }
+  1129→}
+  1130→```
+  1131→
+  1132→### `src/lib/tshepo/vending/mock.ts`
+  1133→
+  1134→```ts
+  1135→import { Country, MeterInfo, VendCommodity, VendOutcome, VendRequest, VendingProvider } from './types';
+  1136→
+  1137→export type MockMode = 'success' | 'fail' | 'fail_retryable' | 'timeout' | 'throw';
+  1138→
+  1139→/** Sandbox provider for development and tests. Delivers nothing real. */
+  1140→export class MockVendingProvider implements VendingProvider {
+  1141→  calls: VendRequest[] = [];
+  1142→  private done = new Map<string, VendOutcome>();
+  1143→  constructor(public readonly id: string, public mode: MockMode = 'success',
+  1144→              private scope: { commodities?: VendCommodity[]; countries?: Country[] } = {}) {}
+  1145→  supports(c: VendCommodity, country: Country) {
+  1146→    return (this.scope.commodities ?? ['airtime', 'data', 'electricity']).includes(c) && (this.scope.countries ?? ['ZA', 'MW']).includes(country);
+  1147→  }
+  1148→  async validateMeter(meterNumber: string): Promise<MeterInfo> { return { valid: /^\d{11}$/.test(meterNumber), name: 'Sandbox customer' }; }
+  1149→  async vend(req: VendRequest): Promise<VendOutcome> {
+  1150→    this.calls.push(req);
+  1151→    if (this.mode === 'throw') throw new Error('network down');
+  1152→    if (this.mode === 'timeout') { const o: VendOutcome = { status: 'unknown', providerId: this.id, reason: 'TIMEOUT' }; return o; }
+  1153→    if (this.mode === 'fail') return { status: 'failed', providerId: this.id, code: 'DECLINED', message: 'declined', retryable: false };
+  1154→    if (this.mode === 'fail_retryable') return { status: 'failed', providerId: this.id, code: 'BUSY', message: 'try elsewhere', retryable: true };
+  1155→    const o: VendOutcome = { status: 'success', providerId: this.id, providerRef: `${this.id}-${req.reference}`,
+  1156→      token: req.commodity === 'electricity' ? '1234-5678-9012-3456-7890' : undefined };
+  1157→    this.done.set(req.reference, o);
+  1158→    return o;
+  1159→  }
+  1160→  /** Tests can mark a timed-out delivery as having actually succeeded. */
+  1161→  settle(reference: string, outcome: VendOutcome) { this.done.set(reference, outcome); }
+  1162→  async status(reference: string): Promise<VendOutcome> {
+  1163→    return this.done.get(reference) ?? { status: 'unknown', providerId: this.id, reason: 'NO_RECORD' };
+  1164→  }
+  1165→}
+  1166→```
+  1167→
+  1168→### `src/lib/tshepo/vending/paychangu.ts`
+  1169→
+  1170→```ts
+  1171→import { HttpAdapterConfig, HttpVendingAdapter } from './http-adapter';
+  1172→import { VendOutcome, VendRequest } from './types';
+  1173→
+  1174→/** Tambala to the decimal string the provider expects, e.g. 100000n -> '1000', 150n -> '1.50'. */
+  1175→export function minorToDecimal(minor: bigint): string {
+  1176→  const whole = minor / 100n; const frac = (minor % 100n).toString().padStart(2, '0');
+  1177→  return frac === '00' ? whole.toString() : `${whole}.${frac}`;
+  1178→}
+  1179→/** +265991234567 -> 0991234567. The provider's examples use the local form. CONFIRM in the sandbox. */
+  1180→export function toLocalMsisdn(msisdn: string): string {
+  1181→  const d = msisdn.replace(/[^\d]/g, '');
+  1182→  return d.startsWith('265') ? `0${d.slice(3)}` : d;
+  1183→}
+  1184→
+  1185→const ok = (b: any) => b?.status === 'success' || b?.status === 'successful' || b?.success === true;
+  1186→
+  1187→/**
+  1188→ * PayChangu bill payments for Malawi (airtime on Airtel and TNM, ESCOM prepaid tokens), built from the public
+  1189→ * documentation. Response bodies are not fully documented, so anything unrecognised is reported as UNKNOWN,
+  1190→ * never as success. CONFIRM every response shape and the status endpoint in the provider sandbox.
+  1191→ */
+  1192→export function paychanguConfig(opts: { secretKey: () => string; baseUrl?: string; statusPath?: (ref: string) => string; fetchImpl?: typeof fetch }): HttpAdapterConfig {
+  1193→  const id = 'paychangu';
+  1194→  return {
+  1195→    id, baseUrl: opts.baseUrl ?? 'https://api.paychangu.com', fetchImpl: opts.fetchImpl,
+  1196→    headers: () => ({ Authorization: `Bearer ${opts.secretKey()}` }),
+  1197→    supported: [{ commodity: 'airtime', country: 'MW' }, { commodity: 'data', country: 'MW' }, { commodity: 'electricity', country: 'MW' }],
+  1198→    buildVend(req: VendRequest) {
+  1199→      if (req.commodity === 'electricity') {
+  1200→        if (!req.meterNumber) throw new Error('meterNumber is required for electricity');
+  1201→        return { method: 'POST', path: '/bills/pay', body: { biller: 'escom', account: req.meterNumber, amount: minorToDecimal(req.amountMinor), customer_name: req.customerName, reference: req.reference } };
+  1202→      }
+  1203→      if (!req.msisdn) throw new Error('msisdn is required for airtime');
+  1204→      return { method: 'POST', path: '/bills/buy-airtime', body: { phone: toLocalMsisdn(req.msisdn), amount: minorToDecimal(req.amountMinor), reference: req.reference } };
+  1205→    },
+  1206→    mapVend(httpStatus, body, req): VendOutcome {
+  1207→      if (httpStatus >= 200 && httpStatus < 300 && ok(body)) {
+  1208→        return { status: 'success', providerId: id, providerRef: String(body?.data?.reference ?? body?.data?.id ?? req.reference),
+  1209→          token: body?.data?.token ? String(body.data.token) : undefined, units: body?.data?.units ? String(body.data.units) : undefined };
+  1210→      }
+  1211→      if (httpStatus >= 400 && httpStatus < 500) return { status: 'failed', providerId: id, code: `HTTP_${httpStatus}`, message: String(body?.message ?? 'rejected'), retryable: false };
+  1212→      return { status: 'unknown', providerId: id, reason: 'UNRECOGNISED_RESPONSE' };
+  1213→    },
+  1214→    buildStatus: opts.statusPath ? (ref) => ({ method: 'GET', path: opts.statusPath!(ref) }) : undefined,
+  1215→    mapStatus: opts.statusPath ? (s, b, ref): VendOutcome => (s < 300 && ok(b)
+  1216→      ? { status: 'success', providerId: id, providerRef: String(b?.data?.reference ?? ref), token: b?.data?.token ? String(b.data.token) : undefined }
+  1217→      : { status: 'unknown', providerId: id, reason: 'STATUS_NOT_FINAL' }) : undefined,
+  1218→    buildValidate: (meter) => ({ method: 'POST', path: '/bills/validate', body: { biller: 'escom', account: meter } }),
+  1219→    mapValidate: (s, b) => ({ valid: s < 300 && ok(b), name: b?.data?.name ?? b?.data?.customer_name, raw: b }),
+  1220→  };
+  1221→}
+  1222→
+  1223→export const createPayChanguProvider = (opts: Parameters<typeof paychanguConfig>[0]) => new HttpVendingAdapter(paychanguConfig(opts));
+  1224→```
+  1225→
+  1226→### `src/lib/tshepo/vending/router.ts`
+  1227→
+  1228→```ts
+  1229→import { VendOutcome, VendRequest, VendingProvider } from './types';
+  1230→
+  1231→export interface VendStore {
+  1232→  get(reference: string): Promise<{ outcome: VendOutcome } | undefined>;
+  1233→  put(reference: string, outcome: VendOutcome): Promise<void>;
+  1234→}
+  1235→export class InMemoryVendStore implements VendStore {
+  1236→  private m = new Map<string, { outcome: VendOutcome }>();
+  1237→  async get(r: string) { return this.m.get(r); }
+  1238→  async put(r: string, outcome: VendOutcome) { this.m.set(r, { outcome }); }
+  1239→}
+  1240→
+  1241→export interface RoutedProvider { provider: VendingProvider; priority: number }
+  1242→export interface RouterOptions { failureThreshold?: number; cooldownMs?: number; now?: () => number }
+  1243→
+  1244→/**
+  1245→ * Routes a delivery to the best available provider and fails over ONLY when the first provider definitely
+  1246→ * did not deliver. An unknown outcome (timeout, unreadable reply) stops the chain: the item might have been
+  1247→ * delivered, so it is looked up, never sent to a second provider.
+  1248→ */
+  1249→export class VendingRouter {
+  1250→  private health = new Map<string, { failures: number; openUntil: number }>();
+  1251→  private threshold: number; private cooldown: number; private now: () => number;
+  1252→  constructor(private providers: RoutedProvider[], private store: VendStore, opts: RouterOptions = {}) {
+  1253→    this.threshold = opts.failureThreshold ?? 3; this.cooldown = opts.cooldownMs ?? 60_000; this.now = opts.now ?? Date.now;
+  1254→  }
+  1255→
+  1256→  private circuitOpen(id: string) { const h = this.health.get(id); return !!h && h.openUntil > this.now(); }
+  1257→  private record(id: string, ok: boolean) {
+  1258→    const h = this.health.get(id) ?? { failures: 0, openUntil: 0 };
+  1259→    if (ok) { h.failures = 0; h.openUntil = 0; } else if (++h.failures >= this.threshold) h.openUntil = this.now() + this.cooldown;
+  1260→    this.health.set(id, h);
+  1261→  }
+  1262→
+  1263→  async vend(req: VendRequest): Promise<VendOutcome> {
+  1264→    const prior = await this.store.get(req.reference);
+  1265→    if (prior) return prior.outcome.status === 'unknown' ? this.resolve(req.reference) : prior.outcome;
+  1266→
+  1267→    const candidates = this.providers
+  1268→      .filter((p) => p.provider.supports(req.commodity, req.country) && !this.circuitOpen(p.provider.id))
+  1269→      .sort((a, b) => a.priority - b.priority);
+  1270→    let last: VendOutcome = { status: 'failed', providerId: 'router', code: 'NO_PROVIDER', message: 'no available provider', retryable: false };
+  1271→
+  1272→    for (const { provider } of candidates) {
+  1273→      let out: VendOutcome;
+  1274→      try { out = await provider.vend(req); }
+  1275→      catch (e) { out = { status: 'unknown', providerId: provider.id, reason: String(e) }; }
+  1276→      if (out.status === 'success') { this.record(provider.id, true); await this.store.put(req.reference, out); return out; }
+  1277→      if (out.status === 'unknown') { this.record(provider.id, false); await this.store.put(req.reference, out); return out; }
+  1278→      this.record(provider.id, false);
+  1279→      last = out;
+  1280→      if (!out.retryable) break;
+  1281→    }
+  1282→    await this.store.put(req.reference, last);
+  1283→    return last;
+  1284→  }
+  1285→
+  1286→  /** Look up an unknown delivery with the provider that took it. */
+  1287→  async resolve(reference: string): Promise<VendOutcome> {
+  1288→    const prior = await this.store.get(reference);
+  1289→    if (!prior) return { status: 'failed', providerId: 'router', code: 'NOT_FOUND', message: 'no such delivery', retryable: false };
+  1290→    if (prior.outcome.status !== 'unknown') return prior.outcome;
+  1291→    const p = this.providers.find((x) => x.provider.id === prior.outcome.providerId)?.provider;
+  1292→    if (!p) return prior.outcome;
+  1293→    let out: VendOutcome;
+  1294→    try { out = await p.status(reference); } catch (e) { return prior.outcome; }
+  1295→    if (out.status !== 'unknown') await this.store.put(reference, out);
+  1296→    return out.status === 'unknown' ? prior.outcome : out;
+  1297→  }
+  1298→
+  1299→  async validateMeter(meterNumber: string, country: 'ZA' | 'MW', municipality?: string) {
+  1300→    for (const { provider } of [...this.providers].sort((a, b) => a.priority - b.priority)) {
+  1301→      if (provider.validateMeter && provider.supports('electricity', country)) return provider.validateMeter(meterNumber, country, municipality);
+  1302→    }
+  1303→    return { valid: false } as const;
+  1304→  }
+  1305→}
+  1306→```
+  1307→
+  1308→### `src/lib/tshepo/vending/types.ts`
+  1309→
+  1310→```ts
+  1311→export type Country = 'ZA' | 'MW';
+  1312→export type VendCommodity = 'airtime' | 'data' | 'electricity';
+  1313→
+  1314→export interface VendRequest {
+  1315→  /** Unique per delivery. Reusing it can never vend twice. */
+  1316→  reference: string;
+  1317→  country: Country;
+  1318→  commodity: VendCommodity;
+  1319→  amountMinor: bigint;
+  1320→  currency: string;
+  1321→  msisdn?: string;
+  1322→  operator?: string;
+  1323→  meterNumber?: string;
+  1324→  municipality?: string;
+  1325→  customerName?: string;
+  1326→}
+  1327→
+  1328→/** success: delivered. failed: definitely not delivered. unknown: we cannot tell, so never retry elsewhere; look it up. */
+  1329→export type VendOutcome =
+  1330→  | { status: 'success'; providerId: string; providerRef: string; token?: string; units?: string }
+  1331→  | { status: 'failed'; providerId: string; code: string; message: string; retryable: boolean }
+  1332→  | { status: 'unknown'; providerId: string; reason: string };
+  1333→
+  1334→export interface MeterInfo { valid: boolean; name?: string; municipality?: string; raw?: unknown }
+  1335→
+  1336→export interface VendingProvider {
+  1337→  readonly id: string;
+  1338→  supports(commodity: VendCommodity, country: Country): boolean;
+  1339→  validateMeter?(meterNumber: string, country: Country, municipality?: string): Promise<MeterInfo>;
+  1340→  vend(req: VendRequest): Promise<VendOutcome>;
+  1341→  status(reference: string): Promise<VendOutcome>;
+  1342→}
+  1343→```
+  1344→
+  1345→## Tests: **tests**/tshepo
+  1346→
+  1347→### `__tests__/tshepo/consent-decision-edge.test.ts`
+  1348→
+  1349→```ts
+  1350→/** @jest-environment node */
+  1351→import { ConsentService } from '../../src/lib/tshepo/consent/consent';
+  1352→import { DecisionOrchestrator, Policy, FeatureStore } from '../../src/lib/tshepo/decisioning/orchestrator';
+  1353→import { newKeyPair, signEnvelope, verifyEnvelope, EdgeSpendTracker, EnvelopePayload } from '../../src/lib/tshepo/edge/envelope';
+  1354→
+  1355→describe('consent', () => {
+  1356→  it('is purpose-bound, revocable and expiring', () => {
+  1357→    const c = new ConsentService();
+  1358→    const t0 = new Date('2026-11-01T00:00:00Z');
+  1359→    c.grant('s1', 'wifi_billing', t0);
+  1360→    expect(c.isAllowed('s1', 'wifi_billing', new Date('2026-11-02'))).toBe(true);
+  1361→    expect(c.isAllowed('s1', 'credit_underwriting', new Date('2026-11-02'))).toBe(false);
+  1362→    c.revoke('s1', 'wifi_billing', new Date('2026-11-03'));
+  1363→    expect(c.isAllowed('s1', 'wifi_billing', new Date('2026-11-04'))).toBe(false);
+  1364→    c.grant('s2', 'marketing', t0, new Date('2026-11-05'));
+  1365→    expect(c.isAllowed('s2', 'marketing', new Date('2026-11-06'))).toBe(false);
+  1366→  });
+  1367→});
+  1368→
+  1369→const policy: Policy = { version: 'p-0.1.0', modelVersion: 'm-0.1.0', minTenureDays: 60, minLimit: 50000n, maxLimit: 500000n, limitShareOfSalesBps: 5000 };
+  1370→const fs = (f: Record<string, number | undefined>): FeatureStore => ({ get: async () => f });
+  1371→const good = { sales_30d_minor: 400000, tenure_days: 120, arrears_minor: 0, kyc_verified: 1 };
+  1372→function orch(f: Record<string, number | undefined>, consent = true) {
+  1373→  const c = new ConsentService();
+  1374→  if (consent) c.grant('m1', 'credit_underwriting', new Date('2026-01-01'));
+  1375→  return new DecisionOrchestrator(c, fs(f), policy);
+  1376→}
+  1377→
+  1378→describe('decisioning', () => {
+  1379→  it('approves with a limit, reasons and a full trace', async () => {
+  1380→    const d = await orch(good).decide('m1', new Date('2026-11-09'));
+  1381→    expect(d.outcome).toBe('approve');
+  1382→    expect(d.limit).toBe(200000n);
+  1383→    expect(d.trace.map((t) => t.step)).toEqual(['consent', 'features', 'hard_stops', 'affordability']);
+  1384→    expect(d.versions).toEqual({ policy: 'p-0.1.0', model: 'm-0.1.0' });
+  1385→  });
+  1386→  it('caps the limit at the policy maximum', async () => {
+  1387→    const d = await orch({ ...good, sales_30d_minor: 5_000_000 }).decide('m1', new Date('2026-11-09'));
+  1388→    expect(d.limit).toBe(500000n);
+  1389→  });
+  1390→  it('refers when consent is missing, before reading features', async () => {
+  1391→    const d = await orch(good, false).decide('m1', new Date('2026-11-09'));
+  1392→    expect(d.outcome).toBe('refer');
+  1393→    expect(d.reasonCodes).toEqual(['CONSENT_MISSING']);
+  1394→    expect(d.trace).toHaveLength(1);
+  1395→  });
+  1396→  it('refers on a missing critical feature instead of guessing', async () => {
+  1397→    const d = await orch({ ...good, tenure_days: undefined }).decide('m1', new Date('2026-11-09'));
+  1398→    expect(d.outcome).toBe('refer');
+  1399→    expect(d.reasonCodes).toEqual(['DATA_INCOMPLETE']);
+  1400→  });
+  1401→  it('declines with a counterfactual for arrears, tenure and low sales', async () => {
+  1402→    const now = new Date('2026-11-09');
+  1403→    const a = await orch({ ...good, arrears_minor: 15000 }).decide('m1', now);
+  1404→    expect(a.reasonCodes).toEqual(['ARREARS_PRESENT']);
+  1405→    expect(a.counterfactual[0]).toContain('R150.00');
+  1406→    const t = await orch({ ...good, tenure_days: 40 }).decide('m1', now);
+  1407→    expect(t.counterfactual[0]).toContain('20 more days');
+  1408→    const s = await orch({ ...good, sales_30d_minor: 60000 }).decide('m1', now);
+  1409→    expect(s.reasonCodes).toEqual(['AFFORDABILITY_LOW']);
+  1410→    expect(s.counterfactual[0]).toContain('R1,000.00');
+  1411→  });
+  1412→  it('refers when KYC is not verified', async () => {
+  1413→    const d = await orch({ ...good, kyc_verified: 0 }).decide('m1', new Date('2026-11-09'));
+  1414→    expect(d.reasonCodes).toEqual(['KYC_PENDING']);
+  1415→  });
+  1416→});
+  1417→
+  1418→describe('edge envelope', () => {
+  1419→  const { publicKey, privateKey } = newKeyPair();
+  1420→  const keys = new Map([['key-1', publicKey]]);
+  1421→  const payload: EnvelopePayload = {
+  1422→    envelopeId: 'e1', subject: 'm1', tenant: 't1', product: 'merchant-working-capital',
+  1423→    maxOfflineAmountMinor: '50000', currency: 'ZAR', validFrom: '2026-11-01T00:00:00Z', expiresAt: '2026-11-08T00:00:00Z',
+  1424→    policyVersion: 'p-0.1.0', modelVersion: 'm-0.1.0', alg: 'Ed25519', kid: 'key-1',
+  1425→  };
+  1426→  const env = signEnvelope(payload, privateKey);
+  1427→  it('verifies a valid envelope and rejects tampering, expiry, wrong tenant and unknown keys', () => {
+  1428→    expect(verifyEnvelope(env, keys, 't1', new Date('2026-11-05'))).toEqual({ ok: true });
+  1429→    const forged = { ...env, payload: { ...payload, maxOfflineAmountMinor: '9999999' } };
+  1430→    expect(verifyEnvelope(forged, keys, 't1', new Date('2026-11-05'))).toEqual({ ok: false, reason: 'BAD_SIGNATURE' });
+  1431→    expect(verifyEnvelope(env, keys, 't1', new Date('2026-11-09'))).toEqual({ ok: false, reason: 'EXPIRED' });
+  1432→    expect(verifyEnvelope(env, keys, 't1', new Date('2026-10-31'))).toEqual({ ok: false, reason: 'NOT_YET_VALID' });
+  1433→    expect(verifyEnvelope(env, keys, 't2', new Date('2026-11-05'))).toEqual({ ok: false, reason: 'WRONG_TENANT' });
+  1434→    expect(verifyEnvelope(env, new Map(), 't1', new Date('2026-11-05'))).toEqual({ ok: false, reason: 'UNKNOWN_KEY' });
+  1435→  });
+  1436→  it('caps offline spend at the envelope limit', () => {
+  1437→    const t = new EdgeSpendTracker();
+  1438→    expect(t.tryReserve(env, 30000n)).toBe(true);
+  1439→    expect(t.tryReserve(env, 20000n)).toBe(true);
+  1440→    expect(t.tryReserve(env, 1n)).toBe(false);
+  1441→    expect(t.spentFor('e1')).toBe(50000n);
+  1442→  });
+  1443→});
+  1444→```
+  1445→
+  1446→### `__tests__/tshepo/funding-delivery.test.ts`
+  1447→
+  1448→```ts
+  1449→/** @jest-environment node */
+  1450→import { LedgerService, InMemoryLedgerRepo } from '../../src/lib/tshepo/ledger/ledger';
+  1451→import { Facility, FundingError, FundingService, InMemoryFacilityRepo, estimateFloat, fundingAcct } from '../../src/lib/tshepo/capital/funding';
+  1452→import { PRESETS } from '../../src/lib/tshepo/topup/presets';
+  1453→import { InMemoryAdvanceRepo, TopUpCredit, topupAcct } from '../../src/lib/tshepo/topup/service';
+  1454→import { AdvanceDelivery } from '../../src/lib/tshepo/topup/orchestrator';
+  1455→import { MockVendingProvider } from '../../src/lib/tshepo/vending/mock';
+  1456→import { InMemoryVendStore, VendingRouter } from '../../src/lib/tshepo/vending/router';
+  1457→import { History } from '../../src/lib/tshepo/topup/products';
+  1458→
+  1459→const T = 't1';
+  1460→const NOW = new Date('2026-11-11T10:00:00Z');
+  1461→const fac = (o: Partial<Facility>): Facility => ({ id: 'f1', funder: 'Bank A', countries: ['ZA'], currency: 'ZAR', products: '*', limitMinor: 1_000_000n, drawnMinor: 0n, priority: 1, costBps: 200, status: 'active', ...o });
+  1462→const hist = (monthly: bigint): History => ({ tenureDays: 400, arrearsMinor: 0n, identityOk: true,
+  1463→  recharges: [8, 9, 10].map((m) => ({ amountMinor: monthly, at: new Date(Date.UTC(2026, m, 5)) })) });
+  1464→
+  1465→describe('funding mesh', () => {
+  1466→  const mk = (fs: Facility[]) => { const ledger = new LedgerService(new InMemoryLedgerRepo()); return { ledger, f: new FundingService(ledger, new InMemoryFacilityRepo(fs)) }; };
+  1467→  const a = (o = {}) => ({ tenantId: T, requestId: 'r1', productId: 'za-airtime', country: 'ZA' as const, currency: 'ZAR', commodity: 'airtime', principalMinor: 2000n, ...o });
+  1468→
+  1469→  it('picks by priority, matches currency and country, and respects headroom and product scope', async () => {
+  1470→    const { f } = mk([fac({ id: 'cheap', priority: 2 }), fac({ id: 'first', priority: 1, limitMinor: 1000n }), fac({ id: 'mwk', countries: ['MW'], currency: 'MWK', priority: 0 }), fac({ id: 'elec', products: ['za-electricity'], priority: 0 })]);
+  1471→    expect((await f.allocate(a())).facilityId).toBe('cheap');       // 'first' lacks headroom, others are the wrong currency or product
+  1472→  });
+  1473→  it('funds Malawi advances only from kwacha facilities', async () => {
+  1474→    const { f } = mk([fac({ id: 'zar' }), fac({ id: 'mwk', countries: ['MW'], currency: 'MWK' })]);
+  1475→    expect((await f.allocate(a({ country: 'MW', currency: 'MWK', productId: 'mw-airtime' }))).facilityId).toBe('mwk');
+  1476→    await expect(mk([fac({ id: 'zar' })]).f.allocate(a({ country: 'MW', currency: 'MWK' }))).rejects.toBeInstanceOf(FundingError);
+  1477→  });
+  1478→  it('is idempotent and posts a balanced entry that moves the obligation from supplier to funder', async () => {
+  1479→    const { f, ledger } = mk([fac({})]);
+  1480→    await f.allocate(a()); const again = await f.allocate(a());
+  1481→    expect(again.replayed).toBe(true);
+  1482→    expect(await ledger.balance(T, fundingAcct.funder('f1'))).toBe(-2000n);
+  1483→    expect(await ledger.balance(T, fundingAcct.supplier('airtime'))).toBe(2000n);
+  1484→    expect(await ledger.trialBalanceTotal(T)).toBe(0n);
+  1485→  });
+  1486→  it('repays the funder principal plus its cost from what is recovered', async () => {
+  1487→    const { f, ledger } = mk([fac({ costBps: 200 })]);
+  1488→    await f.allocate(a());
+  1489→    const r = await f.repayFromRecovery({ tenantId: T, requestId: 'r1', topupRef: 'tu1', currency: 'ZAR', takenMinor: 2240n, principalMinor: 2000n, feeMinor: 240n });
+  1490→    expect(r.paid).toBe(2040n);                                     // 2000 principal + 2% cost of 40
+  1491→    expect(await ledger.balance(T, fundingAcct.funder('f1'))).toBe(0n);
+  1492→    expect(await ledger.balance(T, fundingAcct.cost)).toBe(40n);
+  1493→    expect(await ledger.trialBalanceTotal(T)).toBe(0n);
+  1494→  });
+  1495→  it('suspends a facility whose triggers are breached and resumes it on recovery', async () => {
+  1496→    const { f } = mk([fac({ minRecoveryRateBps: 9000, maxChargeOffBps: 500 })]);
+  1497→    await f.applyPerformance({ recoveryRateBps: 8500, chargeOffBps: 100 });
+  1498→    await expect(f.allocate(a())).rejects.toBeInstanceOf(FundingError);
+  1499→    await f.applyPerformance({ recoveryRateBps: 9500, chargeOffBps: 100 });
+  1500→    expect((await f.allocate(a())).facilityId).toBe('f1');
+  1501→  });
+  1502→  it('releases the draw when delivery fails', async () => {
+  1503→    const { f, ledger } = mk([fac({})]);
+  1504→    await f.allocate(a()); await f.release({ tenantId: T, requestId: 'r1', currency: 'ZAR', commodity: 'airtime' });
+  1505→    expect(await ledger.balance(T, fundingAcct.funder('f1'))).toBe(0n);
+  1506→    expect(await f.headroom('ZAR')).toBe(1_000_000n);
+  1507→  });
+  1508→  it('sizes the float: daily advances times days outstanding plus a buffer', () => {
+  1509→    expect(estimateFloat({ dailyAdvancesMinor: 1_000_000n, avgDaysOutstanding: 6.2, bufferBps: 2000 })).toBe(8_400_000n); // 10,000 x 7 days x 1.2
+  1510→  });
+  1511→});
+  1512→
+  1513→describe('advance delivery', () => {
+  1514→  const mk = (mode: any) => {
+  1515→    const ledger = new LedgerService(new InMemoryLedgerRepo()); const credit = new TopUpCredit(ledger, new InMemoryAdvanceRepo(), PRESETS);
+  1516→    const prov = new MockVendingProvider('p', mode); const router = new VendingRouter([{ provider: prov, priority: 1 }], new InMemoryVendStore());
+  1517→    return { ledger, credit, prov, router, delivery: new AdvanceDelivery(credit, router) };
+  1518→  };
+  1519→  const ask = (o = {}) => ({ tenantId: T, subjectId: 'msisdn:27821234567', productId: 'za-airtime', amountMinor: 2000n, requestId: 'r1', history: hist(10000n), now: NOW, target: { msisdn: '+27821234567' }, ...o });
+  1520→
+  1521→  it('issues then delivers, leaving a balanced book and a recoverable advance', async () => {
+  1522→    const { delivery, ledger, credit } = mk('success');
+  1523→    expect(await delivery.request(ask())).toMatchObject({ status: 'delivered' });
+  1524→    expect(await ledger.balance(T, topupAcct.receivable('msisdn:27821234567'))).toBe(2240n);
+  1525→    expect(await credit.recover({ tenantId: T, subjectId: 'msisdn:27821234567', topupRef: 'tu1', topupAmountMinor: 5000n })).toMatchObject({ taken: 2240n, repaid: true });
+  1526→  });
+  1527→  it('reverses the advance exactly when delivery definitely fails', async () => {
+  1528→    const { delivery, ledger } = mk('fail');
+  1529→    expect(await delivery.request(ask())).toMatchObject({ status: 'cancelled', code: 'DECLINED' });
+  1530→    expect(await ledger.balance(T, topupAcct.receivable('msisdn:27821234567'))).toBe(0n);
+  1531→    expect(await ledger.trialBalanceTotal(T)).toBe(0n);
+  1532→  });
+  1533→  it('holds the advance when delivery is unknown, blocks a second one, does not recover, then settles', async () => {
+  1534→    const { delivery, credit, prov } = mk('timeout');
+  1535→    expect(await delivery.request(ask())).toMatchObject({ status: 'pending' });
+  1536→    expect(await delivery.request(ask({ requestId: 'r2' }))).toMatchObject({ status: 'declined', code: 'OPEN_ADVANCE' });
+  1537→    expect(await credit.recover({ tenantId: T, subjectId: 'msisdn:27821234567', topupRef: 'tu1', topupAmountMinor: 5000n })).toMatchObject({ taken: 0n });
+  1538→    prov.settle('r1', { status: 'success', providerId: 'p', providerRef: 'p-1' });
+  1539→    expect(await delivery.settlePending(T, 'r1')).toMatchObject({ status: 'delivered' });
+  1540→    expect(await credit.recover({ tenantId: T, subjectId: 'msisdn:27821234567', topupRef: 'tu2', topupAmountMinor: 5000n })).toMatchObject({ taken: 2240n });
+  1541→  });
+  1542→  it('cancels a pending advance when the lookup shows it failed', async () => {
+  1543→    const { delivery, prov, ledger } = mk('timeout');
+  1544→    await delivery.request(ask());
+  1545→    prov.settle('r1', { status: 'failed', providerId: 'p', code: 'NOT_DELIVERED', message: 'no', retryable: false });
+  1546→    expect(await delivery.settlePending(T, 'r1')).toMatchObject({ status: 'cancelled' });
+  1547→    expect(await ledger.balance(T, topupAcct.receivable('msisdn:27821234567'))).toBe(0n);
+  1548→  });
+  1549→  it('declines an ineligible customer without delivering anything', async () => {
+  1550→    const { delivery, prov } = mk('success');
+  1551→    expect(await delivery.request(ask({ history: { ...hist(10000n), arrearsMinor: 1n } }))).toMatchObject({ status: 'declined', code: 'NOT_ELIGIBLE' });
+  1552→    expect(prov.calls).toHaveLength(0);
+  1553→  });
+  1554→  it('delivers an electricity token for a meter', async () => {
+  1555→    const { delivery } = mk('success');
+  1556→    const r = await delivery.request(ask({ subjectId: 'meter:12345678901', productId: 'za-electricity', amountMinor: 10000n, history: hist(40000n), target: { meterNumber: '12345678901' } }));
+  1557→    expect(r).toMatchObject({ status: 'delivered', token: '1234-5678-9012-3456-7890' });
+  1558→  });
+  1559→});
+  1560→```
+  1561→
+  1562→### `__tests__/tshepo/gopay.test.ts`
+  1563→
+  1564→```ts
+  1565→/** @jest-environment node */
+  1566→import { LedgerService, InMemoryLedgerRepo } from '../../src/lib/tshepo/ledger/ledger';
+  1567→import { settleSale, collectDebit, failedDebit, acct, GoPayNotLiveError } from '../../src/lib/tshepo/gopay/settlement';
+  1568→import { allocateWaterfall, splitAtSettlement } from '../../src/lib/tshepo/repayment/waterfall';
+  1569→
+  1570→const T = 't1', M = 'm1';
+  1571→async function seeded() {
+  1572→  const ledger = new LedgerService(new InMemoryLedgerRepo());
+  1573→  const b = { tenantId: T, correlationId: 'seed', currency: 'ZAR', reason: 'seed' };
+  1574→  await ledger.post({ ...b, idempotencyKey: 'fund', lines: [{ account: acct.trust, amount: 500000n }, { account: 'lender_funding', amount: -500000n }] });
+  1575→  await ledger.post({ ...b, idempotencyKey: 'disburse', lines: [{ account: acct.loan(M), amount: 500000n }, { account: acct.trust, amount: -500000n }] });
+  1576→  return ledger;
+  1577→}
+  1578→const split = { goPayLive: true, route: 'split' as const, shareBps: 1000 };
+  1579→
+  1580→describe('GoPay settlement', () => {
+  1581→  it('splits repayment at settlement and keeps the books balanced', async () => {
+  1582→    const ledger = await seeded();
+  1583→    const r = await settleSale(ledger, split, { tenantId: T, merchantId: M, saleId: 's1', amount: 25000n, rail: 'qr_payshap' });
+  1584→    expect(r).toMatchObject({ fee: 250n, net: 24750n, repaid: 2475n, payout: 22275n, replayed: false });
+  1585→    expect(await ledger.balance(T, acct.loan(M))).toBe(497525n);
+  1586→    expect(await ledger.balance(T, acct.wallet(M))).toBe(0n);
+  1587→    expect(await ledger.balance(T, acct.clearing)).toBe(0n);
+  1588→    expect(await ledger.balance(T, acct.trust)).toBe(2725n); // fee plus repayment retained
+  1589→    expect(await ledger.trialBalanceTotal(T)).toBe(0n);
+  1590→  });
+  1591→  it('refuses the split route while GoPay is not live', async () => {
+  1592→    const ledger = await seeded();
+  1593→    await expect(settleSale(ledger, { ...split, goPayLive: false }, { tenantId: T, merchantId: M, saleId: 's1', amount: 25000n, rail: 'qr_payshap' }))
+  1594→      .rejects.toBeInstanceOf(GoPayNotLiveError);
+  1595→  });
+  1596→  it('never repays more than is outstanding', async () => {
+  1597→    const ledger = await seeded();
+  1598→    await collectDebit(ledger, { tenantId: T, merchantId: M, debitId: 'd0', instalment: 499900n });
+  1599→    const r = await settleSale(ledger, split, { tenantId: T, merchantId: M, saleId: 's2', amount: 100000n, rail: 'credit_card' });
+  1600→    expect(r.repaid).toBe(100n);
+  1601→    expect(await ledger.balance(T, acct.loan(M))).toBe(0n);
+  1602→  });
+  1603→  it('is safe to replay a sale', async () => {
+  1604→    const ledger = await seeded();
+  1605→    const sale = { tenantId: T, merchantId: M, saleId: 's3', amount: 40000n, rail: 'instant_eft' as const };
+  1606→    const a = await settleSale(ledger, split, sale);
+  1607→    const before = (await ledger.trialBalanceTotal(T), await ledger.balance(T, acct.loan(M)));
+  1608→    const b = await settleSale(ledger, split, sale);
+  1609→    expect(b.replayed).toBe(true);
+  1610→    expect(b.repaid).toBe(a.repaid);
+  1611→    expect(await ledger.balance(T, acct.loan(M))).toBe(before);
+  1612→  });
+  1613→  it('Wave 1 debit route pays out the full net and collects on schedule', async () => {
+  1614→    const ledger = await seeded();
+  1615→    const cfg = { goPayLive: false, route: 'debit' as const, shareBps: 0 };
+  1616→    const r = await settleSale(ledger, cfg, { tenantId: T, merchantId: M, saleId: 's4', amount: 25000n, rail: 'debit_card' });
+  1617→    expect(r.repaid).toBe(0n);
+  1618→    expect(r.payout).toBe(24625n);
+  1619→    const c = await collectDebit(ledger, { tenantId: T, merchantId: M, debitId: 'd1', instalment: 50000n });
+  1620→    expect(c.collected).toBe(50000n);
+  1621→    expect(await ledger.balance(T, acct.loan(M))).toBe(450000n);
+  1622→    expect(await ledger.trialBalanceTotal(T)).toBe(0n);
+  1623→  });
+  1624→  it('a failed debit order raises arrears and posts nothing', async () => {
+  1625→    const ledger = await seeded();
+  1626→    const before = await ledger.trialBalanceTotal(T);
+  1627→    const f = await failedDebit(ledger, { tenantId: T, merchantId: M, instalment: 50000n });
+  1628→    expect(f.arrears).toBe(50000n);
+  1629→    expect(f.nextAction).toBe('collections_contact_then_hardship_offer');
+  1630→    expect(await ledger.trialBalanceTotal(T)).toBe(before);
+  1631→  });
+  1632→});
+  1633→
+  1634→describe('waterfall', () => {
+  1635→  it('allocates in configured order and reports the unapplied remainder', () => {
+  1636→    const r = allocateWaterfall(1000n, [{ name: 'fees', due: 100n }, { name: 'arrears', due: 300n }, { name: 'instalment', due: 800n }]);
+  1637→    expect(r.allocations).toEqual({ fees: 100n, arrears: 300n, instalment: 600n });
+  1638→    expect(r.unapplied).toBe(0n);
+  1639→    expect(allocateWaterfall(50n, [{ name: 'fees', due: 100n }]).allocations.fees).toBe(50n);
+  1640→    expect(allocateWaterfall(500n, [{ name: 'fees', due: 100n }]).unapplied).toBe(400n);
+  1641→  });
+  1642→  it('split is zero when nothing is outstanding', () => {
+  1643→    expect(splitAtSettlement(10000n, 1000, 0n)).toBe(0n);
+  1644→  });
+  1645→});
+  1646→```
+  1647→
+  1648→### `__tests__/tshepo/ledger.test.ts`
+  1649→
+  1650→```ts
+  1651→/** @jest-environment node */
+  1652→import { LedgerService, InMemoryLedgerRepo, LedgerError } from '../../src/lib/tshepo/ledger/ledger';
+  1653→
+  1654→const mk = () => { const repo = new InMemoryLedgerRepo(); return { repo, ledger: new LedgerService(repo) }; };
+  1655→const base = { tenantId: 't1', correlationId: 'c1', currency: 'ZAR', reason: 'test' };
+  1656→
+  1657→describe('ledger', () => {
+  1658→  it('rejects unbalanced entries', async () => {
+  1659→    const { ledger } = mk();
+  1660→    await expect(ledger.post({ ...base, idempotencyKey: 'a', lines: [{ account: 'x', amount: 5n }, { account: 'y', amount: -4n }] }))
+  1661→      .rejects.toMatchObject({ code: 'UNBALANCED' });
+  1662→  });
+  1663→  it('rejects zero lines, single lines and bad currency', async () => {
+  1664→    const { ledger } = mk();
+  1665→    await expect(ledger.post({ ...base, idempotencyKey: 'a', lines: [{ account: 'x', amount: 0n }, { account: 'y', amount: 0n }] })).rejects.toBeInstanceOf(LedgerError);
+  1666→    await expect(ledger.post({ ...base, idempotencyKey: 'b', lines: [{ account: 'x', amount: 1n }] })).rejects.toMatchObject({ code: 'TOO_FEW_LINES' });
+  1667→    await expect(ledger.post({ ...base, currency: 'rand', idempotencyKey: 'c', lines: [{ account: 'x', amount: 1n }, { account: 'y', amount: -1n }] })).rejects.toMatchObject({ code: 'BAD_CURRENCY' });
+  1668→  });
+  1669→  it('is idempotent and detects key reuse with different content', async () => {
+  1670→    const { ledger, repo } = mk();
+  1671→    const lines = [{ account: 'x', amount: 10n }, { account: 'y', amount: -10n }];
+  1672→    const first = await ledger.post({ ...base, idempotencyKey: 'k', lines });
+  1673→    const again = await ledger.post({ ...base, idempotencyKey: 'k', lines });
+  1674→    expect(again.replayed).toBe(true);
+  1675→    expect(again.entry.id).toBe(first.entry.id);
+  1676→    expect(repo.outbox).toHaveLength(1);
+  1677→    await expect(ledger.post({ ...base, idempotencyKey: 'k', lines: [{ account: 'x', amount: 11n }, { account: 'y', amount: -11n }] }))
+  1678→      .rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+  1679→  });
+  1680→  it('keeps the trial balance at zero across 500 random balanced entries', async () => {
+  1681→    const { ledger } = mk();
+  1682→    const accts = ['a', 'b', 'c', 'd', 'e', 'f'];
+  1683→    for (let i = 0; i < 500; i++) {
+  1684→      const n = 2 + Math.floor(Math.random() * 3);
+  1685→      const picked = [...accts].sort(() => Math.random() - 0.5).slice(0, n);
+  1686→      const amounts = picked.slice(1).map(() => BigInt(1 + Math.floor(Math.random() * 100000)));
+  1687→      const lines = [{ account: picked[0]!, amount: -amounts.reduce((s, x) => s + x, 0n) },
+  1688→        ...amounts.map((a, j) => ({ account: picked[j + 1]!, amount: a }))];
+  1689→      await ledger.post({ ...base, idempotencyKey: `r${i}`, lines });
+  1690→    }
+  1691→    expect(await ledger.trialBalanceTotal('t1')).toBe(0n);
+  1692→  });
+  1693→  it('isolates tenants', async () => {
+  1694→    const { ledger } = mk();
+  1695→    await ledger.post({ ...base, idempotencyKey: 'k', lines: [{ account: 'x', amount: 5n }, { account: 'y', amount: -5n }] });
+  1696→    expect(await ledger.balance('t2', 'x')).toBe(0n);
+  1697→  });
+  1698→});
+  1699→```
+  1700→
+  1701→### `__tests__/tshepo/prisma-ledger-repo.test.ts`
+  1702→
+  1703→```ts
+  1704→/** @jest-environment node */
+  1705→import { PrismaLedgerRepo, TshepoDb, TshepoTx } from '../../src/lib/tshepo/ledger/prisma-ledger-repo';
+  1706→import { LedgerService } from '../../src/lib/tshepo/ledger/ledger';
+  1707→
+  1708→/** Fake Prisma client: checks the adapter's call shapes and transaction boundary, not a real database. */
+  1709→function fakeDb() {
+  1710→  const entries: any[] = []; const accounts = new Map<string, any>(); const outbox: any[] = [];
+  1711→  let failOutbox = false;
+  1712→  const tx = (): TshepoTx => ({
+  1713→    tshepoAccount: { upsert: async ({ where, create }: any) => { const k = `${where.tenantId_code.tenantId}/${where.tenantId_code.code}`; if (!accounts.has(k)) accounts.set(k, create); return accounts.get(k); } },
+  1714→    tshepoJournalEntry: {
+  1715→      create: async ({ data }: any) => { entries.push({ ...data, lines: data.lines.create.map((l: any) => ({ ...l, account: [...accounts.values()].find((a) => a.id === l.accountId) })) }); },
+  1716→      findUnique: async ({ where }: any) => entries.find((e) => e.tenantId === where.tenantId_idempotencyKey.tenantId && e.idempotencyKey === where.tenantId_idempotencyKey.idempotencyKey) ?? null,
+  1717→      findMany: async ({ where }: any) => entries.filter((e) => e.tenantId === where.tenantId),
+  1718→    },
+  1719→    tshepoOutbox: { create: async ({ data }: any) => { if (failOutbox) throw new Error('outbox down'); outbox.push(data); } },
+  1720→  });
+  1721→  const db: TshepoDb = {
+  1722→    ...tx(),
+  1723→    $transaction: async (fn) => { const snap = [entries.length, outbox.length]; try { return await fn(tx()); } catch (e) { entries.length = snap[0]!; outbox.length = snap[1]!; throw e; } },
+  1724→  };
+  1725→  return { db, entries, outbox, setFail: (v: boolean) => { failOutbox = v; } };
+  1726→}
+  1727→const b = { tenantId: 't1', correlationId: 'c', currency: 'ZAR', reason: 'x' };
+  1728→
+  1729→describe('PrismaLedgerRepo', () => {
+  1730→  it('round-trips entries, bigint amounts and idempotent replays', async () => {
+  1731→    const f = fakeDb(); const ledger = new LedgerService(new PrismaLedgerRepo(f.db));
+  1732→    const lines = [{ account: 'trust_bank', amount: 12345n }, { account: 'lender_funding', amount: -12345n }];
+  1733→    const a = await ledger.post({ ...b, idempotencyKey: 'k1', lines });
+  1734→    const again = await ledger.post({ ...b, idempotencyKey: 'k1', lines });
+  1735→    expect(again.replayed).toBe(true);
+  1736→    expect(again.entry.id).toBe(a.entry.id);
+  1737→    expect(await ledger.balance('t1', 'trust_bank')).toBe(12345n);
+  1738→    expect(await ledger.trialBalanceTotal('t1')).toBe(0n);
+  1739→    expect(f.outbox).toHaveLength(1);
+  1740→  });
+  1741→  it('rolls the entry back when the outbox write fails', async () => {
+  1742→    const f = fakeDb(); const ledger = new LedgerService(new PrismaLedgerRepo(f.db));
+  1743→    f.setFail(true);
+  1744→    await expect(ledger.post({ ...b, idempotencyKey: 'k2', lines: [{ account: 'a', amount: 5n }, { account: 'b', amount: -5n }] })).rejects.toThrow('outbox down');
+  1745→    expect(f.entries).toHaveLength(0);
+  1746→  });
+  1747→});
+  1748→```
+  1749→
+  1750→### `__tests__/tshepo/topup.test.ts`
+  1751→
+  1752→```ts
+  1753→/** @jest-environment node */
+  1754→import { LedgerService, InMemoryLedgerRepo } from '../../src/lib/tshepo/ledger/ledger';
+  1755→import { PRESETS } from '../../src/lib/tshepo/topup/presets';
+  1756→import { assessEligibility, quoteFee, History } from '../../src/lib/tshepo/topup/products';
+  1757→import { InMemoryAdvanceRepo, TopUpCredit, TopUpCreditError, topupAcct } from '../../src/lib/tshepo/topup/service';
+  1758→
+  1759→const T = 't1';
+  1760→const NOW = new Date('2026-11-11T10:00:00Z');
+  1761→const product = (id: string) => PRESETS.find((p) => p.id === id)!;
+  1762→const month = (m: number) => new Date(Date.UTC(2026, m, 5));
+  1763→const hist = (monthly: bigint, extra: Partial<History> = {}): History => ({
+  1764→  tenureDays: 400, arrearsMinor: 0n, identityOk: true,
+  1765→  recharges: [{ amountMinor: monthly, at: month(8) }, { amountMinor: monthly, at: month(9) }, { amountMinor: monthly, at: month(10) }], ...extra,
+  1766→});
+  1767→const mk = () => { const ledger = new LedgerService(new InMemoryLedgerRepo()); return { ledger, svc: new TopUpCredit(ledger, new InMemoryAdvanceRepo(), PRESETS) }; };
+  1768→
+  1769→describe('fees', () => {
+  1770→  it('charges per block, flat or percent', () => {
+  1771→    expect(quoteFee(product('za-airtime'), 2000n)).toBe(240n);   // R20 -> two R10 blocks at R1.20
+  1772→    expect(quoteFee(product('za-airtime'), 1500n)).toBe(240n);   // R15 -> "or part thereof"
+  1773→    expect(quoteFee(product('mw-airtime'), 5000n)).toBe(500n);   // K50 -> K5 (10%)
+  1774→    expect(quoteFee({ ...product('za-airtime'), fee: { kind: 'flat', feeMinor: 110n } }, 2000n)).toBe(110n);
+  1775→  });
+  1776→  it('refuses a fee above the product ceiling', () => {
+  1777→    expect(() => quoteFee({ ...product('za-airtime'), maxFeeMinor: 200n }, 2000n)).toThrow(RangeError);
+  1778→  });
+  1779→});
+  1780→
+  1781→describe('eligibility and limits', () => {
+  1782→  it('needs enough recharge history and sets a limit from it', () => {
+  1783→    const ok = assessEligibility(product('za-airtime'), hist(10000n), NOW);       // R100 a month
+  1784→    expect(ok).toMatchObject({ ok: true, maxMinor: 2000n });
+  1785→    const thin = assessEligibility(product('za-airtime'), { ...hist(10000n), recharges: [{ amountMinor: 10000n, at: month(10) }] }, NOW);
+  1786→    expect(thin.reasons).toContain('RECHARGE_HISTORY_TOO_THIN');
+  1787→  });
+  1788→  it('blocks arrears, short tenure and unverified identity', () => {
+  1789→    const r = assessEligibility(product('za-airtime'), hist(10000n, { arrearsMinor: 1n, tenureDays: 10, identityOk: false }), NOW);
+  1790→    expect(r.reasons).toEqual(expect.arrayContaining(['ARREARS_PRESENT', 'TENURE_TOO_SHORT', 'IDENTITY_NOT_VERIFIED']));
+  1791→  });
+  1792→  it('a small spender gets a small limit, and spending below the minimum gets none', () => {
+  1793→    expect(assessEligibility(product('za-airtime'), hist(3000n), NOW)).toMatchObject({ ok: true, maxMinor: 500n });
+  1794→    const low = assessEligibility(product('za-airtime'), hist(1500n), NOW);
+  1795→    expect(low.ok).toBe(false);
+  1796→    expect(low.reasons).toContain('RECHARGE_HISTORY_TOO_THIN');
+  1797→  });
+  1798→});
+  1799→
+  1800→describe('issue and clawback', () => {
+  1801→  it('issues one advance at a time and posts a balanced entry', async () => {
+  1802→    const { ledger, svc } = mk();
+  1803→    const r = await svc.issue({ tenantId: T, subjectId: 'msisdn:27821234567', productId: 'za-airtime', amountMinor: 2000n, requestId: 'r1', history: hist(10000n), now: NOW });
+  1804→    expect(r.record.fee).toBe(240n);
+  1805→    expect(await ledger.balance(T, topupAcct.receivable('msisdn:27821234567'))).toBe(2240n);
+  1806→    await expect(svc.issue({ tenantId: T, subjectId: 'msisdn:27821234567', productId: 'za-airtime', amountMinor: 500n, requestId: 'r2', history: hist(10000n), now: NOW }))
+  1807→      .rejects.toMatchObject({ code: 'OPEN_ADVANCE' });
+  1808→    expect(await ledger.trialBalanceTotal(T)).toBe(0n);
+  1809→  });
+  1810→  it('is idempotent on the request ID and refuses amounts above the limit', async () => {
+  1811→    const { svc } = mk();
+  1812→    const a = { tenantId: T, subjectId: 's', productId: 'za-airtime', amountMinor: 1000n, requestId: 'r1', history: hist(10000n), now: NOW };
+  1813→    const first = await svc.issue(a); const again = await svc.issue(a);
+  1814→    expect(again.replayed).toBe(true); expect(again.record.id).toBe(first.record.id);
+  1815→    await expect(mk().svc.issue({ ...a, requestId: 'r9', amountMinor: 1500n, history: hist(4000n) })).rejects.toBeInstanceOf(TopUpCreditError);
+  1816→  });
+  1817→  it('claws the whole advance back from the next airtime top-up and passes the rest through', async () => {
+  1818→    const { ledger, svc } = mk();
+  1819→    await svc.issue({ tenantId: T, subjectId: 's', productId: 'za-airtime', amountMinor: 2000n, requestId: 'r1', history: hist(10000n), now: NOW });
+  1820→    const r = await svc.recover({ tenantId: T, subjectId: 's', topupRef: 'tu1', topupAmountMinor: 10000n });
+  1821→    expect(r).toMatchObject({ taken: 2240n, passThrough: 7760n, repaid: true });
+  1822→    expect(await ledger.balance(T, topupAcct.receivable('s'))).toBe(0n);
+  1823→    expect(await ledger.balance(T, topupAcct.clearing)).toBe(2240n);
+  1824→    expect(await ledger.trialBalanceTotal(T)).toBe(0n);
+  1825→  });
+  1826→  it('takes a small top-up entirely and carries the rest to the next one', async () => {
+  1827→    const { svc } = mk();
+  1828→    await svc.issue({ tenantId: T, subjectId: 's', productId: 'za-airtime', amountMinor: 2000n, requestId: 'r1', history: hist(10000n), now: NOW });
+  1829→    const a = await svc.recover({ tenantId: T, subjectId: 's', topupRef: 'tu1', topupAmountMinor: 1000n });
+  1830→    expect(a).toMatchObject({ taken: 1000n, passThrough: 0n, repaid: false });
+  1831→    const b = await svc.recover({ tenantId: T, subjectId: 's', topupRef: 'tu2', topupAmountMinor: 5000n });
+  1832→    expect(b).toMatchObject({ taken: 1240n, passThrough: 3760n, repaid: true });
+  1833→  });
+  1834→  it('electricity takes only a share of each purchase', async () => {
+  1835→    const { svc } = mk();
+  1836→    await svc.issue({ tenantId: T, subjectId: 'meter:1234', productId: 'za-electricity', amountMinor: 10000n, requestId: 'e1', history: hist(40000n), now: NOW });
+  1837→    const a = await svc.recover({ tenantId: T, subjectId: 'meter:1234', topupRef: 'p1', topupAmountMinor: 10000n });
+  1838→    expect(a).toMatchObject({ taken: 5000n, passThrough: 5000n, repaid: false });
+  1839→    const b = await svc.recover({ tenantId: T, subjectId: 'meter:1234', topupRef: 'p2', topupAmountMinor: 20000n });
+  1840→    expect(b).toMatchObject({ taken: 6000n, passThrough: 14000n, repaid: true });   // 11,000 due in total
+  1841→  });
+  1842→  it('does nothing when there is no advance, and replays safely', async () => {
+  1843→    const { svc } = mk();
+  1844→    expect(await svc.recover({ tenantId: T, subjectId: 'x', topupRef: 'n1', topupAmountMinor: 5000n })).toMatchObject({ taken: 0n, passThrough: 5000n });
+  1845→    await svc.issue({ tenantId: T, subjectId: 's', productId: 'mw-airtime', amountMinor: 20000n, requestId: 'm1', history: hist(500000n), now: NOW });
+  1846→    const first = await svc.recover({ tenantId: T, subjectId: 's', topupRef: 'tu1', topupAmountMinor: 10000n });
+  1847→    const again = await svc.recover({ tenantId: T, subjectId: 's', topupRef: 'tu1', topupAmountMinor: 10000n });
+  1848→    expect(again.replayed).toBe(true); expect(again.taken).toBe(first.taken);
+  1849→  });
+  1850→});
+  1851→
+  1852→describe('overdue', () => {
+  1853→  it('South Africa airtime moves to the bill; Malawi airtime is written off; nothing before the due date', async () => {
+  1854→    const za = mk(); const mw = mk();
+  1855→    await za.svc.issue({ tenantId: T, subjectId: 's', productId: 'za-airtime', amountMinor: 1000n, requestId: 'r1', history: hist(10000n), now: NOW });
+  1856→    await mw.svc.issue({ tenantId: T, subjectId: 's', productId: 'mw-airtime', amountMinor: 20000n, requestId: 'r1', history: hist(500000n), now: NOW });
+  1857→    const later = new Date(NOW.getTime() + 31 * 86400000);
+  1858→    expect(await za.svc.applyOverdue(T, 's', new Date(NOW.getTime() + 5 * 86400000))).toEqual({ action: 'none' });
+  1859→    expect(await za.svc.applyOverdue(T, 's', later)).toMatchObject({ action: 'add_to_bill', amountMinor: 1120n });
+  1860→    expect(await mw.svc.applyOverdue(T, 's', later)).toMatchObject({ action: 'write_off', amountMinor: 22000n });
+  1861→    expect(await mw.ledger.balance(T, topupAcct.receivable('s'))).toBe(0n);
+  1862→    expect(await mw.ledger.trialBalanceTotal(T)).toBe(0n);
+  1863→  });
+  1864→});
+  1865→```
+  1866→
+  1867→### `__tests__/tshepo/vending.test.ts`
+  1868→
+  1869→```ts
+  1870→/** @jest-environment node */
+  1871→import { MockVendingProvider } from '../../src/lib/tshepo/vending/mock';
+  1872→import { InMemoryVendStore, VendingRouter } from '../../src/lib/tshepo/vending/router';
+  1873→import { HttpVendingAdapter } from '../../src/lib/tshepo/vending/http-adapter';
+  1874→import { createPayChanguProvider, minorToDecimal, toLocalMsisdn } from '../../src/lib/tshepo/vending/paychangu';
+  1875→import { PROVIDERS } from '../../src/lib/tshepo/vending/catalogue';
+  1876→import { VendRequest } from '../../src/lib/tshepo/vending/types';
+  1877→
+  1878→const req = (o: Partial<VendRequest> = {}): VendRequest => ({ reference: 'r1', country: 'ZA', commodity: 'airtime', amountMinor: 2000n, currency: 'ZAR', msisdn: '+27821234567', ...o });
+  1879→const router = (...ps: [MockVendingProvider, number][]) => new VendingRouter(ps.map(([provider, priority]) => ({ provider, priority })), new InMemoryVendStore());
+  1880→
+  1881→describe('router', () => {
+  1882→  it('uses the best provider that supports the item and country', async () => {
+  1883→    const mw = new MockVendingProvider('mw', 'success', { countries: ['MW'] }); const za = new MockVendingProvider('za', 'success', { countries: ['ZA'] });
+  1884→    const r = router([mw, 1], [za, 2]);
+  1885→    expect(await r.vend(req())).toMatchObject({ status: 'success', providerId: 'za' });
+  1886→    expect(mw.calls).toHaveLength(0);
+  1887→  });
+  1888→  it('fails over when the first provider definitely did not deliver, and never vends twice', async () => {
+  1889→    const a = new MockVendingProvider('a', 'fail_retryable'); const b = new MockVendingProvider('b', 'success');
+  1890→    const r = router([a, 1], [b, 2]);
+  1891→    expect(await r.vend(req())).toMatchObject({ status: 'success', providerId: 'b' });
+  1892→    await r.vend(req());
+  1893→    expect(b.calls).toHaveLength(1);                       // same reference, no second delivery
+  1894→  });
+  1895→  it('stops on a hard decline without trying others', async () => {
+  1896→    const a = new MockVendingProvider('a', 'fail'); const b = new MockVendingProvider('b', 'success');
+  1897→    expect(await router([a, 1], [b, 2]).vend(req())).toMatchObject({ status: 'failed', code: 'DECLINED' });
+  1898→    expect(b.calls).toHaveLength(0);
+  1899→  });
+  1900→  it('does NOT fail over on an unknown outcome, and settles it later from the first provider', async () => {
+  1901→    const a = new MockVendingProvider('a', 'timeout'); const b = new MockVendingProvider('b', 'success');
+  1902→    const r = router([a, 1], [b, 2]);
+  1903→    expect(await r.vend(req())).toMatchObject({ status: 'unknown', providerId: 'a' });
+  1904→    expect(b.calls).toHaveLength(0);
+  1905→    a.settle('r1', { status: 'success', providerId: 'a', providerRef: 'a-1' });
+  1906→    expect(await r.resolve('r1')).toMatchObject({ status: 'success', providerRef: 'a-1' });
+  1907→    expect(await r.vend(req())).toMatchObject({ status: 'success' });   // stored result, not a new vend
+  1908→    expect(a.calls).toHaveLength(1);
+  1909→  });
+  1910→  it('treats a thrown error as unknown, not as failure', async () => {
+  1911→    const a = new MockVendingProvider('a', 'throw');
+  1912→    expect(await router([a, 1]).vend(req())).toMatchObject({ status: 'unknown' });
+  1913→  });
+  1914→  it('opens a circuit after repeated failures and uses the next provider', async () => {
+  1915→    let t = 0; const a = new MockVendingProvider('a', 'fail_retryable'); const b = new MockVendingProvider('b', 'success');
+  1916→    const r = new VendingRouter([{ provider: a, priority: 1 }, { provider: b, priority: 2 }], new InMemoryVendStore(), { failureThreshold: 2, cooldownMs: 1000, now: () => t });
+  1917→    await r.vend(req({ reference: 'x1' })); await r.vend(req({ reference: 'x2' }));
+  1918→    await r.vend(req({ reference: 'x3' }));
+  1919→    expect(a.calls).toHaveLength(2);                        // a is skipped on the third item
+  1920→    t = 5000; await r.vend(req({ reference: 'x4' }));
+  1921→    expect(a.calls).toHaveLength(3);                        // cooled down, tried again
+  1922→  });
+  1923→  it('returns NO_PROVIDER when nobody supports the item', async () => {
+  1924→    const a = new MockVendingProvider('a', 'success', { countries: ['MW'] });
+  1925→    expect(await router([a, 1]).vend(req())).toMatchObject({ status: 'failed', code: 'NO_PROVIDER' });
+  1926→  });
+  1927→  it('validates a meter through a provider that can', async () => {
+  1928→    const a = new MockVendingProvider('a');
+  1929→    expect(await router([a, 1]).validateMeter('12345678901', 'ZA')).toMatchObject({ valid: true });
+  1930→  });
+  1931→});
+  1932→
+  1933→describe('http adapter and PayChangu', () => {
+  1934→  const fakeFetch = (status: number, body: unknown, seen: any[] = []) => (async (url: string, init: any) => {
+  1935→    seen.push({ url, init }); return { status, json: async () => body } as any;
+  1936→  }) as unknown as typeof fetch;
+  1937→  const mk = (f: typeof fetch) => createPayChanguProvider({ secretKey: () => 'SEC-test', fetchImpl: f });
+  1938→
+  1939→  it('formats amounts and phone numbers', () => {
+  1940→    expect(minorToDecimal(100000n)).toBe('1000'); expect(minorToDecimal(150n)).toBe('1.50');
+  1941→    expect(toLocalMsisdn('+265991234567')).toBe('0991234567');
+  1942→  });
+  1943→  it('sends the documented airtime request and reads success', async () => {
+  1944→    const seen: any[] = []; const p = mk(fakeFetch(200, { status: 'success', data: { reference: 'PC1' } }, seen));
+  1945→    const out = await p.vend(req({ country: 'MW', currency: 'MWK', amountMinor: 100000n, msisdn: '+265991234567', reference: 'PC1' }));
+  1946→    expect(out).toMatchObject({ status: 'success', providerRef: 'PC1' });
+  1947→    expect(seen[0].url).toBe('https://api.paychangu.com/bills/buy-airtime');
+  1948→    expect(seen[0].init.headers.Authorization).toBe('Bearer SEC-test');
+  1949→    expect(JSON.parse(seen[0].init.body)).toEqual({ phone: '0991234567', amount: '1000', reference: 'PC1' });
+  1950→  });
+  1951→  it('sends an ESCOM token purchase and returns the token', async () => {
+  1952→    const seen: any[] = []; const p = mk(fakeFetch(200, { status: 'success', data: { token: '1111-2222' } }, seen));
+  1953→    const out = await p.vend(req({ country: 'MW', commodity: 'electricity', currency: 'MWK', meterNumber: '917535617', amountMinor: 1000000n, customerName: 'J Phiri', reference: 'E1' }));
+  1954→    expect(out).toMatchObject({ status: 'success', token: '1111-2222' });
+  1955→    expect(JSON.parse(seen[0].init.body)).toEqual({ biller: 'escom', account: '917535617', amount: '10000', customer_name: 'J Phiri', reference: 'E1' });
+  1956→  });
+  1957→  it('maps rejections to failed and server errors, timeouts and odd replies to unknown', async () => {
+  1958→    const mwReq = req({ country: 'MW', currency: 'MWK', msisdn: '+265991234567' });
+  1959→    expect(await mk(fakeFetch(400, { message: 'bad number' })).vend(mwReq)).toMatchObject({ status: 'failed', retryable: false });
+  1960→    expect(await mk(fakeFetch(503, {})).vend(mwReq)).toMatchObject({ status: 'unknown' });
+  1961→    expect(await mk(fakeFetch(200, { hello: 'world' })).vend(mwReq)).toMatchObject({ status: 'unknown', reason: 'UNRECOGNISED_RESPONSE' });
+  1962→    const boom = (async () => { throw new Error('socket hang up'); }) as unknown as typeof fetch;
+  1963→    expect(await mk(boom).vend(mwReq)).toMatchObject({ status: 'unknown' });
+  1964→    expect(await mk(fakeFetch(429, {})).vend(mwReq)).toMatchObject({ status: 'failed', retryable: true });
+  1965→  });
+  1966→  it('reports status as unknown until a status endpoint is configured', async () => {
+  1967→    expect(await mk(fakeFetch(200, {})).status('x')).toMatchObject({ status: 'unknown', reason: 'STATUS_ENDPOINT_NOT_CONFIGURED' });
+  1968→  });
+  1969→  it('works for any provider through configuration alone', async () => {
+  1970→    const p = new HttpVendingAdapter({
+  1971→      id: 'sa-aggregator', baseUrl: 'https://agg.example', headers: () => ({ 'x-key': 'k' }), supported: [{ commodity: 'airtime', country: 'ZA' }],
+  1972→      buildVend: (r) => ({ method: 'POST', path: '/vend', body: { msisdn: r.msisdn, rands: Number(r.amountMinor) / 100, ref: r.reference } }),
+  1973→      mapVend: (s, b) => (s === 200 && b.ok ? { status: 'success', providerId: 'sa-aggregator', providerRef: b.id } : { status: 'failed', providerId: 'sa-aggregator', code: 'X', message: 'no', retryable: false }),
+  1974→      fetchImpl: fakeFetch(200, { ok: true, id: 'A9' }),
+  1975→    });
+  1976→    expect(await p.vend(req())).toMatchObject({ status: 'success', providerRef: 'A9' });
+  1977→    expect(p.supports('airtime', 'ZA')).toBe(true); expect(p.supports('electricity', 'ZA')).toBe(false);
+  1978→  });
+  1979→});
+  1980→
+  1981→describe('catalogue', () => {
+  1982→  it('lists South African and Malawian providers with unique ids', () => {
+  1983→    expect(new Set(PROVIDERS.map((p) => p.id)).size).toBe(PROVIDERS.length);
+  1984→    expect(PROVIDERS.filter((p) => p.country === 'ZA').length).toBeGreaterThanOrEqual(10);
+  1985→    expect(PROVIDERS.find((p) => p.id === 'paychangu')?.integration).toBe('adapter_built');
+  1986→    expect(PROVIDERS.find((p) => p.id === 'tnm')?.integration).toBe('in_negotiation');
+  1987→    expect(PROVIDERS.find((p) => p.id === 'escom')?.integration).toBe('in_negotiation');
+  1988→  });
+  1989→});
+  1990→```
+  1991→
+  1992→## Database: Prisma models and SQL guards
+  1993→
+  1994→### `prisma/tshepo.models.prisma`
+  1995→
+  1996→```prisma
+  1997→// Tshepo models to APPEND to Groway's prisma/schema.postgresql.prisma.
+  1998→// Money is BigInt minor units (cents). tenantId is PlatformTenant.id. Ledger tables are append-only (see migration).
+  1999→
+  2000→model TshepoAccount {
+
+[showing lines 1-2000 of 2417; use offset=2001 with limit to continue reading]

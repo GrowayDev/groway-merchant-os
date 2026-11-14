@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { width:1920px; height:1080px; background:#0F172A; display:flex; align-items:center; justify-content:center; font-family:'Inter','Helvetica',sans-serif; }
+  .card { display:flex; gap:60px; align-items:stretch; width:1600px; }
+  .panel { flex:1; padding:60px 50px; border-radius:16px; }
+  .panel.old { background:#1E293B; border:1px solid #334155; }
+  .panel.new { background:linear-gradient(135deg,#064E3B,#065F46); border:1px solid #10B981; }
+  .panel h3 { font-size:24px; font-weight:600; margin-bottom:28px; text-transform:uppercase; letter-spacing:1.5px; }
+  .panel.old h3 { color:#94A3B8; }
+  .panel.new h3 { color:#6EE7B7; }
+  .panel ul { list-style:none; }
+  .panel li { font-size:28px; line-height:1.6; margin-bottom:18px; display:flex; align-items:flex-start; gap:14px; }
+  .panel.old li { color:#CBD5E1; }
+  .panel.new li { color:#F0FDF4; }
+  .panel li::before { content:''; display:inline-block; width:12px; height:12px; border-radius:50%; margin-top:10px; flex-shrink:0; }
+  .panel.old li::before { background:#64748B; }
+  .panel.new li::before { background:#10B981; }
+  .verdict { text-align:center; margin-top:50px; font-size:38px; color:#F8FAFC; font-weight:600; }
+  .verdict .em { color:#10B981; }
+</style>
+</head>
+<body>
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <div class="card">
+      <div class="panel old">
+        <h3>The Old Way</h3>
+        <ul>
+          <li>Paper notebook at the till</li>
+          <li>6 weeks to a national response</li>
+          <li>Zero prosecutions, 12 months on</li>
+          <li>150,000 shops, no traceability</li>
+        </ul>
+      </div>
+      <div class="panel new">
+        <h3>The Groway Way</h3>
+        <ul>
+          <li>Scan, verify, in under 500ms</li>
+          <li>Authority notified within 1 hour</li>
+          <li>Signed custody chain as evidence</li>
+          <li>Every spaza, every product, traced</li>
+        </ul>
+      </div>
+    </div>
+    <div class="verdict">The next <span class="em">Naledi</span> never happens.</div>
+  </div>
+</body>
+</html>

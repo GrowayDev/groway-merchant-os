@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root {
+  /* Groway brand palette */
+  --bg: #FDFDFB;
+  --bg-soft: #F4F7F5;
+  --primary: #0B6B5D;        /* deep emerald — Groway brand */
+  --primary-dark: #084B41;
+  --primary-soft: #E3F1ED;
+  --accent: #D97706;         /* amber — used sparingly for alerts/highlights */
+  --accent-soft: #FEF3E2;
+  --ink: #17201C;
+  --ink-soft: #4A5550;
+  --ink-faint: #8A948F;
+  --line: #DDE5E1;
+  --white: #FFFFFF;
+
+  /* Typography tokens (family + size only — no pre-baked classes) */
+  --font-heading: 'Space Grotesk', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-num: 'IBM Plex Mono', monospace;
+
+  --fs-display: 54px;
+  --fs-h1: 36px;
+  --fs-h2: 24px;
+  --fs-h3: 17px;
+  --fs-body: 14.5px;
+  --fs-small: 12.5px;
+  --fs-micro: 10.5px;
+}
+
+/* Slide canvas */
+.slide {
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+/* Surfaces */
+.card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.card-soft {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.card-primary {
+  background: var(--primary);
+  color: var(--white);
+  border-radius: 14px;
+}
+.card-accent {
+  background: var(--accent-soft);
+  border: 1px solid #F2DFC4;
+  border-radius: 14px;
+}
+
+/* Emphasis */
+.text-primary { color: var(--primary); }
+.text-accent { color: var(--accent); }
+.text-soft { color: var(--ink-soft); }
+.text-faint { color: var(--ink-faint); }
+.bg-primary-soft { background: var(--primary-soft); }
+
+/* Kickers & rules */
+.kicker {
+  font-family: var(--font-body);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.rule {
+  height: 3px;
+  width: 56px;
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+/* Numeric rendering */
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+/* Slide footer strip (page identity) */
+.deck-foot {
+  position: absolute;
+  left: 64px;
+  right: 64px;
+  bottom: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--fs-micro);
+  color: var(--ink-faint);
+}
+
+/* Anti-counterfeit chain motif */
+.chain-dot {
+  width: 10px; height: 10px; border-radius: 9999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}

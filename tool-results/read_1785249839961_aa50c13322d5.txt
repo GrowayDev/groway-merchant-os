@@ -1,0 +1,1754 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback } from 'react'
+     4→import { Button } from '@/components/ui/button'
+     5→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     6→import { Badge } from '@/components/ui/badge'
+     7→import { Input } from '@/components/ui/input'
+     8→import { Label } from '@/components/ui/label'
+     9→import { Separator } from '@/components/ui/separator'
+    10→import { ScrollArea } from '@/components/ui/scroll-area'
+    11→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    12→import { Progress } from '@/components/ui/progress'
+    13→import { Textarea } from '@/components/ui/textarea'
+    14→import {
+    15→  Dialog,
+    16→  DialogContent,
+    17→  DialogDescription,
+    18→  DialogFooter,
+    19→  DialogHeader,
+    20→  DialogTitle,
+    21→} from '@/components/ui/dialog'
+    22→import { toast } from 'sonner'
+    23→import {
+    24→  Utensils,
+    25→  Clock,
+    26→  ChefHat,
+    27→  CheckCircle2,
+    28→  Play,
+    29→  Pause,
+    30→  SkipForward,
+    31→  AlertTriangle,
+    32→  Flame,
+    33→  Snowflake,
+    34→  Pizza,
+    35→  Wine,
+    36→  Cake,
+    37→  Coffee,
+    38→  Salad,
+    39→  Soup,
+    40→  Timer,
+    41→  Users,
+    42→  Table2,
+    43→  ArrowRight,
+    44→  RefreshCw,
+    45→  Bell,
+    46→  BellRing,
+    47→  Loader2,
+    48→  MessageSquare,
+    49→  Send,
+    50→  AlertCircle,
+    51→  Zap,
+    52→  Ban,
+    53→  Check,
+    54→  X,
+    55→  Radio,
+    56→  Volume2,
+    57→  Hourglass,
+    58→  ChevronRight,
+    59→} from 'lucide-react'
+    60→
+    61→// Types
+    62→type CourseType = 'starter' | 'main' | 'dessert' | 'drinks' | 'sides'
+    63→type CourseStatus = 'pending' | 'held' | 'ordered' | 'preparing' | 'ready' | 'served'
+    64→type Priority = 'normal' | 'high' | 'rush'
+    65→
+    66→interface CourseItem {
+    67→  id: string
+    68→  name: string
+    69→  quantity: number
+    70→  price: number
+    71→  notes?: string
+    72→  station: 'grill' | 'cold' | 'fryer' | 'pizza' | 'bar' | 'dessert'
+    73→  status: CourseStatus
+    74→  preparationTime: number
+    75→  dietary?: string[]
+    76→  allergens?: string[]
+    77→  firedAt?: Date
+    78→  readyAt?: Date
+    79→}
+    80→
+    81→interface KitchenMessage {
+    82→  id: string
+    83→  message: string
+    84→  sentAt: Date
+    85→  from: 'waiter' | 'kitchen'
+    86→  acknowledged: boolean
+    87→  acknowledgedAt?: Date
+    88→}
+    89→
+    90→interface Course {
+    91→  id: string
+    92→  type: CourseType
+    93→  name: string
+    94→  items: CourseItem[]
+    95→  status: CourseStatus
+    96→  orderedAt?: Date
+    97→  readyAt?: Date
+    98→  servedAt?: Date
+    99→  estimatedTime: number
+   100→  priority: Priority
+   101→  heldUntil?: Date
+   102→  holdReason?: string
+   103→}
+   104→
+   105→interface TableOrder {
+   106→  id: string
+   107→  tableNumber: string
+   108→  guests: number
+   109→  serverName: string
+   110→  courses: Course[]
+   111→  status: 'active' | 'completed'
+   112→  startedAt: Date
+   113→  messages: KitchenMessage[]
+   114→  rushReason?: string
+   115→}
+   116→
+   117→// Course configurations with clear progression
+   118→const courseConfig: Record<CourseType, { name: string; icon: any; color: string; order: number; description: string }> = {
+   119→  drinks: { name: 'Drinks', icon: Wine, color: 'bg-purple-100 text-purple-700 border-purple-300', order: 0, description: 'Beverages & cocktails' },
+   120→  starter: { name: 'Starters', icon: Salad, color: 'bg-amber-100 text-amber-700 border-amber-300', order: 1, description: 'Appetizers & light bites' },
+   121→  main: { name: 'Mains', icon: Utensils, color: 'bg-red-100 text-red-700 border-red-300', order: 2, description: 'Main courses' },
+   122→  sides: { name: 'Sides', icon: Soup, color: 'bg-orange-100 text-orange-700 border-orange-300', order: 2, description: 'Side dishes' },
+   123→  dessert: { name: 'Desserts', icon: Cake, color: 'bg-pink-100 text-pink-700 border-pink-300', order: 3, description: 'Sweet treats & coffee' },
+   124→}
+   125→
+   126→const statusConfig: Record<CourseStatus, { label: string; color: string; bgColor: string; icon: any; pulse?: boolean }> = {
+   127→  pending: { label: 'Pending', color: 'text-gray-600', bgColor: 'bg-gray-100 border-gray-300', icon: Clock },
+   128→  held: { label: 'On Hold', color: 'text-amber-600', bgColor: 'bg-amber-100 border-amber-400', icon: Pause },
+   129→  ordered: { label: 'Ordered', color: 'text-sky-600', bgColor: 'bg-sky-100 border-sky-300', icon: Bell },
+   130→  preparing: { label: 'Preparing', color: 'text-orange-600', bgColor: 'bg-orange-100 border-orange-300', icon: Flame, pulse: true },
+   131→  ready: { label: 'Ready!', color: 'text-green-600', bgColor: 'bg-green-100 border-green-400', icon: BellRing, pulse: true },
+   132→  served: { label: 'Served', color: 'text-gray-500', bgColor: 'bg-gray-200 border-gray-300', icon: CheckCircle2 },
+   133→}
+   134→
+   135→const stationConfig: Record<string, { name: string; icon: any; color: string }> = {
+   136→  grill: { name: 'Grill', icon: Flame, color: 'text-red-500' },
+   137→  cold: { name: 'Cold', icon: Snowflake, color: 'text-blue-500' },
+   138→  fryer: { name: 'Fryer', icon: Flame, color: 'text-amber-500' },
+   139→  pizza: { name: 'Pizza', icon: Pizza, color: 'text-green-500' },
+   140→  bar: { name: 'Bar', icon: Wine, color: 'text-purple-500' },
+   141→  dessert: { name: 'Dessert', icon: Cake, color: 'text-pink-500' },
+   142→}
+   143→
+   144→const priorityConfig: Record<Priority, { label: string; color: string; bgColor: string; icon: any }> = {
+   145→  normal: { label: 'Normal', color: 'text-gray-600', bgColor: 'bg-gray-100', icon: Clock },
+   146→  high: { label: 'High', color: 'text-amber-600', bgColor: 'bg-amber-100', icon: AlertTriangle },
+   147→  rush: { label: 'RUSH', color: 'text-red-600', bgColor: 'bg-red-100', icon: Zap },
+   148→}
+   149→
+   150→// Common allergens for display
+   151→const allergenWarnings: Record<string, { icon: string; color: string }> = {
+   152→  nuts: { icon: '🥜', color: 'bg-amber-500 text-white' },
+   153→  dairy: { icon: '🥛', color: 'bg-blue-500 text-white' },
+   154→  gluten: { icon: '🌾', color: 'bg-yellow-500 text-white' },
+   155→  shellfish: { icon: '🦐', color: 'bg-orange-500 text-white' },
+   156→  eggs: { icon: '🥚', color: 'bg-yellow-400 text-white' },
+   157→  soy: { icon: '🫘', color: 'bg-green-500 text-white' },
+   158→  fish: { icon: '🐟', color: 'bg-cyan-500 text-white' },
+   159→  sesame: { icon: '🌱', color: 'bg-lime-500 text-white' },
+   160→}
+   161→
+   162→// Sample data
+   163→const sampleOrders: TableOrder[] = [
+   164→  {
+   165→    id: 'order-1',
+   166→    tableNumber: '12',
+   167→    guests: 4,
+   168→    serverName: 'Thabo M.',
+   169→    status: 'active',
+   170→    startedAt: new Date(Date.now() - 45 * 60000),
+   171→    messages: [
+   172→      { id: 'm1', message: 'Table wants medium-rare on all steaks', sentAt: new Date(Date.now() - 35 * 60000), from: 'waiter', acknowledged: true, acknowledgedAt: new Date(Date.now() - 34 * 60000) },
+   173→    ],
+   174→    courses: [
+   175→      {
+   176→        id: 'course-1',
+   177→        type: 'starter',
+   178→        name: 'Starters',
+   179→        status: 'served',
+   180→        orderedAt: new Date(Date.now() - 40 * 60000),
+   181→        readyAt: new Date(Date.now() - 30 * 60000),
+   182→        servedAt: new Date(Date.now() - 25 * 60000),
+   183→        estimatedTime: 15,
+   184→        priority: 'normal',
+   185→        items: [
+   186→          { id: 'i1', name: 'Garlic Bread (4 slices)', quantity: 2, price: 35, station: 'cold', status: 'served', preparationTime: 5, dietary: [] },
+   187→          { id: 'i2', name: 'Calamari Rings', quantity: 1, price: 75, station: 'fryer', status: 'served', preparationTime: 10, dietary: [] },
+   188→        ]
+   189→      },
+   190→      {
+   191→        id: 'course-2',
+   192→        type: 'main',
+   193→        name: 'Mains',
+   194→        status: 'preparing',
+   195→        orderedAt: new Date(Date.now() - 20 * 60000),
+   196→        estimatedTime: 25,
+   197→        priority: 'normal',
+   198→        items: [
+   199→          { id: 'i3', name: 'Sirloin Steak (300g) - Medium', quantity: 2, price: 185, station: 'grill', status: 'preparing', preparationTime: 20, notes: 'Medium rare', dietary: [], firedAt: new Date(Date.now() - 20 * 60000) },
+   200→          { id: 'i4', name: 'Grilled Salmon', quantity: 1, price: 175, station: 'grill', status: 'preparing', preparationTime: 15, dietary: [], allergens: ['fish'], firedAt: new Date(Date.now() - 20 * 60000) },
+   201→          { id: 'i5', name: 'Vegetable Curry', quantity: 1, price: 95, station: 'cold', status: 'preparing', preparationTime: 12, dietary: ['vegan'], firedAt: new Date(Date.now() - 20 * 60000) },
+   202→        ]
+   203→      },
+   204→      {
+   205→        id: 'course-3',
+   206→        type: 'dessert',
+   207→        name: 'Desserts',
+   208→        status: 'pending',
+   209→        estimatedTime: 10,
+   210→        priority: 'normal',
+   211→        items: [
+   212→          { id: 'i6', name: 'Malva Pudding', quantity: 2, price: 55, station: 'dessert', status: 'pending', preparationTime: 8, dietary: [], allergens: ['dairy', 'gluten'] },
+   213→          { id: 'i7', name: 'Ice Cream (2 scoops)', quantity: 2, price: 35, station: 'dessert', status: 'pending', preparationTime: 2, dietary: [], allergens: ['dairy'] },
+   214→        ]
+   215→      }
+   216→    ]
+   217→  },
+   218→  {
+   219→    id: 'order-2',
+   220→    tableNumber: '7',
+   221→    guests: 2,
+   222→    serverName: 'Nomsa K.',
+   223→    status: 'active',
+   224→    startedAt: new Date(Date.now() - 20 * 60000),
+   225→    messages: [],
+   226→    rushReason: 'VIP guests - need quick turnaround',
+   227→    courses: [
+   228→      {
+   229→        id: 'course-4',
+   230→        type: 'main',
+   231→        name: 'Mains',
+   232→        status: 'ordered',
+   233→        orderedAt: new Date(Date.now() - 15 * 60000),
+   234→        estimatedTime: 20,
+   235→        priority: 'rush',
+   236→        items: [
+   237→          { id: 'i8', name: 'Lamb Chops (4pc)', quantity: 1, price: 175, station: 'grill', status: 'ordered', preparationTime: 18, dietary: [], firedAt: new Date(Date.now() - 15 * 60000) },
+   238→          { id: 'i9', name: 'Peri-Peri Chicken (Half)', quantity: 1, price: 145, station: 'grill', status: 'ordered', preparationTime: 15, notes: 'Extra hot', dietary: [], firedAt: new Date(Date.now() - 15 * 60000) },
+   239→        ]
+   240→      }
+   241→    ]
+   242→  },
+   243→  {
+   244→    id: 'order-3',
+   245→    tableNumber: '3',
+   246→    guests: 6,
+   247→    serverName: 'Johan P.',
+   248→    status: 'active',
+   249→    startedAt: new Date(Date.now() - 60 * 60000),
+   250→    messages: [
+   251→      { id: 'm2', message: 'Allergies: 2 guests have nut allergies - please be careful!', sentAt: new Date(Date.now() - 55 * 60000), from: 'waiter', acknowledged: true },
+   252→    ],
+   253→    courses: [
+   254→      {
+   255→        id: 'course-5',
+   256→        type: 'starter',
+   257→        name: 'Starters',
+   258→        status: 'served',
+   259→        orderedAt: new Date(Date.now() - 55 * 60000),
+   260→        servedAt: new Date(Date.now() - 40 * 60000),
+   261→        estimatedTime: 12,
+   262→        priority: 'normal',
+   263→        items: [
+   264→          { id: 'i10', name: 'Spring Rolls (6pc)', quantity: 2, price: 55, station: 'fryer', status: 'served', preparationTime: 8, dietary: [] },
+   265→        ]
+   266→      },
+   267→      {
+   268→        id: 'course-6',
+   269→        type: 'main',
+   270→        name: 'Mains',
+   271→        status: 'ready',
+   272→        orderedAt: new Date(Date.now() - 30 * 60000),
+   273→        readyAt: new Date(Date.now() - 5 * 60000),
+   274→        estimatedTime: 25,
+   275→        priority: 'rush',
+   276→        items: [
+   277→          { id: 'i11', name: 'Bobotie with Rice', quantity: 2, price: 95, station: 'cold', status: 'ready', preparationTime: 12, dietary: [], allergens: ['eggs'], readyAt: new Date(Date.now() - 5 * 60000) },
+   278→          { id: 'i12', name: 'Oxtail Stew', quantity: 2, price: 155, station: 'grill', status: 'ready', preparationTime: 20, dietary: [], readyAt: new Date(Date.now() - 5 * 60000) },
+   279→          { id: 'i13', name: 'Grilled Snoek', quantity: 2, price: 125, station: 'grill', status: 'ready', preparationTime: 15, dietary: [], allergens: ['fish'], readyAt: new Date(Date.now() - 5 * 60000) },
+   280→        ]
+   281→      }
+   282→    ]
+   283→  }
+   284→]
+   285→
+   286→export function CourseManagementView() {
+   287→  const [orders, setOrders] = useState<TableOrder[]>([])
+   288→  const [selectedOrder, setSelectedOrder] = useState<TableOrder | null>(null)
+   289→  const [currentTime, setCurrentTime] = useState(new Date())
+   290→  const [fireCourseDialogOpen, setFireCourseDialogOpen] = useState(false)
+   291→  const [fireItemDialogOpen, setFireItemDialogOpen] = useState(false)
+   292→  const [holdCourseDialogOpen, setHoldCourseDialogOpen] = useState(false)
+   293→  const [rushDialogOpen, setRushDialogOpen] = useState(false)
+   294→  const [messageDialogOpen, setMessageDialogOpen] = useState(false)
+   295→  const [selectedCourseToFire, setSelectedCourseToFire] = useState<Course | null>(null)
+   296→  const [selectedItemToFire, setSelectedItemToFire] = useState<{ course: Course; item: CourseItem } | null>(null)
+   297→  const [selectedCourseToHold, setSelectedCourseToHold] = useState<Course | null>(null)
+   298→  const [loading, setLoading] = useState(true)
+   299→  const [refreshing, setRefreshing] = useState(false)
+   300→  const [newMessage, setNewMessage] = useState('')
+   301→  const [holdReason, setHoldReason] = useState('')
+   302→  const [holdMinutes, setHoldMinutes] = useState(10)
+   303→  const [rushReason, setRushReason] = useState('')
+   304→  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
+   305→
+   306→  // Fetch orders from API
+   307→  const fetchOrders = useCallback(async () => {
+   308→    try {
+   309→      const [posRes, kitchenRes] = await Promise.all([
+   310→        fetch('/merchant-os/api/pos/orders?status=open'),
+   311→        fetch('/merchant-os/api/kitchen/orders')
+   312→      ])
+   313→      
+   314→      const posData = await posRes.json()
+   315→      const kitchenData = await kitchenRes.json()
+   316→      
+   317→      // Transform POS orders to course format
+   318→      const transformedOrders = (posData.data || []).map((order: any) => {
+   319→        // Group items by course type based on category/station
+   320→        const courseGroups: Record<string, CourseItem[]> = {}
+   321→        
+   322→        order.items?.forEach((item: any) => {
+   323→          const courseType = getCourseTypeFromItem(item)
+   324→          if (!courseGroups[courseType]) {
+   325→            courseGroups[courseType] = []
+   326→          }
+   327→          courseGroups[courseType].push({
+   328→            id: item.id,
+   329→            name: item.name,
+   330→            quantity: item.quantity,
+   331→            price: item.unitPrice,
+   332→            notes: item.notes,
+   333→            station: item.station || 'grill',
+   334→            status: mapKitchenStatus(item.status || 'pending'),
+   335→            preparationTime: item.preparationTime || 15,
+   336→            dietary: item.dietary ? JSON.parse(item.dietary) : [],
+   337→          })
+   338→        })
+   339→        
+   340→        // Convert to courses array
+   341→        const courses: Course[] = Object.entries(courseGroups).map(([type, items], index) => {
+   342→          const config = courseConfig[type as CourseType] || courseConfig.main
+   343→          return {
+   344→            id: `course-${order.id}-${index}`,
+   345→            type: type as CourseType,
+   346→            name: config.name,
+   347→            items,
+   348→            status: getCourseStatusFromItems(items),
+   349→            orderedAt: order.createdAt ? new Date(order.createdAt) : undefined,
+   350→            estimatedTime: Math.max(...items.map(i => i.preparationTime), 15),
+   351→            priority: 'normal' as const,
+   352→          }
+   353→        }).sort((a, b) => courseConfig[a.type].order - courseConfig[b.type].order)
+   354→        
+   355→        return {
+   356→          id: order.id,
+   357→          tableNumber: order.tableNumber || '-',
+   358→          guests: order.guests || 1,
+   359→          serverName: order.staffName || order.staff?.name || 'Unassigned',
+   360→          courses,
+   361→          status: 'active' as const,
+   362→          startedAt: new Date(order.createdAt),
+   363→          messages: [],
+   364→        }
+   365→      })
+   366→      
+   367→      // If no real orders, use sample data
+   368→      if (transformedOrders.length === 0) {
+   369→        setOrders(sampleOrders)
+   370→      } else {
+   371→        setOrders(transformedOrders)
+   372→      }
+   373→    } catch (error) {
+   374→      console.error('Error fetching orders:', error)
+   375→      // Use sample data on error
+   376→      setOrders(sampleOrders)
+   377→    } finally {
+   378→      setLoading(false)
+   379→      setRefreshing(false)
+   380→    }
+   381→  }, [])
+   382→
+   383→  // Helper to determine course type from item
+   384→  const getCourseTypeFromItem = (item: any): CourseType => {
+   385→    const station = item.station?.toLowerCase() || ''
+   386→    const category = (item.category || '').toLowerCase()
+   387→    
+   388→    if (station.includes('bar') || category.includes('drink') || category.includes('beverage')) return 'drinks'
+   389→    if (station.includes('dessert') || category.includes('dessert')) return 'dessert'
+   390→    if (category.includes('starter') || category.includes('appetizer') || category.includes('start')) return 'starter'
+   391→    if (category.includes('side')) return 'sides'
+   392→    return 'main'
+   393→  }
+   394→
+   395→  // Map kitchen status to course status
+   396→  const mapKitchenStatus = (status: string): CourseStatus => {
+   397→    const statusMap: Record<string, CourseStatus> = {
+   398→      'pending': 'pending',
+   399→      'held': 'held',
+   400→      'ordered': 'ordered',
+   401→      'preparing': 'preparing',
+   402→      'ready': 'ready',
+   403→      'served': 'served',
+   404→      'completed': 'served',
+   405→    }
+   406→    return statusMap[status.toLowerCase()] || 'pending'
+   407→  }
+   408→
+   409→  // Get course status from items
+   410→  const getCourseStatusFromItems = (items: CourseItem[]): CourseStatus => {
+   411→    if (items.every(i => i.status === 'served')) return 'served'
+   412→    if (items.every(i => i.status === 'ready')) return 'ready'
+   413→    if (items.some(i => i.status === 'preparing')) return 'preparing'
+   414→    if (items.some(i => i.status === 'ordered')) return 'ordered'
+   415→    if (items.some(i => i.status === 'held')) return 'held'
+   416→    return 'pending'
+   417→  }
+   418→
+   419→  // Fetch orders on mount and poll every 10 seconds
+   420→  useEffect(() => {
+   421→    fetchOrders()
+   422→    const interval = setInterval(fetchOrders, 10000)
+   423→    return () => clearInterval(interval)
+   424→  }, [fetchOrders])
+   425→
+   426→  // Update time every second
+   427→  useEffect(() => {
+   428→    const interval = setInterval(() => setCurrentTime(new Date()), 1000)
+   429→    return () => clearInterval(interval)
+   430→  }, [])
+   431→
+   432→  // Refresh handler
+   433→  const handleRefresh = async () => {
+   434→    setRefreshing(true)
+   435→    await fetchOrders()
+   436→    toast.success('Orders refreshed')
+   437→  }
+   438→
+   439→  // Calculate time elapsed
+   440→  const getTimeElapsed = (date: Date) => {
+   441→    const elapsed = Math.floor((currentTime.getTime() - date.getTime()) / 60000)
+   442→    return elapsed
+   443→  }
+   444→
+   445→  // Calculate time remaining for course
+   446→  const getTimeRemaining = (course: Course) => {
+   447→    if (!course.orderedAt) return null
+   448→    const elapsed = Math.floor((currentTime.getTime() - course.orderedAt.getTime()) / 60000)
+   449→    return course.estimatedTime - elapsed
+   450→  }
+   451→
+   452→  // Get current active course for a table
+   453→  const getActiveCourse = (order: TableOrder): Course | null => {
+   454→    // First check for ready courses (priority)
+   455→    const readyCourse = order.courses.find(c => c.status === 'ready')
+   456→    if (readyCourse) return readyCourse
+   457→    
+   458→    // Then check for preparing courses
+   459→    const preparingCourse = order.courses.find(c => c.status === 'preparing')
+   460→    if (preparingCourse) return preparingCourse
+   461→    
+   462→    // Then check for ordered courses
+   463→    const orderedCourse = order.courses.find(c => c.status === 'ordered')
+   464→    if (orderedCourse) return orderedCourse
+   465→    
+   466→    // Then check for held courses
+   467→    const heldCourse = order.courses.find(c => c.status === 'held')
+   468→    if (heldCourse) return heldCourse
+   469→    
+   470→    // Then check for pending courses (in order)
+   471→    const pendingCourses = order.courses.filter(c => c.status === 'pending')
+   472→    if (pendingCourses.length > 0) {
+   473→      return pendingCourses.sort((a, b) => courseConfig[a.type].order - courseConfig[b.type].order)[0]
+   474→    }
+   475→    
+   476→    return null
+   477→  }
+   478→
+   479→  // Check if course timing is overdue
+   480→  const isCourseOverdue = (course: Course): { overdue: boolean; minutes: number } => {
+   481→    if (!course.orderedAt || course.status === 'served' || course.status === 'ready') {
+   482→      return { overdue: false, minutes: 0 }
+   483→    }
+   484→    const elapsed = Math.floor((currentTime.getTime() - course.orderedAt.getTime()) / 60000)
+   485→    const overdue = elapsed > course.estimatedTime
+   486→    return { overdue, minutes: Math.max(0, elapsed - course.estimatedTime) }
+   487→  }
+   488→
+   489→  // Fire course (send to kitchen)
+   490→  const fireCourse = (orderId: string, courseId: string) => {
+   491→    setOrders(prev => prev.map(order => {
+   492→      if (order.id === orderId) {
+   493→        return {
+   494→          ...order,
+   495→          courses: order.courses.map(course => {
+   496→            if (course.id === courseId) {
+   497→              return {
+   498→                ...course,
+   499→                status: 'ordered' as CourseStatus,
+   500→                orderedAt: new Date(),
+   501→                items: course.items.map(item => ({ 
+   502→                  ...item, 
+   503→                  status: 'ordered' as CourseStatus,
+   504→                  firedAt: new Date()
+   505→                }))
+   506→              }
+   507→            }
+   508→            return course
+   509→          })
+   510→        }
+   511→      }
+   512→      return order
+   513→    }))
+   514→    toast.success('Course fired to kitchen!')
+   515→    setFireCourseDialogOpen(false)
+   516→    setSelectedItemIds(new Set())
+   517→  }
+   518→
+   519→  // Fire selected items only
+   520→  const fireSelectedItems = (orderId: string, courseId: string) => {
+   521→    if (selectedItemIds.size === 0) {
+   522→      toast.error('Please select items to fire')
+   523→      return
+   524→    }
+   525→
+   526→    setOrders(prev => prev.map(order => {
+   527→      if (order.id === orderId) {
+   528→        return {
+   529→          ...order,
+   530→          courses: order.courses.map(course => {
+   531→            if (course.id === courseId) {
+   532→              const updatedItems = course.items.map(item => 
+   533→                selectedItemIds.has(item.id) 
+   534→                  ? { ...item, status: 'ordered' as CourseStatus, firedAt: new Date() }
+   535→                  : item
+   536→              )
+   537→              
+   538→              // Update course status based on items
+   539→              const newStatus = getCourseStatusFromItems(updatedItems)
+   540→              
+   541→              return { 
+   542→                ...course, 
+   543→                items: updatedItems, 
+   544→                status: newStatus,
+   545→                orderedAt: course.orderedAt || new Date()
+   546→              }
+   547→            }
+   548→            return course
+   549→          })
+   550→        }
+   551→      }
+   552→      return order
+   553→    }))
+   554→    toast.success(`${selectedItemIds.size} item(s) fired to kitchen!`)
+   555→    setFireItemDialogOpen(false)
+   556→    setSelectedItemIds(new Set())
+   557→  }
+   558→
+   559→  // Fire single item
+   560→  const fireSingleItem = (orderId: string, courseId: string, itemId: string) => {
+   561→    setOrders(prev => prev.map(order => {
+   562→      if (order.id === orderId) {
+   563→        return {
+   564→          ...order,
+   565→          courses: order.courses.map(course => {
+   566→            if (course.id === courseId) {
+   567→              const updatedItems = course.items.map(item => 
+   568→                item.id === itemId 
+   569→                  ? { ...item, status: 'ordered' as CourseStatus, firedAt: new Date() }
+   570→                  : item
+   571→              )
+   572→              
+   573→              const newStatus = getCourseStatusFromItems(updatedItems)
+   574→              
+   575→              return { 
+   576→                ...course, 
+   577→                items: updatedItems, 
+   578→                status: newStatus,
+   579→                orderedAt: course.orderedAt || new Date()
+   580→              }
+   581→            }
+   582→            return course
+   583→          })
+   584→        }
+   585→      }
+   586→      return order
+   587→    }))
+   588→    toast.success('Item fired to kitchen!')
+   589→  }
+   590→
+   591→  // Hold course
+   592→  const holdCourse = (orderId: string, courseId: string, reason: string, minutes: number) => {
+   593→    const holdUntil = new Date(Date.now() + minutes * 60000)
+   594→    
+   595→    setOrders(prev => prev.map(order => {
+   596→      if (order.id === orderId) {
+   597→        return {
+   598→          ...order,
+   599→          courses: order.courses.map(course => {
+   600→            if (course.id === courseId) {
+   601→              return {
+   602→                ...course,
+   603→                status: 'held' as CourseStatus,
+   604→                holdReason: reason,
+   605→                heldUntil: holdUntil,
+   606→                items: course.items.map(item => ({ ...item, status: 'held' as CourseStatus }))
+   607→              }
+   608→            }
+   609→            return course
+   610→          })
+   611→        }
+   612→      }
+   613→      return order
+   614→    }))
+   615→    toast.success(`Course held for ${minutes} minutes`)
+   616→    setHoldCourseDialogOpen(false)
+   617→    setHoldReason('')
+   618→    setHoldMinutes(10)
+   619→  }
+   620→
+   621→  // Release held course
+   622→  const releaseCourse = (orderId: string, courseId: string) => {
+   623→    setOrders(prev => prev.map(order => {
+   624→      if (order.id === orderId) {
+   625→        return {
+   626→          ...order,
+   627→          courses: order.courses.map(course => {
+   628→            if (course.id === courseId) {
+   629→              return {
+   630→                ...course,
+   631→                status: 'pending' as CourseStatus,
+   632→                holdReason: undefined,
+   633→                heldUntil: undefined,
+   634→                items: course.items.map(item => ({ ...item, status: 'pending' as CourseStatus }))
+   635→              }
+   636→            }
+   637→            return course
+   638→          })
+   639→        }
+   640→      }
+   641→      return order
+   642→    }))
+   643→    toast.success('Course released from hold')
+   644→  }
+   645→
+   646→  // Set rush priority
+   647→  const setRushPriority = (orderId: string, reason: string) => {
+   648→    setOrders(prev => prev.map(order => {
+   649→      if (order.id === orderId) {
+   650→        return {
+   651→          ...order,
+   652→          rushReason: reason,
+   653→          courses: order.courses.map(course => ({
+   654→            ...course,
+   655→            priority: 'rush' as Priority
+   656→          }))
+   657→        }
+   658→      }
+   659→      return order
+   660→    }))
+   661→    toast.success('RUSH flag set for this table!')
+   662→    setRushDialogOpen(false)
+   663→    setRushReason('')
+   664→  }
+   665→
+   666→  // Clear rush priority
+   667→  const clearRushPriority = (orderId: string) => {
+   668→    setOrders(prev => prev.map(order => {
+   669→      if (order.id === orderId) {
+   670→        return {
+   671→          ...order,
+   672→          rushReason: undefined,
+   673→          courses: order.courses.map(course => ({
+   674→            ...course,
+   675→            priority: 'normal' as Priority
+   676→          }))
+   677→        }
+   678→      }
+   679→      return order
+   680→    }))
+   681→    toast.success('RUSH flag cleared')
+   682→  }
+   683→
+   684→  // Send message to kitchen
+   685→  const sendMessage = (orderId: string, message: string) => {
+   686→    if (!message.trim()) return
+   687→    
+   688→    const newMsg: KitchenMessage = {
+   689→      id: `msg-${Date.now()}`,
+   690→      message: message.trim(),
+   691→      sentAt: new Date(),
+   692→      from: 'waiter',
+   693→      acknowledged: false
+   694→    }
+   695→    
+   696→    setOrders(prev => prev.map(order => {
+   697→      if (order.id === orderId) {
+   698→        return {
+   699→          ...order,
+   700→          messages: [...order.messages, newMsg]
+   701→        }
+   702→      }
+   703→      return order
+   704→    }))
+   705→    
+   706→    toast.success('Message sent to kitchen!')
+   707→    setNewMessage('')
+   708→    setMessageDialogOpen(false)
+   709→    
+   710→    // Simulate kitchen acknowledgment after 3 seconds
+   711→    setTimeout(() => {
+   712→      setOrders(prev => prev.map(order => {
+   713→        if (order.id === orderId) {
+   714→          return {
+   715→            ...order,
+   716→            messages: order.messages.map(msg => 
+   717→              msg.id === newMsg.id 
+   718→                ? { ...msg, acknowledged: true, acknowledgedAt: new Date() }
+   719→                : msg
+   720→            )
+   721→          }
+   722→        }
+   723→        return order
+   724→      }))
+   725→    }, 3000)
+   726→  }
+   727→
+   728→  // Mark course as ready
+   729→  const markCourseReady = (orderId: string, courseId: string) => {
+   730→    setOrders(prev => prev.map(order => {
+   731→      if (order.id === orderId) {
+   732→        return {
+   733→          ...order,
+   734→          courses: order.courses.map(course => {
+   735→            if (course.id === courseId) {
+   736→              return {
+   737→                ...course,
+   738→                status: 'ready' as CourseStatus,
+   739→                readyAt: new Date(),
+   740→                items: course.items.map(item => ({ ...item, status: 'ready' as CourseStatus, readyAt: new Date() }))
+   741→              }
+   742→            }
+   743→            return course
+   744→          })
+   745→        }
+   746→      }
+   747→      return order
+   748→    }))
+   749→    toast.success('Course marked as ready!')
+   750→  }
+   751→
+   752→  // Mark course as served
+   753→  const markCourseServed = (orderId: string, courseId: string) => {
+   754→    setOrders(prev => prev.map(order => {
+   755→      if (order.id === orderId) {
+   756→        return {
+   757→          ...order,
+   758→          courses: order.courses.map(course => {
+   759→            if (course.id === courseId) {
+   760→              return {
+   761→                ...course,
+   762→                status: 'served' as CourseStatus,
+   763→                servedAt: new Date(),
+   764→                items: course.items.map(item => ({ ...item, status: 'served' as CourseStatus }))
+   765→              }
+   766→            }
+   767→            return course
+   768→          })
+   769→        }
+   770→      }
+   771→      return order
+   772→    }))
+   773→    toast.success('Course served to table!')
+   774→  }
+   775→
+   776→  // Update item status
+   777→  const updateItemStatus = (orderId: string, courseId: string, itemId: string, status: CourseStatus) => {
+   778→    setOrders(prev => prev.map(order => {
+   779→      if (order.id === orderId) {
+   780→        return {
+   781→          ...order,
+   782→          courses: order.courses.map(course => {
+   783→            if (course.id === courseId) {
+   784→              const updatedItems = course.items.map(item => 
+   785→                item.id === itemId ? { ...item, status } : item
+   786→              )
+   787→              
+   788→              // Update course status based on items
+   789→              const newCourseStatus = getCourseStatusFromItems(updatedItems)
+   790→              
+   791→              return { ...course, items: updatedItems, status: newCourseStatus }
+   792→            }
+   793→            return course
+   794→          })
+   795→        }
+   796→      }
+   797→      return order
+   798→    }))
+   799→  }
+   800→
+   801→  // Toggle item selection for firing
+   802→  const toggleItemSelection = (itemId: string) => {
+   803→    setSelectedItemIds(prev => {
+   804→      const newSet = new Set(prev)
+   805→      if (newSet.has(itemId)) {
+   806→        newSet.delete(itemId)
+   807→      } else {
+   808→        newSet.add(itemId)
+   809→      }
+   810→      return newSet
+   811→    })
+   812→  }
+   813→
+   814→  // Get all allergens for an order
+   815→  const getAllOrderAllergens = (order: TableOrder): string[] => {
+   816→    const allergens = new Set<string>()
+   817→    order.courses.forEach(course => {
+   818→      course.items.forEach(item => {
+   819→        item.allergens?.forEach(a => allergens.add(a))
+   820→      })
+   821→    })
+   822→    return Array.from(allergens)
+   823→  }
+   824→
+   825→  // Get active stats
+   826→  const activeOrders = orders.filter(o => o.status === 'active')
+   827→  const totalGuests = activeOrders.reduce((sum, o) => sum + o.guests, 0)
+   828→  const coursesInKitchen = activeOrders.flatMap(o => o.courses).filter(c => c.status === 'preparing' || c.status === 'ordered').length
+   829→  const coursesReady = activeOrders.flatMap(o => o.courses).filter(c => c.status === 'ready').length
+   830→  const rushOrders = activeOrders.filter(o => o.rushReason).length
+   831→  const overdueCourses = activeOrders.flatMap(o => o.courses).filter(c => isCourseOverdue(c).overdue).length
+   832→
+   833→  // Get next pending course for a table
+   834→  const getNextPendingCourse = (order: TableOrder) => {
+   835→    const pendingCourses = order.courses.filter(c => c.status === 'pending')
+   836→    if (pendingCourses.length === 0) return null
+   837→    return pendingCourses.sort((a, b) => courseConfig[a.type].order - courseConfig[b.type].order)[0]
+   838→  }
+   839→
+   840→  // Render visual timeline for course progression
+   841→  const renderCourseTimeline = (order: TableOrder) => {
+   842→    const courseTypes: CourseType[] = ['drinks', 'starter', 'main', 'dessert']
+   843→    
+   844→    return (
+   845→      <div className="flex items-center gap-1">
+   846→        {courseTypes.map((type, index) => {
+   847→          const course = order.courses.find(c => c.type === type)
+   848→          const config = courseConfig[type]
+   849→          const Icon = config.icon
+   850→          
+   851→          let statusColor = 'bg-gray-200 text-gray-400 border-gray-200'
+   852→          let showCheck = false
+   853→          let showBell = false
+   854→          
+   855→          if (course) {
+   856→            if (course.status === 'served') {
+   857→              statusColor = 'bg-green-500 text-white border-green-500'
+   858→              showCheck = true
+   859→            } else if (course.status === 'ready') {
+   860→              statusColor = 'bg-green-400 text-white border-green-400 animate-pulse'
+   861→              showBell = true
+   862→            } else if (course.status === 'preparing' || course.status === 'ordered') {
+   863→              statusColor = 'bg-orange-400 text-white border-orange-400'
+   864→            } else if (course.status === 'held') {
+   865→              statusColor = 'bg-amber-300 text-amber-800 border-amber-400'
+   866→            } else if (course.status === 'pending') {
+   867→              statusColor = 'bg-gray-100 text-gray-600 border-gray-300'
+   868→            }
+   869→          }
+   870→          
+   871→          const isActive = course && getActiveCourse(order)?.id === course.id
+   872→          
+   873→          return (
+   874→            <div key={type} className="flex items-center">
+   875→              <div 
+   876→                className={`
+   877→                  flex items-center gap-1 px-2 py-1 rounded-full text-xs border-2 transition-all
+   878→                  ${statusColor}
+   879→                  ${isActive ? 'ring-2 ring-offset-1 ring-orange-300' : ''}
+   880→                `}
+   881→                title={course ? `${config.name}: ${statusConfig[course.status]?.label}` : `${config.name}: Not ordered`}
+   882→              >
+   883→                <Icon className="h-3 w-3" />
+   884→                {showCheck && <Check className="h-3 w-3" />}
+   885→                {showBell && <BellRing className="h-3 w-3" />}
+   886→              </div>
+   887→              {index < courseTypes.length - 1 && (
+   888→                <ChevronRight className="h-4 w-4 mx-0.5 text-gray-300" />
+   889→              )}
+   890→            </div>
+   891→          )
+   892→        })}
+   893→      </div>
+   894→    )
+   895→  }
+   896→
+   897→  // Render order card
+   898→  const renderOrderCard = (order: TableOrder) => {
+   899→    const timeElapsed = getTimeElapsed(order.startedAt)
+   900→    const nextCourse = getNextPendingCourse(order)
+   901→    const activeCourse = getActiveCourse(order)
+   902→    const orderAllergens = getAllOrderAllergens(order)
+   903→    const overdueInfo = activeCourse ? isCourseOverdue(activeCourse) : { overdue: false, minutes: 0 }
+   904→    
+   905→    return (
+   906→      <Card 
+   907→        key={order.id}
+   908→        className={`cursor-pointer transition-all hover:shadow-lg ${
+   909→          selectedOrder?.id === order.id ? 'border-[#00897B] border-2' : 'border-gray-200'
+   910→        } ${order.rushReason ? 'border-l-4 border-l-red-500' : ''}`}
+   911→        onClick={() => setSelectedOrder(order)}
+   912→      >
+   913→        <CardHeader className="pb-2">
+   914→          <div className="flex items-center justify-between">
+   915→            <CardTitle className="text-lg flex items-center gap-2">
+   916→              <Table2 className="h-5 w-5 text-[#00897B]" />
+   917→              Table {order.tableNumber}
+   918→              {order.rushReason && (
+   919→                <Badge className="bg-red-100 text-red-700 border border-red-300 animate-pulse">
+   920→                  <Zap className="h-3 w-3 mr-1" />RUSH
+   921→                </Badge>
+   922→              )}
+   923→            </CardTitle>
+   924→            <Badge className="bg-[#E0F2F1] text-[#00897B]">
+   925→              <Users className="h-3 w-3 mr-1" />{order.guests}
+   926→            </Badge>
+   927→          </div>
+   928→          <div className="flex items-center gap-4 text-sm text-[#757575]">
+   929→            <span>{order.serverName}</span>
+   930→            <span className="flex items-center gap-1">
+   931→              <Clock className="h-3 w-3" />
+   932→              <span className={timeElapsed > 90 ? 'text-red-600 font-medium' : ''}>
+   933→                {timeElapsed} min
+   934→              </span>
+   935→            </span>
+   936→          </div>
+   937→        </CardHeader>
+   938→        
+   939→        <CardContent className="space-y-3">
+   940→          {/* Course Timeline */}
+   941→          {renderCourseTimeline(order)}
+   942→          
+   943→          {/* Allergen Alerts */}
+   944→          {orderAllergens.length > 0 && (
+   945→            <div className="flex items-center gap-2 p-2 bg-red-50 rounded-lg border border-red-200">
+   946→              <AlertTriangle className="h-4 w-4 text-red-600" />
+   947→              <span className="text-xs text-red-700 font-medium">Allergens:</span>
+   948→              <div className="flex gap-1 flex-wrap">
+   949→                {orderAllergens.map(a => (
+   950→                  <Badge key={a} className="text-[10px] bg-red-100 text-red-700 border border-red-300">
+   951→                    {allergenWarnings[a]?.icon || '⚠️'} {a}
+   952→                  </Badge>
+   953→                ))}
+   954→              </div>
+   955→            </div>
+   956→          )}
+   957→          
+   958→          {/* Overdue Alert */}
+   959→          {overdueInfo.overdue && (
+   960→            <div className="flex items-center gap-2 p-2 bg-red-100 rounded-lg border border-red-300">
+   961→              <AlertCircle className="h-4 w-4 text-red-600 animate-pulse" />
+   962→              <span className="text-xs text-red-700 font-bold">
+   963→                {overdueInfo.minutes} min overdue!
+   964→              </span>
+   965→            </div>
+   966→          )}
+   967→          
+   968→          {/* Ready Courses Alert */}
+   969→          {order.courses.filter(c => c.status === 'ready').length > 0 && (
+   970→            <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg text-green-700 border border-green-200 animate-pulse">
+   971→              <BellRing className="h-4 w-4" />
+   972→              <span className="text-sm font-medium">
+   973→                {order.courses.filter(c => c.status === 'ready').length} course(s) READY TO SERVE!
+   974→              </span>
+   975→            </div>
+   976→          )}
+   977→          
+   978→          {/* Next Course Action */}
+   979→          {nextCourse && !overdueInfo.overdue && (
+   980→            <Button 
+   981→              size="sm" 
+   982→              className="w-full bg-[#00897B] hover:bg-[#00695C]"
+   983→              onClick={(e) => {
+   984→                e.stopPropagation()
+   985→                setSelectedOrder(order)
+   986→                setSelectedCourseToFire(nextCourse)
+   987→                setFireCourseDialogOpen(true)
+   988→              }}
+   989→            >
+   990→              <Play className="h-4 w-4 mr-2" />Fire {nextCourse.name}
+   991→            </Button>
+   992→          )}
+   993→        </CardContent>
+   994→      </Card>
+   995→    )
+   996→  }
+   997→
+   998→  return (
+   999→    <div className="h-full flex flex-col bg-[#FAFAFA]">
+  1000→      {/* Header */}
+  1001→      <div className="bg-white border-b border-gray-200 p-4">
+  1002→        <div className="flex items-center justify-between mb-4">
+  1003→          <div>
+  1004→            <h1 className="text-xl font-bold text-[#1A1A1A] flex items-center gap-2">
+  1005→              <Utensils className="h-5 w-5 text-[#00897B]" />
+  1006→              Course Management
+  1007→            </h1>
+  1008→            <p className="text-sm text-[#757575]">Manage course flow for each table</p>
+  1009→          </div>
+  1010→          
+  1011→          <div className="flex items-center gap-4">
+  1012→            <div className="text-right">
+  1013→              <p className="text-2xl font-mono font-bold">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+  1014→              <p className="text-xs text-[#757575]">{currentTime.toLocaleDateString()}</p>
+  1015→            </div>
+  1016→            
+  1017→            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+  1018→              <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />Refresh
+  1019→            </Button>
+  1020→          </div>
+  1021→        </div>
+  1022→
+  1023→        {/* Stats */}
+  1024→        <div className="grid grid-cols-6 gap-3">
+  1025→          <div className="bg-[#E0F2F1] rounded-lg p-2 text-center">
+  1026→            <p className="text-xl font-bold text-[#00897B]">{activeOrders.length}</p>
+  1027→            <p className="text-[10px] text-[#757575]">Active Tables</p>
+  1028→          </div>
+  1029→          <div className="bg-sky-50 rounded-lg p-2 text-center">
+  1030→            <p className="text-xl font-bold text-sky-600">{totalGuests}</p>
+  1031→            <p className="text-[10px] text-[#757575]">Total Guests</p>
+  1032→          </div>
+  1033→          <div className="bg-orange-50 rounded-lg p-2 text-center">
+  1034→            <p className="text-xl font-bold text-orange-600">{coursesInKitchen}</p>
+  1035→            <p className="text-[10px] text-[#757575]">In Kitchen</p>
+  1036→          </div>
+  1037→          <div className="bg-green-50 rounded-lg p-2 text-center border-2 border-green-400">
+  1038→            <p className="text-xl font-bold text-green-600">{coursesReady}</p>
+  1039→            <p className="text-[10px] text-[#757575]">Ready to Serve</p>
+  1040→          </div>
+  1041→          <div className="bg-red-50 rounded-lg p-2 text-center border-2 border-red-300">
+  1042→            <p className="text-xl font-bold text-red-600">{overdueCourses}</p>
+  1043→            <p className="text-[10px] text-[#757575]">Overdue</p>
+  1044→          </div>
+  1045→          <div className="bg-red-100 rounded-lg p-2 text-center border-2 border-red-400">
+  1046→            <p className="text-xl font-bold text-red-600">{rushOrders}</p>
+  1047→            <p className="text-[10px] text-[#757575]">RUSH Orders</p>
+  1048→          </div>
+  1049→        </div>
+  1050→      </div>
+  1051→
+  1052→      {/* Main Content */}
+  1053→      <div className="flex-1 flex min-h-0">
+  1054→        {/* Left Panel - Orders List */}
+  1055→        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+  1056→          <div className="p-3 border-b border-gray-200">
+  1057→            <p className="text-xs font-medium text-[#757575]">ACTIVE TABLES ({activeOrders.length})</p>
+  1058→          </div>
+  1059→          
+  1060→          <ScrollArea className="flex-1 p-3">
+  1061→            <div className="space-y-3">
+  1062→              {activeOrders.map(renderOrderCard)}
+  1063→            </div>
+  1064→          </ScrollArea>
+  1065→        </div>
+  1066→
+  1067→        {/* Right Panel - Order Details */}
+  1068→        {selectedOrder ? (
+  1069→          <div className="flex-1 flex flex-col min-w-0">
+  1070→            <div className="bg-white border-b border-gray-200 p-4">
+  1071→              <div className="flex items-center justify-between">
+  1072→                <div className="flex items-center gap-3">
+  1073→                  <div>
+  1074→                    <h2 className="text-lg font-bold flex items-center gap-2">
+  1075→                      Table {selectedOrder.tableNumber}
+  1076→                      <Badge className="bg-[#E0F2F1] text-[#00897B]">
+  1077→                        {selectedOrder.guests} guests
+  1078→                      </Badge>
+  1079→                      {selectedOrder.rushReason && (
+  1080→                        <Badge className="bg-red-100 text-red-700 border border-red-300 animate-pulse">
+  1081→                          <Zap className="h-3 w-3 mr-1" />RUSH
+  1082→                        </Badge>
+  1083→                      )}
+  1084→                    </h2>
+  1085→                    <p className="text-sm text-[#757575]">Server: {selectedOrder.serverName}</p>
+  1086→                  </div>
+  1087→                </div>
+  1088→                
+  1089→                <div className="flex items-center gap-4">
+  1090→                  <div className="text-right">
+  1091→                    <p className="text-sm text-[#757575]">Seated</p>
+  1092→                    <p className="font-bold">{getTimeElapsed(selectedOrder.startedAt)} min ago</p>
+  1093→                  </div>
+  1094→                  
+  1095→                  {/* Action Buttons */}
+  1096→                  <div className="flex gap-2">
+  1097→                    <Button 
+  1098→                      size="sm" 
+  1099→                      variant="outline"
+  1100→                      onClick={() => setMessageDialogOpen(true)}
+  1101→                      className="flex items-center gap-1"
+  1102→                    >
+  1103→                      <MessageSquare className="h-4 w-4" />
+  1104→                      Message
+  1105→                    </Button>
+  1106→                    
+  1107→                    {selectedOrder.rushReason ? (
+  1108→                      <Button 
+  1109→                        size="sm" 
+  1110→                        variant="outline"
+  1111→                        onClick={() => clearRushPriority(selectedOrder.id)}
+  1112→                        className="flex items-center gap-1 border-red-300 text-red-600"
+  1113→                      >
+  1114→                        <X className="h-4 w-4" />
+  1115→                        Clear RUSH
+  1116→                      </Button>
+  1117→                    ) : (
+  1118→                      <Button 
+  1119→                        size="sm" 
+  1120→                        variant="outline"
+  1121→                        onClick={() => setRushDialogOpen(true)}
+  1122→                        className="flex items-center gap-1"
+  1123→                      >
+  1124→                        <Zap className="h-4 w-4" />
+  1125→                        RUSH
+  1126→                      </Button>
+  1127→                    )}
+  1128→                  </div>
+  1129→                </div>
+  1130→              </div>
+  1131→              
+  1132→              {/* Messages */}
+  1133→              {selectedOrder.messages.length > 0 && (
+  1134→                <div className="mt-3 p-2 bg-gray-50 rounded-lg max-h-24 overflow-y-auto">
+  1135→                  {selectedOrder.messages.slice(-3).map(msg => (
+  1136→                    <div key={msg.id} className="flex items-center gap-2 text-sm py-1">
+  1137→                      <MessageSquare className="h-3 w-3 text-[#00897B]" />
+  1138→                      <span className="flex-1 truncate">{msg.message}</span>
+  1139→                      {msg.acknowledged ? (
+  1140→                        <Badge className="text-[10px] bg-green-100 text-green-700">
+  1141→                          <Check className="h-2 w-2 mr-1" />ACK
+  1142→                        </Badge>
+  1143→                      ) : (
+  1144→                        <Badge className="text-[10px] bg-gray-100 text-gray-500">
+  1145→                          <Hourglass className="h-2 w-2 mr-1" />Waiting
+  1146→                        </Badge>
+  1147→                      )}
+  1148→                    </div>
+  1149→                  ))}
+  1150→                </div>
+  1151→              )}
+  1152→            </div>
+  1153→            
+  1154→            <ScrollArea className="flex-1 p-4">
+  1155→              <div className="space-y-4">
+  1156→                {selectedOrder.courses.sort((a, b) => courseConfig[a.type].order - courseConfig[b.type].order).map((course) => {
+  1157→                  const config = courseConfig[course.type]
+  1158→                  const status = statusConfig[course.status]
+  1159→                  const priority = priorityConfig[course.priority]
+  1160→                  const timeRemaining = getTimeRemaining(course)
+  1161→                  const overdueInfo = isCourseOverdue(course)
+  1162→                  const Icon = config.icon
+  1163→                  const isActiveCourse = getActiveCourse(selectedOrder)?.id === course.id
+  1164→                  
+  1165→                  return (
+  1166→                    <Card 
+  1167→                      key={course.id} 
+  1168→                      className={`
+  1169→                        ${course.status === 'ready' ? 'border-green-500 border-2 animate-pulse' : ''} 
+  1170→                        ${course.status === 'held' ? 'border-amber-400 border-2' : ''}
+  1171→                        ${isActiveCourse && course.status !== 'ready' && course.status !== 'served' ? 'ring-2 ring-orange-300' : ''}
+  1172→                        ${overdueInfo.overdue ? 'border-red-500 border-2' : ''}
+  1173→                      `}
+  1174→                    >
+  1175→                      <CardHeader className="pb-2">
+  1176→                        <div className="flex items-center justify-between">
+  1177→                          <div className="flex items-center gap-3">
+  1178→                            <div className={`p-2 rounded-lg ${config.color} border`}>
+  1179→                              <Icon className="h-5 w-5" />
+  1180→                            </div>
+  1181→                            <div>
+  1182→                              <CardTitle className="text-base flex items-center gap-2">
+  1183→                                {course.name}
+  1184→                                {course.status === 'held' && (
+  1185→                                  <Badge className="bg-amber-100 text-amber-700 border border-amber-300">
+  1186→                                    <Pause className="h-3 w-3 mr-1" />HOLD
+  1187→                                  </Badge>
+  1188→                                )}
+  1189→                              </CardTitle>
+  1190→                              <p className="text-xs text-[#757575]">{course.items.length} items • {config.description}</p>
+  1191→                            </div>
+  1192→                          </div>
+  1193→                          
+  1194→                          <div className="flex items-center gap-2">
+  1195→                            {course.priority === 'rush' && (
+  1196→                              <Badge className="bg-red-100 text-red-700 border border-red-300 animate-pulse">
+  1197→                                <Zap className="h-3 w-3 mr-1" />RUSH
+  1198→                              </Badge>
+  1199→                            )}
+  1200→                            
+  1201→                            <Badge className={`${status.bgColor} border ${status.color}`}>
+  1202→                              <status.icon className={`h-3 w-3 mr-1 ${status.pulse ? 'animate-pulse' : ''}`} />
+  1203→                              {status.label}
+  1204→                            </Badge>
+  1205→                            
+  1206→                            {course.orderedAt && course.status !== 'served' && (
+  1207→                              <div className="text-right">
+  1208→                                <p className="text-xs text-[#757575]">Est: {course.estimatedTime}min</p>
+  1209→                                {timeRemaining !== null && (
+  1210→                                  <p className={`text-sm font-medium ${
+  1211→                                    overdueInfo.overdue ? 'text-red-600 font-bold animate-pulse' : 
+  1212→                                    timeRemaining < 5 ? 'text-amber-600' : ''
+  1213→                                  }`}>
+  1214→                                    {overdueInfo.overdue 
+  1215→                                      ? `${overdueInfo.minutes}m OVERDUE!` 
+  1216→                                      : `${timeRemaining}m left`
+  1217→                                    }
+  1218→                                  </p>
+  1219→                                )}
+  1220→                              </div>
+  1221→                            )}
+  1222→                          </div>
+  1223→                        </div>
+  1224→                      </CardHeader>
+  1225→                      
+  1226→                      <CardContent className="space-y-3">
+  1227→                        {/* Items */}
+  1228→                        <div className="space-y-2">
+  1229→                          {course.items.map((item) => {
+  1230→                            const station = stationConfig[item.station]
+  1231→                            const itemStatus = statusConfig[item.status]
+  1232→                            const itemOverdue = item.firedAt && item.status !== 'served' && item.status !== 'ready' && 
+  1233→                              (currentTime.getTime() - item.firedAt.getTime()) / 60000 > item.preparationTime
+  1234→                            
+  1235→                            return (
+  1236→                              <div 
+  1237→                                key={item.id} 
+  1238→                                className={`
+  1239→                                  flex items-center justify-between p-2 rounded-lg border
+  1240→                                  ${item.status === 'served' ? 'bg-gray-50 opacity-60 border-gray-200' : 
+  1241→                                    item.status === 'ready' ? 'bg-green-50 border-green-200' : 
+  1242→                                    item.status === 'preparing' ? 'bg-orange-50 border-orange-200' : 
+  1243→                                    item.status === 'ordered' ? 'bg-sky-50 border-sky-200' :
+  1244→                                    item.status === 'held' ? 'bg-amber-50 border-amber-200' :
+  1245→                                    'bg-gray-50 border-gray-200'}
+  1246→                                  ${itemOverdue ? 'border-red-300 border-2' : ''}
+  1247→                                `}
+  1248→                              >
+  1249→                                <div className="flex items-center gap-3">
+  1250→                                  <span className="font-bold text-sm">{item.quantity}x</span>
+  1251→                                  <div>
+  1252→                                    <div className="flex items-center gap-2">
+  1253→                                      <p className="font-medium text-sm">{item.name}</p>
+  1254→                                      
+  1255→                                      {/* Individual item fire button */}
+  1256→                                      {item.status === 'pending' && (
+  1257→                                        <Button
+  1258→                                          size="sm"
+  1259→                                          variant="ghost"
+  1260→                                          className="h-6 px-2 text-[10px] bg-[#00897B] text-white hover:bg-[#00695C]"
+  1261→                                          onClick={() => fireSingleItem(selectedOrder.id, course.id, item.id)}
+  1262→                                        >
+  1263→                                          <Play className="h-3 w-3 mr-1" />Fire
+  1264→                                        </Button>
+  1265→                                      )}
+  1266→                                    </div>
+  1267→                                    
+  1268→                                    <div className="flex items-center gap-2 flex-wrap">
+  1269→                                      <station.icon className={`h-3 w-3 ${station.color}`} />
+  1270→                                      <span className="text-xs text-[#757575]">{station.name}</span>
+  1271→                                      
+  1272→                                      {/* Dietary badges */}
+  1273→                                      {item.dietary && item.dietary.length > 0 && (
+  1274→                                        <div className="flex gap-1">
+  1275→                                          {item.dietary.map(d => (
+  1276→                                            <Badge key={d} className="text-[8px] px-1 bg-green-100 text-green-700 border border-green-300">
+  1277→                                              {d === 'vegan' ? '🌱' : d === 'vegetarian' ? '🥬' : d[0].toUpperCase()}
+  1278→                                            </Badge>
+  1279→                                          ))}
+  1280→                                        </div>
+  1281→                                      )}
+  1282→                                      
+  1283→                                      {/* Prominent Allergen alerts */}
+  1284→                                      {item.allergens && item.allergens.length > 0 && (
+  1285→                                        <div className="flex gap-1 items-center bg-red-100 px-1 py-0.5 rounded border border-red-300">
+  1286→                                          <AlertTriangle className="h-3 w-3 text-red-600" />
+  1287→                                          {item.allergens.map(a => (
+  1288→                                            <span key={a} className="text-[10px] text-red-700 font-bold">
+  1289→                                              {allergenWarnings[a]?.icon || '⚠️'} {a}
+  1290→                                            </span>
+  1291→                                          ))}
+  1292→                                        </div>
+  1293→                                      )}
+  1294→                                      
+  1295→                                      {/* Notes */}
+  1296→                                      {item.notes && (
+  1297→                                        <span className="text-xs text-amber-600 bg-amber-50 px-1 rounded">
+  1298→                                          📝 {item.notes}
+  1299→                                        </span>
+  1300→                                      )}
+  1301→                                    </div>
+  1302→                                  </div>
+  1303→                                </div>
+  1304→                                
+  1305→                                <div className="flex items-center gap-2">
+  1306→                                  <span className="font-bold">R{(item.price * item.quantity).toFixed(0)}</span>
+  1307→                                  <Badge className={`text-[10px] ${itemStatus.bgColor} border ${itemStatus.color}`}>
+  1308→                                    {itemStatus.label}
+  1309→                                  </Badge>
+  1310→                                  
+  1311→                                  {/* Item status actions */}
+  1312→                                  {item.status === 'ordered' && (
+  1313→                                    <Button
+  1314→                                      size="sm"
+  1315→                                      variant="ghost"
+  1316→                                      className="h-6 px-2 text-[10px] bg-orange-100 text-orange-700 hover:bg-orange-200"
+  1317→                                      onClick={() => updateItemStatus(selectedOrder.id, course.id, item.id, 'preparing')}
+  1318→                                    >
+  1319→                                      <Flame className="h-3 w-3 mr-1" />Start
+  1320→                                    </Button>
+  1321→                                  )}
+  1322→                                  
+  1323→                                  {item.status === 'preparing' && (
+  1324→                                    <Button
+  1325→                                      size="sm"
+  1326→                                      variant="ghost"
+  1327→                                      className="h-6 px-2 text-[10px] bg-green-100 text-green-700 hover:bg-green-200"
+  1328→                                      onClick={() => updateItemStatus(selectedOrder.id, course.id, item.id, 'ready')}
+  1329→                                    >
+  1330→                                      <Check className="h-3 w-3 mr-1" />Ready
+  1331→                                    </Button>
+  1332→                                  )}
+  1333→                                  
+  1334→                                  {item.status === 'ready' && (
+  1335→                                    <Button
+  1336→                                      size="sm"
+  1337→                                      variant="ghost"
+  1338→                                      className="h-6 px-2 text-[10px] bg-green-500 text-white hover:bg-green-600"
+  1339→                                      onClick={() => updateItemStatus(selectedOrder.id, course.id, item.id, 'served')}
+  1340→                                    >
+  1341→                                      <CheckCircle2 className="h-3 w-3 mr-1" />Served
+  1342→                                    </Button>
+  1343→                                  )}
+  1344→                                </div>
+  1345→                              </div>
+  1346→                            )
+  1347→                          })}
+  1348→                        </div>
+  1349→                        
+  1350→                        {/* Course Actions */}
+  1351→                        <div className="flex gap-2 pt-2 flex-wrap">
+  1352→                          {course.status === 'pending' && (
+  1353→                            <>
+  1354→                              <Button 
+  1355→                                size="sm" 
+  1356→                                className="flex-1 bg-[#00897B] hover:bg-[#00695C]"
+  1357→                                onClick={() => {
+  1358→                                  setSelectedCourseToFire(course)
+  1359→                                  setFireCourseDialogOpen(true)
+  1360→                                }}
+  1361→                              >
+  1362→                                <Play className="h-4 w-4 mr-2" />Fire All
+  1363→                              </Button>
+  1364→                              <Button 
+  1365→                                size="sm" 
+  1366→                                variant="outline"
+  1367→                                className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+  1368→                                onClick={() => {
+  1369→                                  setSelectedCourseToHold(course)
+  1370→                                  setHoldCourseDialogOpen(true)
+  1371→                                }}
+  1372→                              >
+  1373→                                <Pause className="h-4 w-4 mr-2" />Hold
+  1374→                              </Button>
+  1375→                              <Button 
+  1376→                                size="sm" 
+  1377→                                variant="outline"
+  1378→                                onClick={() => {
+  1379→                                  setSelectedCourseToFire(course)
+  1380→                                  setSelectedItemIds(new Set())
+  1381→                                  setFireItemDialogOpen(true)
+  1382→                                }}
+  1383→                              >
+  1384→                                <Flame className="h-4 w-4 mr-2" />Select Items
+  1385→                              </Button>
+  1386→                            </>
+  1387→                          )}
+  1388→                          
+  1389→                          {course.status === 'held' && (
+  1390→                            <>
+  1391→                              <Button 
+  1392→                                size="sm" 
+  1393→                                className="flex-1 bg-[#00897B] hover:bg-[#00695C]"
+  1394→                                onClick={() => releaseCourse(selectedOrder.id, course.id)}
+  1395→                              >
+  1396→                                <Play className="h-4 w-4 mr-2" />Release
+  1397→                              </Button>
+  1398→                              <Badge className="bg-amber-100 text-amber-700 py-2 px-4 border border-amber-300">
+  1399→                                <Pause className="h-4 w-4 mr-2" />{course.holdReason || 'On Hold'}
+  1400→                                {course.heldUntil && (
+  1401→                                  <span className="ml-2 text-xs">
+  1402→                                    Until {course.heldUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+  1403→                                  </span>
+  1404→                                )}
+  1405→                              </Badge>
+  1406→                            </>
+  1407→                          )}
+  1408→                          
+  1409→                          {course.status === 'ordered' && (
+  1410→                            <Button 
+  1411→                              size="sm" 
+  1412→                              variant="outline" 
+  1413→                              className="flex-1 bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
+  1414→                              onClick={() => {
+  1415→                                // Mark all items as preparing
+  1416→                                course.items.forEach(item => {
+  1417→                                  if (item.status === 'ordered') {
+  1418→                                    updateItemStatus(selectedOrder.id, course.id, item.id, 'preparing')
+  1419→                                  }
+  1420→                                })
+  1421→                              }}
+  1422→                            >
+  1423→                              <Flame className="h-4 w-4 mr-2" />Start Preparing
+  1424→                            </Button>
+  1425→                          )}
+  1426→                          
+  1427→                          {course.status === 'preparing' && (
+  1428→                            <Button 
+  1429→                              size="sm" 
+  1430→                              variant="outline" 
+  1431→                              className="flex-1 bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+  1432→                              onClick={() => markCourseReady(selectedOrder.id, course.id)}
+  1433→                            >
+  1434→                              <CheckCircle2 className="h-4 w-4 mr-2" />Mark Ready
+  1435→                            </Button>
+  1436→                          )}
+  1437→                          
+  1438→                          {course.status === 'ready' && (
+  1439→                            <Button 
+  1440→                              size="sm" 
+  1441→                              className="flex-1 bg-green-600 hover:bg-green-700 animate-pulse"
+  1442→                              onClick={() => markCourseServed(selectedOrder.id, course.id)}
+  1443→                            >
+  1444→                              <CheckCircle2 className="h-4 w-4 mr-2" />Mark Served
+  1445→                            </Button>
+  1446→                          )}
+  1447→                          
+  1448→                          {course.status === 'served' && (
+  1449→                            <Badge className="bg-gray-200 text-gray-600 py-2 px-4 border border-gray-300">
+  1450→                              <CheckCircle2 className="h-4 w-4 mr-2" />Completed
+  1451→                            </Badge>
+  1452→                          )}
+  1453→                        </div>
+  1454→                      </CardContent>
+  1455→                    </Card>
+  1456→                  )
+  1457→                })}
+  1458→              </div>
+  1459→            </ScrollArea>
+  1460→          </div>
+  1461→        ) : (
+  1462→          <div className="flex-1 flex items-center justify-center text-[#757575]">
+  1463→            <div className="text-center">
+  1464→              <Table2 className="h-16 w-16 mx-auto mb-4 opacity-50" />
+  1465→              <p className="text-lg">Select a table to manage courses</p>
+  1466→            </div>
+  1467→          </div>
+  1468→        )}
+  1469→      </div>
+  1470→
+  1471→      {/* Fire Course Dialog */}
+  1472→      <Dialog open={fireCourseDialogOpen} onOpenChange={setFireCourseDialogOpen}>
+  1473→        <DialogContent>
+  1474→          <DialogHeader>
+  1475→            <DialogTitle>🔥 Fire Course to Kitchen?</DialogTitle>
+  1476→            <DialogDescription>
+  1477→              This will send all items in "{selectedCourseToFire?.name}" to the kitchen for preparation.
+  1478→            </DialogDescription>
+  1479→          </DialogHeader>
+  1480→          
+  1481→          {selectedCourseToFire && (
+  1482→            <div className="py-4">
+  1483→              <p className="text-sm font-medium mb-2">Items to send:</p>
+  1484→              <div className="space-y-1">
+  1485→                {selectedCourseToFire.items.map(item => (
+  1486→                  <div key={item.id} className="flex items-center justify-between text-sm">
+  1487→                    <span>{item.quantity}x {item.name}</span>
+  1488→                    <span className="text-[#757575]">{stationConfig[item.station]?.name}</span>
+  1489→                  </div>
+  1490→                ))}
+  1491→              </div>
+  1492→              
+  1493→              <Separator className="my-4" />
+  1494→              
+  1495→              <div className="flex justify-between text-sm">
+  1496→                <span>Estimated time:</span>
+  1497→                <span className="font-bold">{selectedCourseToFire.estimatedTime} minutes</span>
+  1498→              </div>
+  1499→            </div>
+  1500→          )}
+  1501→          
+  1502→          <DialogFooter>
+  1503→            <Button variant="outline" onClick={() => setFireCourseDialogOpen(false)}>
+  1504→              Cancel
+  1505→            </Button>
+  1506→            <Button 
+  1507→              className="bg-[#00897B] hover:bg-[#00695C]"
+  1508→              onClick={() => selectedOrder && selectedCourseToFire && fireCourse(selectedOrder.id, selectedCourseToFire.id)}
+  1509→            >
+  1510→              <Play className="h-4 w-4 mr-2" />Fire Course
+  1511→            </Button>
+  1512→          </DialogFooter>
+  1513→        </DialogContent>
+  1514→      </Dialog>
+  1515→
+  1516→      {/* Fire Selected Items Dialog */}
+  1517→      <Dialog open={fireItemDialogOpen} onOpenChange={setFireItemDialogOpen}>
+  1518→        <DialogContent>
+  1519→          <DialogHeader>
+  1520→            <DialogTitle>🔥 Fire Selected Items</DialogTitle>
+  1521→            <DialogDescription>
+  1522→              Select individual items from "{selectedCourseToFire?.name}" to send to the kitchen.
+  1523→            </DialogDescription>
+  1524→          </DialogHeader>
+  1525→          
+  1526→          {selectedCourseToFire && (
+  1527→            <div className="py-4">
+  1528→              <p className="text-sm font-medium mb-2">Select items to fire:</p>
+  1529→              <div className="space-y-2">
+  1530→                {selectedCourseToFire.items.filter(i => i.status === 'pending').map(item => (
+  1531→                  <div 
+  1532→                    key={item.id}
+  1533→                    className={`
+  1534→                      flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all
+  1535→                      ${selectedItemIds.has(item.id) ? 'bg-[#00897B] text-white border-[#00897B]' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}
+  1536→                    `}
+  1537→                    onClick={() => toggleItemSelection(item.id)}
+  1538→                  >
+  1539→                    <div className="flex items-center gap-2">
+  1540→                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedItemIds.has(item.id) ? 'bg-white border-white' : 'border-gray-300'}`}>
+  1541→                        {selectedItemIds.has(item.id) && <Check className="h-3 w-3 text-[#00897B]" />}
+  1542→                      </div>
+  1543→                      <span>{item.quantity}x {item.name}</span>
+  1544→                    </div>
+  1545→                    <span className={`text-sm ${selectedItemIds.has(item.id) ? 'text-white/80' : 'text-[#757575]'}`}>
+  1546→                      {stationConfig[item.station]?.name}
+  1547→                    </span>
+  1548→                  </div>
+  1549→                ))}
+  1550→              </div>
+  1551→              
+  1552→              {selectedItemIds.size > 0 && (
+  1553→                <div className="mt-4 p-2 bg-[#E0F2F1] rounded-lg">
+  1554→                  <p className="text-sm text-[#00897B]">
+  1555→                    {selectedItemIds.size} item(s) selected
+  1556→                  </p>
+  1557→                </div>
+  1558→              )}
+  1559→            </div>
+  1560→          )}
+  1561→          
+  1562→          <DialogFooter>
+  1563→            <Button variant="outline" onClick={() => {
+  1564→              setFireItemDialogOpen(false)
+  1565→              setSelectedItemIds(new Set())
+  1566→            }}>
+  1567→              Cancel
+  1568→            </Button>
+  1569→            <Button 
+  1570→              className="bg-[#00897B] hover:bg-[#00695C]"
+  1571→              disabled={selectedItemIds.size === 0}
+  1572→              onClick={() => selectedOrder && selectedCourseToFire && fireSelectedItems(selectedOrder.id, selectedCourseToFire.id)}
+  1573→            >
+  1574→              <Play className="h-4 w-4 mr-2" />Fire Selected ({selectedItemIds.size})
+  1575→            </Button>
+  1576→          </DialogFooter>
+  1577→        </DialogContent>
+  1578→      </Dialog>
+  1579→
+  1580→      {/* Hold Course Dialog */}
+  1581→      <Dialog open={holdCourseDialogOpen} onOpenChange={setHoldCourseDialogOpen}>
+  1582→        <DialogContent>
+  1583→          <DialogHeader>
+  1584→            <DialogTitle>⏸️ Hold Course</DialogTitle>
+  1585→            <DialogDescription>
+  1586→              Put "{selectedCourseToHold?.name}" on hold. It won't be sent to the kitchen until released.
+  1587→            </DialogDescription>
+  1588→          </DialogHeader>
+  1589→          
+  1590→          <div className="py-4 space-y-4">
+  1591→            <div>
+  1592→              <Label htmlFor="hold-reason">Reason (optional)</Label>
+  1593→              <Input
+  1594→                id="hold-reason"
+  1595→                placeholder="e.g., Waiting for guests to finish starters"
+  1596→                value={holdReason}
+  1597→                onChange={(e) => setHoldReason(e.target.value)}
+  1598→              />
+  1599→            </div>
+  1600→            
+  1601→            <div>
+  1602→              <Label htmlFor="hold-minutes">Hold Duration (minutes)</Label>
+  1603→              <div className="flex gap-2 mt-2">
+  1604→                {[5, 10, 15, 20, 30].map(mins => (
+  1605→                  <Button
+  1606→                    key={mins}
+  1607→                    size="sm"
+  1608→                    variant={holdMinutes === mins ? 'default' : 'outline'}
+  1609→                    className={holdMinutes === mins ? 'bg-[#00897B] hover:bg-[#00695C]' : ''}
+  1610→                    onClick={() => setHoldMinutes(mins)}
+  1611→                  >
+  1612→                    {mins}m
+  1613→                  </Button>
+  1614→                ))}
+  1615→              </div>
+  1616→            </div>
+  1617→          </div>
+  1618→          
+  1619→          <DialogFooter>
+  1620→            <Button variant="outline" onClick={() => {
+  1621→              setHoldCourseDialogOpen(false)
+  1622→              setHoldReason('')
+  1623→              setHoldMinutes(10)
+  1624→            }}>
+  1625→              Cancel
+  1626→            </Button>
+  1627→            <Button 
+  1628→              className="bg-amber-500 hover:bg-amber-600"
+  1629→              onClick={() => selectedOrder && selectedCourseToHold && holdCourse(selectedOrder.id, selectedCourseToHold.id, holdReason, holdMinutes)}
+  1630→            >
+  1631→              <Pause className="h-4 w-4 mr-2" />Hold Course
+  1632→            </Button>
+  1633→          </DialogFooter>
+  1634→        </DialogContent>
+  1635→      </Dialog>
+  1636→
+  1637→      {/* Rush Flag Dialog */}
+  1638→      <Dialog open={rushDialogOpen} onOpenChange={setRushDialogOpen}>
+  1639→        <DialogContent>
+  1640→          <DialogHeader>
+  1641→            <DialogTitle>⚡ Set RUSH Priority</DialogTitle>
+  1642→            <DialogDescription>
+  1643→              Flag this order as urgent. Kitchen will be notified to prioritize it.
+  1644→            </DialogDescription>
+  1645→          </DialogHeader>
+  1646→          
+  1647→          <div className="py-4 space-y-4">
+  1648→            <div>
+  1649→              <Label htmlFor="rush-reason">Reason for rush</Label>
+  1650→              <Textarea
+  1651→                id="rush-reason"
+  1652→                placeholder="e.g., VIP guests, customer complaint, late order..."
+  1653→                value={rushReason}
+  1654→                onChange={(e) => setRushReason(e.target.value)}
+  1655→                rows={3}
+  1656→              />
+  1657→            </div>
+  1658→            
+  1659→            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+  1660→              <div className="flex items-center gap-2 text-red-700">
+  1661→                <AlertTriangle className="h-4 w-4" />
+  1662→                <span className="text-sm font-medium">Warning</span>
+  1663→              </div>
+  1664→              <p className="text-xs text-red-600 mt-1">
+  1665→                RUSH orders will be flagged in the kitchen and may affect other orders' timing.
+  1666→              </p>
+  1667→            </div>
+  1668→          </div>
+  1669→          
+  1670→          <DialogFooter>
+  1671→            <Button variant="outline" onClick={() => {
+  1672→              setRushDialogOpen(false)
+  1673→              setRushReason('')
+  1674→            }}>
+  1675→              Cancel
+  1676→            </Button>
+  1677→            <Button 
+  1678→              className="bg-red-500 hover:bg-red-600"
+  1679→              onClick={() => selectedOrder && setRushPriority(selectedOrder.id, rushReason)}
+  1680→            >
+  1681→              <Zap className="h-4 w-4 mr-2" />Set RUSH
+  1682→            </Button>
+  1683→          </DialogFooter>
+  1684→        </DialogContent>
+  1685→      </Dialog>
+  1686→
+  1687→      {/* Kitchen Message Dialog */}
+  1688→      <Dialog open={messageDialogOpen} onOpenChange={setMessageDialogOpen}>
+  1689→        <DialogContent>
+  1690→          <DialogHeader>
+  1691→            <DialogTitle>💬 Send Message to Kitchen</DialogTitle>
+  1692→            <DialogDescription>
+  1693→              Send a message to the kitchen staff regarding Table {selectedOrder?.tableNumber}.
+  1694→            </DialogDescription>
+  1695→          </DialogHeader>
+  1696→          
+  1697→          <div className="py-4 space-y-4">
+  1698→            <div>
+  1699→              <Label htmlFor="message">Message</Label>
+  1700→              <Textarea
+  1701→                id="message"
+  1702→                placeholder="e.g., Customer requests no onions on all dishes..."
+  1703→                value={newMessage}
+  1704→                onChange={(e) => setNewMessage(e.target.value)}
+  1705→                rows={3}
+  1706→              />
+  1707→            </div>
+  1708→            
+  1709→            {/* Quick messages */}
+  1710→            <div>
+  1711→              <Label className="text-xs text-[#757575]">Quick messages:</Label>
+  1712→              <div className="flex flex-wrap gap-2 mt-2">
+  1713→                {[
+  1714→                  'Allergies - please be careful',
+  1715→                  'Customer in a hurry',
+  1716→                  'Birthday celebration',
+  1717→                  'Anniversary - make it special',
+  1718→                  'Check on order status',
+  1719→                ].map(msg => (
+  1720→                  <Button
+  1721→                    key={msg}
+  1722→                    size="sm"
+  1723→                    variant="outline"
+  1724→                    className="text-xs"
+  1725→                    onClick={() => setNewMessage(msg)}
+  1726→                  >
+  1727→                    {msg}
+  1728→                  </Button>
+  1729→                ))}
+  1730→              </div>
+  1731→            </div>
+  1732→          </div>
+  1733→          
+  1734→          <DialogFooter>
+  1735→            <Button variant="outline" onClick={() => {
+  1736→              setMessageDialogOpen(false)
+  1737→              setNewMessage('')
+  1738→            }}>
+  1739→              Cancel
+  1740→            </Button>
+  1741→            <Button 
+  1742→              className="bg-[#00897B] hover:bg-[#00695C]"
+  1743→              disabled={!newMessage.trim()}
+  1744→              onClick={() => selectedOrder && sendMessage(selectedOrder.id, newMessage)}
+  1745→            >
+  1746→              <Send className="h-4 w-4 mr-2" />Send Message
+  1747→            </Button>
+  1748→          </DialogFooter>
+  1749→        </DialogContent>
+  1750→      </Dialog>
+  1751→    </div>
+  1752→  )
+  1753→}
+  1754→

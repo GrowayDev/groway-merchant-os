@@ -1,0 +1,852 @@
+  4521→function GrantPlusModal({ onClose }: { onClose: () => void }) {
+  4522→  const [view, setView] = useState<SASSAView>('main');
+  4523→  const [idNumber, setIdNumber] = useState('');
+  4524→  const [loading, setLoading] = useState(false);
+  4525→  const [linked, setLinked] = useState(false);
+  4526→  const [userGrants, setUserGrants] = useState<SASSAGrant[]>([]);
+  4527→  const [grantTypes, setGrantTypes] = useState<any[]>([]);
+  4528→  const [applications, setApplications] = useState<SASSAApplication[]>([]);
+  4529→  const [paymentHistory, setPaymentHistory] = useState<SASSAPayment[]>([]);
+  4530→  const [calendar, setCalendar] = useState<PaymentCalendar[]>([]);
+  4531→  const [earlyAccessData, setEarlyAccessData] = useState<any>(null);
+  4532→  const [selectedGrant, setSelectedGrant] = useState<string>('');
+  4533→  const [totalMonthly, setTotalMonthly] = useState(0);
+  4534→  const [maskedId, setMaskedId] = useState('');
+  4535→
+  4536→  // Format date for display
+  4537→  const formatDate = (dateStr: string) => {
+  4538→    if (!dateStr) return 'N/A';
+  4539→    const date = new Date(dateStr);
+  4540→    return date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+  4541→  };
+  4542→
+  4543→  // Format currency
+  4544→  const formatAmount = (amount: number) => `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+  4545→
+  4546→  // Fetch initial data
+  4547→  useEffect(() => {
+  4548→    const fetchData = async () => {
+  4549→      setLoading(true);
+  4550→      try {
+  4551→        const [statusRes, typesRes] = await Promise.all([
+  4552→          fetch('/api/sassa?action=status'),
+  4553→          fetch('/api/sassa?action=grant-types')
+  4554→        ]);
+  4555→        
+  4556→        const statusData = await statusRes.json();
+  4557→        const typesData = await typesRes.json();
+  4558→        
+  4559→        if (statusData.success) {
+  4560→          setLinked(statusData.data.linked);
+  4561→          setUserGrants(statusData.data.grants || []);
+  4562→          setTotalMonthly(statusData.data.totalMonthlyIncome || 0);
+  4563→          setMaskedId(statusData.data.maskedIdNumber || '');
+  4564→        }
+  4565→        
+  4566→        if (typesData.success) {
+  4567→          setGrantTypes(typesData.data);
+  4568→        }
+  4569→      } catch (error) {
+  4570→        console.error('Failed to fetch SASSA data:', error);
+  4571→      } finally {
+  4572→        setLoading(false);
+  4573→      }
+  4574→    };
+  4575→    
+  4576→    fetchData();
+  4577→  }, []);
+  4578→
+  4579→  // Fetch additional data when view changes
+  4580→  useEffect(() => {
+  4581→    const fetchViewData = async () => {
+  4582→      if (view === 'calendar' && calendar.length === 0) {
+  4583→        try {
+  4584→          const res = await fetch('/api/sassa?action=payment-calendar');
+  4585→          const data = await res.json();
+  4586→          if (data.success) {
+  4587→            setCalendar(data.data.calendar);
+  4588→          }
+  4589→        } catch (error) {
+  4590→          console.error('Failed to fetch calendar:', error);
+  4591→        }
+  4592→      }
+  4593→      
+  4594→      if (view === 'tracking' && applications.length === 0) {
+  4595→        try {
+  4596→          const res = await fetch('/api/sassa?action=applications');
+  4597→          const data = await res.json();
+  4598→          if (data.success) {
+  4599→            setApplications(data.data);
+  4600→          }
+  4601→        } catch (error) {
+  4602→          console.error('Failed to fetch applications:', error);
+  4603→        }
+  4604→      }
+  4605→      
+  4606→      if (view === 'history' && paymentHistory.length === 0) {
+  4607→        try {
+  4608→          const res = await fetch('/api/sassa?action=payment-history&months=3');
+  4609→          const data = await res.json();
+  4610→          if (data.success) {
+  4611→            setPaymentHistory(data.data);
+  4612→          }
+  4613→        } catch (error) {
+  4614→          console.error('Failed to fetch payment history:', error);
+  4615→        }
+  4616→      }
+  4617→      
+  4618→      if (view === 'early-access' && !earlyAccessData) {
+  4619→        try {
+  4620→          const res = await fetch('/api/sassa?action=early-access');
+  4621→          const data = await res.json();
+  4622→          if (data.success) {
+  4623→            setEarlyAccessData(data.data);
+  4624→          }
+  4625→        } catch (error) {
+  4626→          console.error('Failed to fetch early access data:', error);
+  4627→        }
+  4628→      }
+  4629→    };
+  4630→    
+  4631→    fetchViewData();
+  4632→  }, [view, calendar.length, applications.length, paymentHistory.length, earlyAccessData]);
+  4633→
+  4634→  // Link SASSA account
+  4635→  const handleLink = async () => {
+  4636→    if (!idNumber || idNumber.length < 6) {
+  4637→      toast.error('Please enter a valid ID number');
+  4638→      return;
+  4639→    }
+  4640→    
+  4641→    setLoading(true);
+  4642→    try {
+  4643→      const res = await fetch('/api/sassa', {
+  4644→        method: 'POST',
+  4645→        headers: { 'Content-Type': 'application/json' },
+  4646→        body: JSON.stringify({ action: 'link', idNumber }),
+  4647→      });
+  4648→      const data = await res.json();
+  4649→      
+  4650→      if (data.success) {
+  4651→        setLinked(true);
+  4652→        setUserGrants(data.data.grants || []);
+  4653→        setTotalMonthly(data.data.totalMonthlyIncome || 0);
+  4654→        setMaskedId(data.data.maskedIdNumber || '');
+  4655→        toast.success(data.message);
+  4656→      } else {
+  4657→        toast.error(data.error || 'Failed to link account');
+  4658→      }
+  4659→    } catch {
+  4660→      toast.error('Failed to link account');
+  4661→    } finally {
+  4662→      setLoading(false);
+  4663→    }
+  4664→  };
+  4665→
+  4666→  // Submit application
+  4667→  const handleApply = async () => {
+  4668→    if (!selectedGrant) {
+  4669→      toast.error('Please select a grant type');
+  4670→      return;
+  4671→    }
+  4672→    
+  4673→    setLoading(true);
+  4674→    try {
+  4675→      const res = await fetch('/api/sassa', {
+  4676→        method: 'POST',
+  4677→        headers: { 'Content-Type': 'application/json' },
+  4678→        body: JSON.stringify({ action: 'apply', grantType: selectedGrant }),
+  4679→      });
+  4680→      const data = await res.json();
+  4681→      
+  4682→      if (data.success) {
+  4683→        toast.success(data.message);
+  4684→        setApplications(prev => [data.data, ...prev]);
+  4685→        setView('tracking');
+  4686→      } else {
+  4687→        toast.error(data.error || 'Failed to submit application');
+  4688→      }
+  4689→    } catch {
+  4690→      toast.error('Failed to submit application');
+  4691→    } finally {
+  4692→      setLoading(false);
+  4693→    }
+  4694→  };
+  4695→
+  4696→  // Request early access
+  4697→  const handleEarlyAccess = async (paymentId: string) => {
+  4698→    setLoading(true);
+  4699→    try {
+  4700→      const res = await fetch('/api/sassa', {
+  4701→        method: 'POST',
+  4702→        headers: { 'Content-Type': 'application/json' },
+  4703→        body: JSON.stringify({ action: 'early-access', paymentId }),
+  4704→      });
+  4705→      const data = await res.json();
+  4706→      
+  4707→      if (data.success) {
+  4708→        toast.success(data.message);
+  4709→        setView('main');
+  4710→      } else {
+  4711→        toast.error(data.error || 'Failed to process early access');
+  4712→      }
+  4713→    } catch {
+  4714→      toast.error('Failed to process early access');
+  4715→    } finally {
+  4716→      setLoading(false);
+  4717→    }
+  4718→  };
+  4719→
+  4720→  // Get status badge color
+  4721→  const getStatusColor = (status: string) => {
+  4722→    const colors: Record<string, string> = {
+  4723→      active: 'bg-green-100 text-green-700',
+  4724→      approved: 'bg-green-100 text-green-700',
+  4725→      pending: 'bg-amber-100 text-amber-700',
+  4726→      processing: 'bg-blue-100 text-blue-700',
+  4727→      submitted: 'bg-purple-100 text-purple-700',
+  4728→      suspended: 'bg-red-100 text-red-700',
+  4729→      rejected: 'bg-red-100 text-red-700',
+  4730→      processed: 'bg-green-100 text-green-700',
+  4731→    };
+  4732→    return colors[status] || 'bg-gray-100 text-gray-700';
+  4733→  };
+  4734→
+  4735→  // Render header with back button
+  4736→  const renderHeader = (title: string, subtitle?: string) => (
+  4737→    <div className="flex items-center gap-2 mb-3">
+  4738→      {view !== 'main' && (
+  4739→        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setView('main')}>
+  4740→          <ArrowLeft className="w-4 h-4" />
+  4741→        </Button>
+  4742→      )}
+  4743→      <div>
+  4744→        <h2 className="font-bold text-gray-900 text-sm">{title}</h2>
+  4745→        {subtitle && <p className="text-[10px] text-gray-500">{subtitle}</p>}
+  4746→      </div>
+  4747→    </div>
+  4748→  );
+  4749→
+  4750→  // Main view
+  4751→  const renderMain = () => (
+  4752→    <div className="space-y-3">
+  4753→      {/* Link Account Section */}
+  4754→      {!linked ? (
+  4755→        <div className="p-3 rounded-lg bg-[#00897B]/5 border border-[#00897B]/20">
+  4756→          <p className="text-xs font-medium text-gray-700 mb-2">Link your SASSA account</p>
+  4757→          <div className="flex gap-2">
+  4758→            <Input
+  4759→              placeholder="Enter SA ID Number"
+  4760→              value={idNumber}
+  4761→              onChange={(e) => setIdNumber(e.target.value)}
+  4762→              className="h-8 text-xs flex-1"
+  4763→              maxLength={13}
+  4764→            />
+  4765→            <Button size="sm" onClick={handleLink} disabled={loading} className="bg-[#00897B] hover:bg-[#00695C] h-8">
+  4766→              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Link'}
+  4767→            </Button>
+  4768→          </div>
+  4769→          <p className="text-[10px] text-gray-500 mt-1">Your ID is securely encrypted and verified</p>
+  4770→        </div>
+  4771→      ) : (
+  4772→        <>
+  4773→          {/* Linked Account Summary */}
+  4774→          <div className="p-3 rounded-lg bg-gradient-to-r from-[#00897B] to-[#43A047] text-white">
+  4775→            <div className="flex items-center justify-between mb-2">
+  4776→              <div className="flex items-center gap-2">
+  4777→                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+  4778→                  <BadgeCheck className="w-4 h-4" />
+  4779→                </div>
+  4780→                <div>
+  4781→                  <p className="font-semibold text-xs">Account Linked</p>
+  4782→                  <p className="text-[10px] text-white/80">ID: {maskedId}</p>
+  4783→                </div>
+  4784→              </div>
+  4785→              <Badge className="bg-white/20 text-white text-[10px]">Active</Badge>
+  4786→            </div>
+  4787→            <div className="pt-2 border-t border-white/20">
+  4788→              <p className="text-[10px] text-white/80">Total Monthly Grants</p>
+  4789→              <p className="text-xl font-bold">{formatAmount(totalMonthly)}</p>
+  4790→            </div>
+  4791→          </div>
+  4792→
+  4793→          {/* Quick Actions Grid */}
+  4794→          <div className="grid grid-cols-2 gap-2">
+  4795→            <button
+  4796→              onClick={() => setView('grants')}
+  4797→              className="p-3 rounded-lg border border-gray-200 hover:border-[#00897B] hover:bg-[#00897B]/5 transition-all text-left"
+  4798→            >
+  4799→              <HandCoins className="w-5 h-5 text-[#00897B] mb-1" />
+  4800→              <p className="font-medium text-gray-900 text-xs">My Grants</p>
+  4801→              <p className="text-[10px] text-gray-500">{userGrants.length} active</p>
+  4802→            </button>
+  4803→            <button
+  4804→              onClick={() => setView('calendar')}
+  4805→              className="p-3 rounded-lg border border-gray-200 hover:border-[#00897B] hover:bg-[#00897B]/5 transition-all text-left"
+  4806→            >
+  4807→              <Clock className="w-5 h-5 text-amber-500 mb-1" />
+  4808→              <p className="font-medium text-gray-900 text-xs">Payment Dates</p>
+  4809→              <p className="text-[10px] text-gray-500">View calendar</p>
+  4810→            </button>
+  4811→            <button
+  4812→              onClick={() => setView('apply')}
+  4813→              className="p-3 rounded-lg border border-gray-200 hover:border-[#00897B] hover:bg-[#00897B]/5 transition-all text-left"
+  4814→            >
+  4815→              <PlusCircle className="w-5 h-5 text-purple-500 mb-1" />
+  4816→              <p className="font-medium text-gray-900 text-xs">Apply</p>
+  4817→              <p className="text-[10px] text-gray-500">New grant</p>
+  4818→            </button>
+  4819→            <button
+  4820→              onClick={() => setView('tracking')}
+  4821→              className="p-3 rounded-lg border border-gray-200 hover:border-[#00897B] hover:bg-[#00897B]/5 transition-all text-left"
+  4822→            >
+  4823→              <FileText className="w-5 h-5 text-blue-500 mb-1" />
+  4824→              <p className="font-medium text-gray-900 text-xs">Applications</p>
+  4825→              <p className="text-[10px] text-gray-500">{applications.filter(a => a.status === 'processing' || a.status === 'submitted').length} pending</p>
+  4826→            </button>
+  4827→          </div>
+  4828→
+  4829→          {/* Grant+ Advance Banner */}
+  4830→          <div 
+  4831→            className="p-3 rounded-lg bg-gradient-to-r from-[#00897B] to-[#43A047] text-white cursor-pointer hover:opacity-90 transition-opacity"
+  4832→            onClick={() => setView('early-access')}
+  4833→          >
+  4834→            <div className="flex items-center gap-2">
+  4835→              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+  4836→                <HandCoins className="w-5 h-5 text-white" />
+  4837→              </div>
+  4838→              <div className="flex-1">
+  4839→                <p className="font-semibold text-xs">Grant+ Advance Available</p>
+  4840→                <p className="text-[10px] text-white/80">Get up to R1,200 advance on your SASSA grant</p>
+  4841→              </div>
+  4842→              <ChevronRight className="w-4 h-4 text-white/80" />
+  4843→            </div>
+  4844→          </div>
+  4845→        </>
+  4846→      )}
+  4847→
+  4848→      {/* Available Grant Types */}
+  4849→      <div>
+  4850→        <p className="text-xs font-medium text-gray-700 mb-2">All SASSA Grants (8)</p>
+  4851→        <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+  4852→          {grantTypes.map((grant) => (
+  4853→            <div key={grant.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100">
+  4854→              <div className="flex items-center gap-2">
+  4855→                <span className="text-base">{grant.icon}</span>
+  4856→                <div>
+  4857→                  <p className="font-medium text-gray-900 text-xs">{grant.name}</p>
+  4858→                  <p className="text-[10px] text-gray-500">{grant.description}</p>
+  4859→                </div>
+  4860→              </div>
+  4861→              <span className="font-semibold text-[#00897B] text-xs">{formatAmount(grant.amount)}</span>
+  4862→            </div>
+  4863→          ))}
+  4864→        </div>
+  4865→      </div>
+  4866→    </div>
+  4867→  );
+  4868→
+  4869→  // My Grants View
+  4870→  const renderGrants = () => (
+  4871→    <div className="space-y-3">
+  4872→      {renderHeader('My Grants', 'Your active SASSA grants')}
+  4873→      
+  4874→      {userGrants.length === 0 ? (
+  4875→        <div className="text-center py-6">
+  4876→          <AlertCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+  4877→          <p className="text-xs text-gray-500">No active grants</p>
+  4878→          <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => setView('apply')}>
+  4879→            Apply for a Grant
+  4880→          </Button>
+  4881→        </div>
+  4882→      ) : (
+  4883→        <div className="space-y-2">
+  4884→          {userGrants.map((grant, idx) => (
+  4885→            <Card key={idx} className="overflow-hidden">
+  4886→              <CardContent className="p-3">
+  4887→                <div className="flex items-start justify-between mb-2">
+  4888→                  <div>
+  4889→                    <p className="font-semibold text-gray-900 text-xs">{grant.name}</p>
+  4890→                    <p className="text-[10px] text-gray-500">{grant.beneficiaries} beneficiary(ies)</p>
+  4891→                  </div>
+  4892→                  <Badge className={getStatusColor(grant.status)}>{grant.status}</Badge>
+  4893→                </div>
+  4894→                <div className="grid grid-cols-2 gap-2 text-[10px]">
+  4895→                  <div className="p-2 rounded bg-gray-50">
+  4896→                    <p className="text-gray-500">Amount</p>
+  4897→                    <p className="font-semibold text-gray-900">{formatAmount(grant.totalAmount)}</p>
+  4898→                  </div>
+  4899→                  <div className="p-2 rounded bg-gray-50">
+  4900→                    <p className="text-gray-500">Next Payment</p>
+  4901→                    <p className="font-semibold text-gray-900">{formatDate(grant.nextPayment || '')}</p>
+  4902→                  </div>
+  4903→                </div>
+  4904→              </CardContent>
+  4905→            </Card>
+  4906→          ))}
+  4907→        </div>
+  4908→      )}
+  4909→    </div>
+  4910→  );
+  4911→
+  4912→  // Payment Calendar View
+  4913→  const renderCalendar = () => (
+  4914→    <div className="space-y-3">
+  4915→      {renderHeader('Payment Calendar', 'SASSA payment dates based on your ID')}
+  4916→      
+  4917→      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 mb-2">
+  4918→        <p className="text-[10px] text-amber-700">
+  4919→          <strong>Note:</strong> Payment dates are based on the last digit of your ID number
+  4920→        </p>
+  4921→      </div>
+  4922→      
+  4923→      <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+  4924→        {calendar.slice(0, 6).map((month, idx) => {
+  4925→          const isCurrentMonth = idx === 0;
+  4926→          return (
+  4927→            <div 
+  4928→              key={month.month} 
+  4929→              className={`p-2.5 rounded-lg border ${isCurrentMonth ? 'border-[#00897B] bg-[#00897B]/5' : 'border-gray-200'}`}
+  4930→            >
+  4931→              <div className="flex items-center justify-between mb-2">
+  4932→                <p className="font-semibold text-gray-900 text-xs">{month.month}</p>
+  4933→                {isCurrentMonth && <Badge className="bg-[#00897B] text-white text-[10px]">Current</Badge>}
+  4934→              </div>
+  4935→              <div className="space-y-1 text-[10px]">
+  4936→                <div className="flex justify-between">
+  4937→                  <span className="text-gray-600">👴 Older Person's:</span>
+  4938→                  <span className="font-medium text-gray-900">{new Date(month.dates.olderPersons).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>
+  4939→                </div>
+  4940→                <div className="flex justify-between">
+  4941→                  <span className="text-gray-600">♿ Disability:</span>
+  4942→                  <span className="font-medium text-gray-900">{new Date(month.dates.disability).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>
+  4943→                </div>
+  4944→                <div className="flex justify-between">
+  4945→                  <span className="text-gray-600">👶 Child Support:</span>
+  4946→                  <span className="font-medium text-gray-900">{new Date(month.dates.childSupport.start).toLocaleDateString('en-ZA', { day: 'numeric' })} - {new Date(month.dates.childSupport.end).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>
+  4947→                </div>
+  4948→              </div>
+  4949→            </div>
+  4950→          );
+  4951→        })}
+  4952→      </div>
+  4953→    </div>
+  4954→  );
+  4955→
+  4956→  // Apply for Grant View
+  4957→  const renderApply = () => (
+  4958→    <div className="space-y-3">
+  4959→      {renderHeader('Apply for Grant', 'Submit a new SASSA grant application')}
+  4960→      
+  4961→      <div className="space-y-2">
+  4962→        <Label className="text-xs">Select Grant Type</Label>
+  4963→        <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+  4964→          {grantTypes.map((grant) => (
+  4965→            <button
+  4966→              key={grant.id}
+  4967→              onClick={() => setSelectedGrant(grant.id)}
+  4968→              className={`w-full p-2.5 rounded-lg border-2 transition-all text-left ${
+  4969→                selectedGrant === grant.id 
+  4970→                  ? 'border-[#00897B] bg-[#00897B]/5' 
+  4971→                  : 'border-gray-200 hover:border-gray-300'
+  4972→              }`}
+  4973→            >
+  4974→              <div className="flex items-center gap-2">
+  4975→                <span className="text-lg">{grant.icon}</span>
+  4976→                <div className="flex-1">
+  4977→                  <p className="font-medium text-gray-900 text-xs">{grant.name}</p>
+  4978→                  <p className="text-[10px] text-gray-500">{formatAmount(grant.amount)}/month</p>
+  4979→                </div>
+  4980→                {selectedGrant === grant.id && <Check className="w-4 h-4 text-[#00897B]" />}
+  4981→              </div>
+  4982→            </button>
+  4983→          ))}
+  4984→        </div>
+  4985→      </div>
+  4986→
+  4987→      {selectedGrant && (
+  4988→        <div className="p-2.5 rounded-lg bg-gray-50">
+  4989→          <p className="text-xs font-medium text-gray-700 mb-1.5">Required Documents:</p>
+  4990→          <div className="space-y-1">
+  4991→            {grantTypes.find(g => g.id === selectedGrant)?.documents.map((doc: string, idx: number) => (
+  4992→              <div key={idx} className="flex items-center gap-1.5 text-[10px] text-gray-600">
+  4993→                <FileText className="w-3 h-3" />
+  4994→                <span>{doc}</span>
+  4995→              </div>
+  4996→            ))}
+  4997→          </div>
+  4998→          <p className="text-[10px] text-gray-500 mt-2">
+  4999→            Estimated processing: {grantTypes.find(g => g.id === selectedGrant)?.processingDays} days
+  5000→          </p>
+  5001→        </div>
+  5002→      )}
+  5003→
+  5004→      <Button 
+  5005→        className="w-full bg-[#00897B] hover:bg-[#00695C]" 
+  5006→        onClick={handleApply}
+  5007→        disabled={!selectedGrant || loading}
+  5008→      >
+  5009→        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+  5010→        Submit Application
+  5011→      </Button>
+  5012→    </div>
+  5013→  );
+  5014→
+  5015→  // Application Tracking View
+  5016→  const renderTracking = () => (
+  5017→    <div className="space-y-3">
+  5018→      {renderHeader('Application Tracking', 'Track your SASSA applications')}
+  5019→      
+  5020→      {applications.length === 0 ? (
+  5021→        <div className="text-center py-6">
+  5022→          <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+  5023→          <p className="text-xs text-gray-500">No applications yet</p>
+  5024→        </div>
+  5025→      ) : (
+  5026→        <div className="space-y-2">
+  5027→          {applications.map((app) => (
+  5028→            <Card key={app.id}>
+  5029→              <CardContent className="p-3">
+  5030→                <div className="flex items-start justify-between mb-2">
+  5031→                  <div>
+  5032→                    <p className="font-semibold text-gray-900 text-xs">{app.grantName}</p>
+  5033→                    <p className="text-[10px] text-gray-500">{app.id}</p>
+  5034→                  </div>
+  5035→                  <Badge className={getStatusColor(app.status)}>{app.status}</Badge>
+  5036→                </div>
+  5037→                <div className="grid grid-cols-2 gap-2 text-[10px]">
+  5038→                  <div>
+  5039→                    <p className="text-gray-500">Submitted</p>
+  5040→                    <p className="font-medium text-gray-900">{formatDate(app.submittedAt)}</p>
+  5041→                  </div>
+  5042→                  <div>
+  5043→                    <p className="text-gray-500">Processing Time</p>
+  5044→                    <p className="font-medium text-gray-900">{app.estimatedProcessingDays} days</p>
+  5045→                  </div>
+  5046→                </div>
+  5047→                {app.status === 'processing' && (
+  5048→                  <div className="mt-2">
+  5049→                    <div className="bg-gray-200 rounded-full h-1.5">
+  5050→                      <div className="bg-[#00897B] h-1.5 rounded-full" style={{ width: '60%' }}></div>
+  5051→                    </div>
+  5052→                    <p className="text-[10px] text-gray-500 mt-1">Application under review</p>
+  5053→                  </div>
+  5054→                )}
+  5055→              </CardContent>
+  5056→            </Card>
+  5057→          ))}
+  5058→        </div>
+  5059→      )}
+  5060→    </div>
+  5061→  );
+  5062→
+  5063→  // Payment History View
+  5064→  const renderHistory = () => (
+  5065→    <div className="space-y-3">
+  5066→      {renderHeader('Payment History', 'Last 3 months of SASSA payments')}
+  5067→      
+  5068→      <div className="p-2.5 rounded-lg bg-green-50 border border-green-200 mb-2">
+  5069→        <p className="text-[10px] text-green-700">Total received (3 months):</p>
+  5070→        <p className="font-bold text-green-800">{formatAmount(paymentHistory.filter(p => p.status === 'processed').reduce((sum, p) => sum + p.amount, 0))}</p>
+  5071→      </div>
+  5072→      
+  5073→      <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+  5074→        {paymentHistory.map((payment) => (
+  5075→          <div 
+  5076→            key={payment.id} 
+  5077→            className={`p-2.5 rounded-lg border ${
+  5078→              payment.status === 'pending' 
+  5079→                ? 'border-amber-200 bg-amber-50' 
+  5080→                : 'border-gray-200 bg-gray-50'
+  5081→            }`}
+  5082→          >
+  5083→            <div className="flex items-center justify-between">
+  5084→              <div>
+  5085→                <p className="font-medium text-gray-900 text-xs">{payment.grantType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+  5086→                <p className="text-[10px] text-gray-500">{formatDate(payment.date)}</p>
+  5087→              </div>
+  5088→              <div className="text-right">
+  5089→                <p className="font-semibold text-gray-900 text-xs">{formatAmount(payment.amount)}</p>
+  5090→                <Badge className={getStatusColor(payment.status)}>{payment.status}</Badge>
+  5091→              </div>
+  5092→            </div>
+  5093→            <p className="text-[10px] text-gray-400 mt-1">Ref: {payment.reference}</p>
+  5094→          </div>
+  5095→        ))}
+  5096→      </div>
+  5097→    </div>
+  5098→  );
+  5099→
+  5100→  // Early Access View (Grant+ Advance Flow)
+  5101→  const renderEarlyAccess = () => (
+  5102→    <div className="space-y-3">
+  5103→      {renderHeader('Grant+ Advance', 'Get an advance on your SASSA grant')}
+  5104→      
+  5105→      {/* Eligibility Badge */}
+  5106→      <div className="p-3 rounded-lg bg-gradient-to-r from-[#00897B] to-[#43A047] text-white">
+  5107→        <div className="flex items-center gap-2 mb-2">
+  5108→          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+  5109→            <CheckCircle className="w-4 h-4" />
+  5110→          </div>
+  5111→          <div>
+  5112→            <p className="font-semibold text-xs">✓ You're eligible</p>
+  5113→            <p className="text-[10px] text-white/80">Up to {formatAmount(earlyAccessData?.maxAdvance || 1200)} available</p>
+  5114→          </div>
+  5115→        </div>
+  5116→        <div className="pt-2 border-t border-white/20">
+  5117→          <p className="text-[10px] text-white/80">Your next grant pays on</p>
+  5118→          <p className="text-sm font-bold">{earlyAccessData?.nextPaymentDate ? formatDate(earlyAccessData.nextPaymentDate) : '3 June 2025'}</p>
+  5119→        </div>
+  5120→      </div>
+  5121→
+  5122→      {/* Tier Information */}
+  5123→      <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200">
+  5124→        <div className="flex items-center gap-2 mb-2">
+  5125→          <Award className="w-4 h-4 text-amber-500" />
+  5126→          <span className="text-xs font-medium text-gray-700">Your Tier: {earlyAccessData?.tier || 'Premier'}</span>
+  5127→        </div>
+  5128→        <div className="grid grid-cols-2 gap-2 text-[10px]">
+  5129→          <div className="p-2 bg-white rounded border">
+  5130→            <p className="text-gray-500">Max Advance</p>
+  5131→            <p className="font-semibold text-gray-900">{formatAmount(earlyAccessData?.maxAdvance || 1200)}</p>
+  5132→          </div>
+  5133→          <div className="p-2 bg-white rounded border">
+  5134→            <p className="text-gray-500">Service Fee</p>
+  5135→            <p className="font-semibold text-gray-900">R{earlyAccessData?.serviceFee || 95} flat</p>
+  5136→          </div>
+  5137→        </div>
+  5138→      </div>
+  5139→      
+  5140→      {earlyAccessData?.upcomingPayments?.length > 0 ? (
+  5141→        <div className="space-y-2">
+  5142→          <p className="text-xs font-medium text-gray-700">Request Advance</p>
+  5143→          {earlyAccessData.upcomingPayments.map((payment: any) => (
+  5144→            <Card key={payment.id}>
+  5145→              <CardContent className="p-3">
+  5146→                <div className="flex items-start justify-between mb-2">
+  5147→                  <div>
+  5148→                    <p className="font-semibold text-gray-900 text-xs">{payment.grantName}</p>
+  5149→                    <p className="text-[10px] text-gray-500">Payment date: {formatDate(payment.date)}</p>
+  5150→                  </div>
+  5151→                  <div className="text-right">
+  5152→                    <p className="text-[10px] text-gray-500">Full Amount</p>
+  5153→                    <p className="font-semibold text-gray-900 text-xs">{formatAmount(payment.amount)}</p>
+  5154→                  </div>
+  5155→                </div>
+  5156→                
+  5157→                <div className="grid grid-cols-3 gap-2 p-2 bg-gray-50 rounded text-center text-[10px] mb-2">
+  5158→                  <div>
+  5159→                    <p className="text-gray-500">Available</p>
+  5160→                    <p className="font-semibold text-[#00897B]">{formatAmount(payment.availableAdvance)}</p>
+  5161→                  </div>
+  5162→                  <div>
+  5163→                    <p className="text-gray-500">Fee</p>
+  5164→                    <p className="font-semibold text-amber-600">{formatAmount(payment.fee)}</p>
+  5165→                  </div>
+  5166→                  <div>
+  5167→                    <p className="text-gray-500">You Get</p>
+  5168→                    <p className="font-semibold text-green-600">{formatAmount(payment.netAmount)}</p>
+  5169→                  </div>
+  5170→                </div>
+  5171→
+  5172→                {/* NCA Compliance Notice */}
+  5173→                <div className="p-2 bg-blue-50 rounded text-[10px] text-blue-700 mb-2">
+  5174→                  <strong>NCA Compliant:</strong> No interest charged • Flat fee only • Auto-deducted from grant
+  5175→                </div>
+  5176→                
+  5177→                <Button 
+  5178→                  className="w-full bg-[#00897B] hover:bg-[#00695C] text-xs h-9"
+  5179→                  onClick={() => handleEarlyAccess(payment.id)}
+  5180→                  disabled={loading || payment.daysUntilPayment < 5}
+  5181→                >
+  5182→                  {loading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <HandCoins className="w-3 h-3 mr-1" />}
+  5183→                  Get Advance Now
+  5184→                </Button>
+  5185→                {payment.daysUntilPayment < 5 && (
+  5186→                  <p className="text-[10px] text-amber-600 text-center mt-1">Available 5+ days before payment</p>
+  5187→                )}
+  5188→              </CardContent>
+  5189→            </Card>
+  5190→          ))}
+  5191→        </div>
+  5192→      ) : (
+  5193→        <div className="space-y-3">
+  5194→          {/* Demo Advance Card */}
+  5195→          <Card className="border-2 border-[#00897B]">
+  5196→            <CardContent className="p-3">
+  5197→              <div className="flex items-center justify-between mb-3">
+  5198→                <div>
+  5199→                  <p className="font-semibold text-gray-900 text-sm">Older Person's Grant</p>
+  5200→                  <p className="text-[10px] text-gray-500">Next payment: 3 June 2025</p>
+  5201→                </div>
+  5202→                <Badge className="bg-[#00897B]/10 text-[#00897B] text-[10px]">Premier</Badge>
+  5203→              </div>
+  5204→
+  5205→              <div className="space-y-2 mb-3">
+  5206→                <div className="flex justify-between text-xs">
+  5207→                  <span className="text-gray-500">Grant Amount</span>
+  5208→                  <span className="font-medium">R 2,090.00</span>
+  5209→                </div>
+  5210→                <div className="flex justify-between text-xs">
+  5211→                  <span className="text-gray-500">Max Advance (57%)</span>
+  5212→                  <span className="font-medium text-[#00897B]">R 1,200.00</span>
+  5213→                </div>
+  5214→                <div className="flex justify-between text-xs">
+  5215→                  <span className="text-gray-500">Service Fee</span>
+  5216→                  <span className="font-medium text-amber-600">R 95.00</span>
+  5217→                </div>
+  5218→                <div className="border-t pt-2 flex justify-between text-xs font-semibold">
+  5219→                  <span className="text-gray-700">You Receive</span>
+  5220→                  <span className="text-green-600">R 1,105.00</span>
+  5221→                </div>
+  5222→              </div>
+  5223→
+  5224→              <Button 
+  5225→                className="w-full bg-[#00897B] hover:bg-[#00695C] text-xs"
+  5226→                onClick={() => toast.success('Advance request submitted!')}
+  5227→              >
+  5228→                <HandCoins className="w-3.5 h-3.5 mr-1.5" />
+  5229→                Request R1,200 Advance
+  5230→              </Button>
+  5231→            </CardContent>
+  5232→          </Card>
+  5233→
+  5234→          {/* Tier Table */}
+  5235→          <div className="p-2.5 rounded-lg border border-gray-200">
+  5236→            <p className="text-xs font-medium text-gray-700 mb-2">Grant+ Tiers</p>
+  5237→            <div className="space-y-1.5 text-[10px]">
+  5238→              {[
+  5239→                { tier: 'Starter', grant: 'SRD (R370)', max: 'R185', fee: 'R25' },
+  5240→                { tier: 'Standard', grant: 'Child Support', max: 'R265', fee: 'R35' },
+  5241→                { tier: 'Core', grant: 'Disability', max: 'R800', fee: 'R65' },
+  5242→                { tier: 'Premier', grant: 'Older Persons', max: 'R1,200', fee: 'R95' },
+  5243→              ].map((t, i) => (
+  5244→                <div key={i} className={`flex justify-between p-1.5 rounded ${t.tier === 'Premier' ? 'bg-[#00897B]/10' : 'bg-gray-50'}`}>
+  5245→                  <span className="font-medium text-gray-700">{t.tier}</span>
+  5246→                  <span className="text-gray-500">{t.grant}</span>
+  5247→                  <span className="text-[#00897B]">{t.max}</span>
+  5248→                  <span className="text-amber-600">{t.fee}</span>
+  5249→                </div>
+  5250→              ))}
+  5251→            </div>
+  5252→          </div>
+  5253→        </div>
+  5254→      )}
+  5255→      
+  5256→      {/* How it works */}
+  5257→      <div className="p-2.5 rounded-lg border border-gray-200">
+  5258→        <p className="text-xs font-medium text-gray-700 mb-2">How Grant+ Works</p>
+  5259→        <div className="space-y-1.5 text-[10px] text-gray-600">
+  5260→          <p className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" /> Verify your SASSA grant</p>
+  5261→          <p className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" /> Get up to 57% of your grant early</p>
+  5262→          <p className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" /> Flat fee — no interest charged</p>
+  5263→          <p className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" /> Auto-deducted on payment day</p>
+  5264→          <p className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" /> NCA compliant • 5-day rescission right</p>
+  5265→        </div>
+  5266→      </div>
+  5267→
+  5268→      {/* Risk Guardrails */}
+  5269→      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200">
+  5270→        <p className="text-[10px] text-amber-700">
+  5271→          <strong>Consumer Protection:</strong> Max 1 active advance • Max 60% of grant • No rollovers • 30-day cooling-off after default
+  5272→        </p>
+  5273→      </div>
+  5274→    </div>
+  5275→  );
+  5276→
+  5277→  return (
+  5278→    <Dialog open={true} onOpenChange={onClose}>
+  5279→      <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+  5280→        <DialogHeader className="pb-2">
+  5281→          <DialogTitle className="flex items-center gap-2">
+  5282→            <HandCoins className="w-5 h-5 text-[#00897B]" />
+  5283→            Grant+ SASSA Advance
+  5284→          </DialogTitle>
+  5285→          <DialogDescription>
+  5286→            Get an advance on your SASSA grant — NCA compliant, no interest
+  5287→          </DialogDescription>
+  5288→        </DialogHeader>
+  5289→
+  5290→        {loading && !linked ? (
+  5291→          <div className="flex items-center justify-center py-8">
+  5292→            <Loader2 className="w-6 h-6 animate-spin text-[#00897B]" />
+  5293→          </div>
+  5294→        ) : (
+  5295→          <>
+  5296→            {view === 'main' && renderMain()}
+  5297→            {view === 'grants' && renderGrants()}
+  5298→            {view === 'calendar' && renderCalendar()}
+  5299→            {view === 'apply' && renderApply()}
+  5300→            {view === 'tracking' && renderTracking()}
+  5301→            {view === 'history' && renderHistory()}
+  5302→            {view === 'early-access' && renderEarlyAccess()}
+  5303→          </>
+  5304→        )}
+  5305→
+  5306→        <DialogFooter className="pt-2 border-t">
+  5307→          {view !== 'main' ? (
+  5308→            <Button variant="outline" size="sm" onClick={() => setView('main')} className="text-xs">
+  5309→              <ArrowLeft className="w-3 h-3 mr-1" /> Back
+  5310→            </Button>
+  5311→          ) : null}
+  5312→          {view === 'main' && linked && (
+  5313→            <Button variant="outline" size="sm" onClick={() => setView('history')} className="text-xs">
+  5314→              <Clock className="w-3 h-3 mr-1" /> Payment History
+  5315→            </Button>
+  5316→          )}
+  5317→          <Button variant="ghost" size="sm" onClick={onClose} className="text-xs">Close</Button>
+  5318→        </DialogFooter>
+  5319→      </DialogContent>
+  5320→    </Dialog>
+  5321→  );
+  5322→}
+  5323→
+  5324→// Insurance Marketplace Modal - Comprehensive Implementation
+  5325→type InsuranceView = 'main' | 'categories' | 'quotes' | 'apply' | 'success';
+  5326→
+  5327→interface InsuranceProvider {
+  5328→  id: string;
+  5329→  name: string;
+  5330→  logo: string;
+  5331→  rating: number;
+  5332→  fscaLicense: string;
+  5333→  established: number;
+  5334→}
+  5335→
+  5336→interface InsuranceProduct {
+  5337→  id: string;
+  5338→  provider: string;
+  5339→  name: string;
+  5340→  coverAmount: number;
+  5341→  premium: number;
+  5342→  waitingPeriod: number;
+  5343→  benefits: string[];
+  5344→  description: string;
+  5345→  providerDetails?: InsuranceProvider;
+  5346→}
+  5347→
+  5348→interface InsuranceCategory {
+  5349→  id: string;
+  5350→  name: string;
+  5351→  icon: string;
+  5352→  description: string;
+  5353→}
+  5354→
+  5355→function InsuranceModal({ onClose }: { onClose: () => void }) {
+  5356→  const [view, setView] = useState<InsuranceView>('main');
+  5357→  const [loading, setLoading] = useState(true);
+  5358→  const [processing, setProcessing] = useState(false);
+  5359→  const [categories, setCategories] = useState<InsuranceCategory[]>([]);
+  5360→  const [providers, setProviders] = useState<InsuranceProvider[]>([]);
+  5361→  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  5362→  const [quotes, setQuotes] = useState<InsuranceProduct[]>([]);
+  5363→  const [selectedProduct, setSelectedProduct] = useState<InsuranceProduct | null>(null);
+  5364→  const [userPolicies, setUserPolicies] = useState<any[]>([]);
+  5365→  const [insights, setInsights] = useState<any[]>([]);
+  5366→  const [applicationRef, setApplicationRef] = useState<string>('');
+  5367→  const [personalDetails, setPersonalDetails] = useState({ name: '', idNumber: '', phone: '' });
+  5368→
+  5369→  // Fetch insurance data on mount
+  5370→  useEffect(() => {
+
+[showing lines 4521-5370 of 13193; use offset=5371 with limit to continue reading]

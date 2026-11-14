@@ -1,0 +1,402 @@
+   200→| Mac server failure | Staging only; backups; move to hosted production before live money |
+   201→| Single-person dependency | Documentation, runbooks and a second engineer with access |
+   202→
+   203→## 12. Decisions still needed
+   204→
+   205→1. Which host serves the live site today (Netlify or Cloudflare), and the plan for the production host.
+   206→2. First funding structure and lender for credit.
+   207→3. Legal opinion on credit provider, wallet and payment roles in South Africa.
+   208→4. The Malawi contracting entity, provider choice and licensing route (section 13).
+   209→5. The name, after a trademark and meaning check.
+   210→6. Who owns compliance, security and operations once the team grows.
+   211→
+   212→## 13. Malawi mobile money enablement
+   213→
+   214→This section covers Airtel Money, TNM Mpamba and M-Pesa. The facts below come from public sources reviewed on 11 November 2026 (listed in section 15); anything marked *VERIFY* needs a partner or counsel to confirm.
+   215→
+   216→### 13.1 The three names and what they mean in Malawi
+   217→
+   218→| Name | What it is | How Groway reaches it |
+   219→| --- | --- | --- |
+   220→| Airtel Money | Airtel Malawi's wallet; one of the two main mobile money operators | Through a licensed aggregator first; direct operator integration later for cost |
+   221→| TNM Mpamba | The wallet of TNM Mpamba Limited, TNM's mobile money company | Same as Airtel Money |
+   222→| M-Pesa | Vodacom and Safaricom's wallet. The sources reviewed name only Airtel and TNM as Malawi's mobile money operators, and aggregator coverage tables list Airtel and TNM for Malawi, with M-Pesa listed for other countries. M-Pesa reaches Malawi as a cross-border sender, for example Vodacom Tanzania customers sending to Malawian bank accounts and to Airtel Money and Mpamba wallets | Treat M-Pesa as an inbound remittance channel that lands in Airtel Money, Mpamba or a bank account. Add a direct M-Pesa adapter only if a domestic M-Pesa wallet launches. *VERIFY* with Vodacom |
+   223→
+   224→Both Malawian wallets are connected to the National Switch and can send money to each other in real time. TNM held about 56% of mobile subscribers and Airtel about 43% at the end of 2022, according to Omdia.
+   225→
+   226→### 13.2 Approach: start with a licensed partner
+   227→
+   228→Groway does not issue e-money or run a payment system in Malawi in the first phases. It integrates through payment service providers that the Reserve Bank of Malawi (RBM) has licensed, behind a provider-neutral interface so providers can be swapped or combined.
+   229→
+   230→| Criterion | pawaPay | PayChangu | Direct operator integration |
+   231→| --- | --- | --- | --- |
+   232→| Malawi operators | Airtel and TNM, in kwacha | Airtel Money and Mpamba | One integration per operator |
+   233→| Services | Collections and payouts through one asynchronous API, with callbacks | Collections (hosted checkout and direct charge), payouts to wallets and banks, bill payments (for example water and electricity), airtime, cards, USD virtual accounts | Depends on the operator |
+   234→| Licence | Reported to hold an RBM payment service provider licence | Reported to hold an RBM licence effective 30 September 2026 | Operator-licensed |
+   235→| Other countries | About 23 countries, useful for later expansion | Malawi focus | None |
+   236→| Fees, limits, settlement terms | To obtain | To obtain | To negotiate |
+   237→
+   238→**Decision rule:** run both sandboxes for a week and compare success rate, latency, fees and settlement terms, then contract one as primary and the other as failover. Move to direct operator integration only when volume makes the fee saving worth the extra work.
+   239→
+   240→### 13.3 Use cases in order
+   241→
+   242→| Phase | Use case | How it works | Why in this order |
+   243→| --- | --- | --- | --- |
+   244→| M0 | Preparation | Contracting entity, settlement bank account in kwacha, provider onboarding, data protection steps | Nothing live can start without these |
+   245→| M1 | Collections: SmartPole WiFi top-ups and Merchant OS sales | Customer enters a phone number, approves a prompt on the handset with their PIN, a callback confirms, the ledger records the sale | Your own first-party flows, small tickets, no credit risk |
+   246→| M2 | Payouts | Refunds, supplier payments and merchant settlement to wallets | Reuses the same rail in the other direction |
+   247→| M3 | Credit | Disbursement to a merchant's wallet; repayment by a share of collections or by customer-approved prompts | Needs the ledger, decisioning and licensing complete |
+   248→| M4 | Wallet and services | Cash in and out through a partner, bill payments and airtime | Depends on the consumer wallet licence route |
+   249→
+   250→My research found no debit-order equivalent for Malawian wallets. Plan repayment around a split of collections, customer-approved payment prompts with reminders, and agent cash, and ask each provider whether standing mandates exist. *VERIFY*
+   251→
+   252→### 13.4 Rail design
+   253→
+   254→The Tshepo mobile money rail is a provider-neutral interface, in the same ports-and-adapters style as the ledger:
+   255→
+   256→```ts
+   257→interface MobileMoneyRail {
+   258→  provider: 'pawapay' | 'paychangu';
+   259→  collect(req: CollectRequest): Promise<RailAccepted>;   // customer approves on handset
+   260→  payout(req: PayoutRequest): Promise<RailAccepted>;
+   261→  status(reference: string): Promise<RailStatus>;
+   262→  parseCallback(headers: Headers, body: string): VerifiedEvent; // throws if invalid
+   263→  operators(): Promise<Operator[]>;                      // AIRTEL_MWI, TNM_MWI
+   264→}
+   265→
+   266→type CollectRequest = {
+   267→  reference: string;        // equals the ledger idempotency key
+   268→  amountMinor: bigint;      // kwacha in tambala
+   269→  currency: 'MWK';
+   270→  msisdn: string;           // +265...
+   271→  operator: 'AIRTEL_MWI' | 'TNM_MWI';
+   272→  purpose: string;
+   273→};
+   274→```
+   275→
+   276→**Transaction states:** created, accepted by provider, waiting for the customer, then completed, failed, timed out, or unknown. Unknown is never treated as success: it is polled until final and reconciled.
+   277→
+   278→**Ledger postings (kwacha accounts kept separate from rand):**
+   279→
+   280→| Event | Entry |
+   281→| --- | --- |
+   282→| Collection completed | Debit mobile money clearing (per provider), credit merchant wallet or sales account |
+   283→| Fee charged | Debit merchant wallet, credit fee income; provider cost to a cost account |
+   284→| Provider settles to the kwacha bank account | Debit trust bank (kwacha), credit mobile money clearing |
+   285→| Payout accepted | Debit wallet, credit payout pending (a reserve) |
+   286→| Payout completed | Debit payout pending, credit mobile money clearing |
+   287→| Payout failed | Reverse the reserve |
+   288→
+   289→Amount precision differs by provider and operator, so each provider adapter converts between tambala and the provider's decimal rules, with tests for rounding.
+   290→
+   291→**Reconciliation:** a daily job compares provider reports and callbacks with the ledger and sends differences to an exceptions queue. No manual edits to ledger entries; corrections are new entries.
+   292→
+   293→### 13.5 Callback security and failure handling
+   294→
+   295→- Verify every callback signature as the provider specifies, reject stale timestamps, and store the raw payload append-only.
+   296→- Answer quickly with a success code and process the event asynchronously. Process each provider reference at most once.
+   297→- Always have a status poll as a fallback with backoff.
+   298→
+   299→| Situation | Handling |
+   300→| --- | --- |
+   301→| Customer ignores the prompt, enters a wrong PIN or has too little money | Mark failed, show a clear message, post nothing |
+   302→| No answer before the timeout | Mark unknown, poll, reconcile; never assume success |
+   303→| Duplicate callback | No effect, because of the idempotency key |
+   304→| Provider outage | Circuit breaker; use the second provider for the same operator; queue payouts |
+   305→| Callback for an unknown reference | Quarantine and alert |
+   306→| Amount differs from the request | Hold and investigate |
+   307→| Wallet limit exceeded | Show the limit message; do not retry |
+   308→
+   309→### 13.6 Identity, limits and fraud
+   310→
+   311→- Validate phone numbers (+265 and operator prefixes); use account-name checks if the provider offers them.
+   312→- Keep product limits inside the operator wallet limits. RBM sets transaction and balance limits for e-money accounts under the Payment Systems (E-Money) Regulations 2019.
+   313→- Map KYC levels to the national ID route *VERIFY*; reuse sanctions and politically exposed person screening.
+   314→- Add velocity rules, SIM-swap signals where operators share them, a cooling-off period when a payout destination changes, and dual approval for large payouts.
+   315→
+   316→### 13.7 Licensing, regulation and data
+   317→
+   318→| Area | What applies | Design consequence |
+   319→| --- | --- | --- |
+   320→| Payments | The Payment Systems Act 2016 makes it unlawful to run a payment system, remittance or e-money service without RBM authorisation. RBM has warned the public about unlicensed providers | Stay on a licensed partner's licence. The Malawi entity does not hold customer funds. If Groway ever holds or moves funds for others, apply for a licence or use a licensed partner structure. *VERIFY* with Malawian counsel |
+   321→| Trust accounts | The 2011 mobile payment guidelines require trust accounts matching e-money issued | Not Groway's duty while it is not an issuer; relevant if the wallet is brought to Malawi |
+   322→| Credit | Lending needs registration under the Financial Services Act regime *VERIFY* | Do not start M3 before the registration route is confirmed |
+   323→| Anti-money laundering | Financial Intelligence Authority obligations *VERIFY* | Extend the compliance programme to Malawi |
+   324→| Data protection | Data Protection Act 2024 in force from 3 June 2024, regulated by MACRA. Requires a lawful basis, a data protection officer, impact assessments for high-risk processing, registration for significant controllers, and conditions on sending data abroad. Financial-sector bodies have asked for a grace period | Complete the data protection steps in M0. Agree a lawful basis and safeguards before Malawi customer data is stored in South Africa or on the Mac. Tokenise phone numbers. *VERIFY* |
+   325→| Tax and levies | Press reports describe new mobile money levies | Model fees and taxes as configuration, not constants. *VERIFY* current rates |
+   326→| Currency | Kwacha settlement; conversion to rand or dollars is a regulated step | Keep kwacha balances local; record any conversion explicitly. *VERIFY* exchange rules |
+   327→
+   328→### 13.8 Malawi backlog
+   329→
+   330→| ID | Story | Depends on | Phase |
+   331→| --- | --- | --- | --- |
+   332→| M-01 | Decide the contracting entity; open a kwacha settlement bank account | None | M0 |
+   333→| M-02 | Complete provider onboarding and sign agreements with two providers | M-01 | M0 |
+   334→| M-03 | Obtain sandbox credentials and store them in the secret manager | M-02 | M0 |
+   335→| M-04 | Data protection work: officer, impact assessment, controller registration, transfer basis | None | M0 |
+   336→| M-05 | Define the rail interface and types | Wave 0 | M1 |
+   337→| M-06 | Kwacha ledger accounts: clearing per provider, payout pending, fees, trust bank | Ledger | M1 |
+   338→| M-07 | First provider adapter: collect, status, callback verification | M-03, M-05 | M1 |
+   339→| M-08 | Callback endpoint: signature check, replay guard, raw payload store | M-07 | M1 |
+   340→| M-09 | Collection state machine and ledger postings | M-06, M-08 | M1 |
+   341→| M-10 | WiFi top-up flow in the hub portal | M-09 | M1 |
+   342→| M-11 | Pay-by-mobile-money at Merchant OS checkout in kwacha | M-09 | M1 |
+   343→| M-12 | Daily reconciliation job and exceptions queue | M-09 | M1 |
+   344→| M-13 | Payouts with reserve and compensation | M-09 | M2 |
+   345→| M-14 | Second provider adapter and automatic failover | M-07 | M2 |
+   346→| M-15 | Operator and limit configuration; phone and name validation | M-07 | M2 |
+   347→| M-16 | Fraud rules: velocity, SIM swap signals, payout cooling-off | M-13 | M2 |
+   348→| M-17 | Credit disbursement to a wallet through payouts | M-13, credit registration | M3 |
+   349→| M-18 | Repayment: split of collections, approved prompts, reminders | M-09 | M3 |
+   350→| M-19 | Malawi policy pack: limits, English and Chichewa messages, reporting | M3 start | M3 |
+   351→| M-20 | Cash in and out, bill payments and airtime through a provider | M-13 | M4 |
+   352→| M-21 | Sandbox failure tests: timeouts, duplicates, outages | M-14 | M1 to M2 |
+   353→| M-22 | Runbooks and go-live checklist for each phase | All above | Each phase |
+   354→
+   355→### 13.9 Go-live checklist for each Malawi phase
+   356→
+   357→- [ ] Contracting entity, bank account and provider agreements in place
+   358→- [ ] Counsel's written view on licensing for this phase
+   359→- [ ] Data protection officer named, impact assessment done, transfer basis agreed
+   360→- [ ] Sandbox tests passed, including duplicates, timeouts and outages
+   361→- [ ] Daily reconciliation clean for 30 days in sandbox
+   362→- [ ] Callback verification and replay guard tested
+   363→- [ ] Customer messages reviewed in English and Chichewa
+   364→- [ ] Fee and tax settings confirmed
+   365→- [ ] Exposure caps, kill switch and on-call owner ready
+   366→
+   367→### 13.10 Questions for Malawi
+   368→
+   369→1. Which entity will sign the provider agreements (the Malawi company that replaces the terminated brand)?
+   370→2. Should collections settle into a kwacha bank account in Malawi, and which bank?
+   371→3. Who is your Malawian counsel for licensing, credit registration and data protection?
+   372→4. Is there any domestic M-Pesa service you have been offered or promised? If so, who is the contact at Vodacom?
+   373→
+   374→## 14. Appendices
+   375→
+   376→### A. Environment variables
+   377→
+   378→| Variable | Purpose | Note |
+   379→| --- | --- | --- |
+   380→| DATABASE\_URL | Postgres connection | Set by the setup script |
+   381→| JWT\_SECRET | Signing key for logins | Generate randomly; never commit |
+   382→| NEXT\_PUBLIC\_APP\_URL, NEXT\_PUBLIC\_BASE\_URL, BASE\_URL | Public address of the app | Built into the app; rebuild after changing |
+   383→| GOOGLE\_CLIENT\_ID, GOOGLE\_CLIENT\_SECRET | Google sign-in | Only if used |
+   384→| PRISMA\_LOG\_QUERIES | Set to 1 to log queries | Off by default |
+   385→| Provider keys for mobile money (proposed names such as PAWAPAY\_API\_TOKEN, PAYCHANGU\_SECRET\_KEY) | Sandbox and live credentials | Proposed names; keep in a secret manager |
+   386→
+   387→### B. What has been delivered
+   388→
+   389→- **tshepo-groway-integration (zip):** Tshepo code and 24 tests, Prisma models, SQL guards, the Postgres schema, the fixed database client, and four helper scripts (database setup, build, start, backup).
+   390→- **Architecture and build specification v1.0 (document):** the longer technical specification, drawings, build guide and backlog.
+   391→- **Groway on your Mac (document):** the step-by-step setup guide.
+   392→- **GoPay end-to-end prototype (web page):** the sandbox of one payment from till to ledger.
+   393→
+   394→### C. Glossary
+   395→
+   396→| Term | Meaning |
+   397→| --- | --- |
+   398→| Ledger | The permanent record of every money movement, where each entry balances |
+   399→| Idempotency | Doing the same request twice has the same effect as doing it once |
+   400→| Outbox | A table that records events in the same step as the money entry, so none are lost |
+   401→| PSP | Payment service provider, licensed to move payments |
+   402→| MNO | Mobile network operator, such as Airtel or TNM |
+   403→| MSISDN | A mobile phone number |
+   404→| Tambala | One hundredth of a Malawi kwacha |
+   405→| Trust account | A bank account holding customer money that backs e-money |
+   406→
+   407→## 15. Sources reviewed
+   408→
+   409→- pawaPay provider coverage and payout documentation: https://docs.pawapay.io/v2/docs/providers
+   410→- PayChangu developer documentation: https://developer.paychangu.com/docs/introduction
+   411→- PayChangu licence report: https://allafrica.com/stories/202610190191.html
+   412→- pawaPay licence report: https://mbc.mw/pawapay-secures-mobile-money-licence-from-reserve-bank-of-malawi/
+   413→- Payment Systems Act 2016 (Malawi): https://malawilii.org/akn/mw/act/2016/15
+   414→- RBM warning on unlicensed providers: https://mwnation.com/rbm-moves-to-curb-unlicensed-payment-service-providers/
+   415→- Malawi mobile money market and interoperability: https://www.uncdf.org/article/4270/exciting-changes-in-malawi-dfs-market and https://www.ifc.org/content/dam/ifc/doc/mgrt/malawi-building-resilience-through-dfs.pdf
+   416→- TNM and Airtel market shares: https://www.connectingafrica.com/document.asp?doc\_id=783094
+   417→- M-Pesa cross-border transfers into Malawi: https://malawihctz.org/launch-of-vodacom-tanzanias-m-pesa-campaign/
+   418→- Data Protection Act 2024 overview: https://itlawco.com/focus-areas/data-protection-and-privacy/malawis-data-protection-act-2024-an-overview/
+   419→- MACRA data protection regulations in development: https://malawi24.com/2026/07/16/macra-targets-stronger-data-protection-compliance/
+   420→
+   421→## 16. Top-up credit: airtime, data and electricity advances (South Africa and Malawi)
+   422→
+   423→This section covers the product where a customer who is short of money gets airtime, data or an electricity token now, and the advance plus a fee is taken back automatically the next time they top up or buy. Public facts below were reviewed on 11 November 2026 and are listed in 16.14. Fees and menus change, so every figure here is illustrative until confirmed with the operator or vendor. *VERIFY* marks items for counsel or a partner.
+   424→
+   425→### 16.1 How it works in the market today
+   426→
+   427→**Mechanism.** The customer asks (USSD menu, SMS, app or WhatsApp). A decision engine checks recharge or purchase history and returns the amounts they qualify for. The customer sees the fee and accepts. The airtime or token is delivered immediately. The next time they recharge or buy, the platform takes the advance and fee first and lets the rest through. That automatic claw-back is the whole model, and it only works where the platform can see and intercept the top-up.
+   428→
+   429→**South Africa**
+   430→
+   431→- **Vodacom Airtime Advance** (dial *135*082#): advances of up to R20 depending on what the customer qualifies for, with an access fee of R1.10 including VAT on one Vodacom page and R1.20 per R10 or part thereof on another. Repaid from the next recharge. Top-up and uChoose customers who do not recharge are billed (the amount is added to the bill by the end of the month; another page says after 30 days). Eligibility includes recharging at least R29 a month over three months; postpaid customers do not qualify. Vodacom says more than 10 million South Africans use it.
+   432→- **MTN XtraTime** launched in 2016 as a USSD service charging a small fee instead of interest. In August 2026 MTN was reported to be cutting back airtime advances while Vodacom and Telkom lean on them.
+   433→- **Cell C** offers an advance for a fixed fee per transaction with no interest.
+   434→- **Optasia** is reported as the company behind the airtime lending of Vodacom and MTN, and in September 2026 was reported to be acquiring Finergi, whose technology lets prepaid electricity meters work as digital wallets with repayment at the next purchase.
+   435→- **Electricity:** Blu Label offers BlueAdvance for airtime and electricity; Citiq launched an in-app electricity advance in November 2025 that takes 50% of each later purchase; WattWallet is a pay-at-month-end pilot.
+   436→
+   437→**Malawi**
+   438→
+   439→- **TNM Pasavute:** airtime credit via \*600# or an SMS, with a 10% service fee repaid on the next recharge, built with South Africa's Net1 and Supa Pesa; reported at more than 20 million requests.
+   440→- **Airtel Kutapa:** borrow K50 to K2,000 with codes such as *533*50#; borrowing K50 means paying back K5 extra; needs 90 days on the network, prepaid only, and no outstanding balance.
+   441→- **Airtel Kutchova:** a digital loan issued by a bank and transacted on Airtel Money; borrowers use it for airtime, food and electricity.
+   442→- **TNM Mpamba Ndikankhe:** an overdraft on the Mpamba wallet after 90 days of use; agents can sell ESCOM tokens and airtime.
+   443→
+   444→**What this means.** Both countries already have incumbents inside the operators' own recharge systems. Groway cannot simply add a menu item to an operator's USSD flow without an operator agreement. The design below therefore starts where Groway controls the top-up.
+   445→
+   446→### 16.2 Review of the build so far
+   447→
+   448→| Capability needed | Before this review | Now |
+   449→| --- | --- | --- |
+   450→| Advance menu, quote and acceptance (principal, fee, total due) | Not covered | Built: product catalogue and quote |
+   451→| Eligibility from recharge history and a limit ladder | Only merchant decisioning | Built: recharge-history rules per product |
+   452→| Fee models (flat, per block, percent) with a ceiling check | Not covered | Built |
+   453→| One open advance per customer | Not covered | Built |
+   454→| Claw-back on the next top-up, with the remainder passed through | Only the GoPay split on merchant sales | Built: full-first and capped-share recovery |
+   455→| Electricity: take a share of each purchase, anchored to the meter | Not covered | Built in the rules; vending hook still to build |
+   456→| Overdue handling: add to bill (South Africa) or write off | Not covered | Built |
+   457→| Delivery of airtime, data or a token | Not covered | Specified as a vending adapter (16.6); not built |
+   458→| Top-up event feed and interception across channels | Not covered | Specified (16.5); not built |
+   459→| Float funding and settlement with the operator or vendor | Not covered | Specified (16.7); decision needed |
+   460→| Malawi parity (airtime, ESCOM, mobile money recovery) | Not covered | Specified; adapters not built |
+   461→| Fraud controls specific to advances | General only | Specified (16.9) |
+   462→| Regulation, disclosure and responsible-lending rules | General only | Specified (16.8) |
+   463→
+   464→The module has 12 tests covering fees, eligibility, issue, claw-back, partial recovery, electricity share, replays and overdue handling. All 36 tests in the bundle pass.
+   465→
+   466→### 16.3 Three ways Groway can offer it
+   467→
+   468→| Model | How it works | Needs | Verdict |
+   469→| --- | --- | --- | --- |
+   470→| **C: Merchant float advance** | Spaza merchants who sell airtime and electricity get float on credit, repaid from their sales and vending commissions | Merchant OS data, GroCredit, the ledger | Start here: you see every sale |
+   471→| **B: Channel-embedded advance** | Customers buying airtime, data or electricity through Groway's own channels (Merchant OS tills, WhatsApp, SmartPole portal, wallet, Malawi mobile money) get an advance repaid on their next purchase through those channels | A vending or aggregator agreement; consent; licensing route | Second: feasible without an operator deal, but recovery only happens where Groway sees the purchase |
+   472→| **A: Operator-embedded (Optasia model)** | Groway's engine sits inside an operator's recharge flow and the operator deducts at recharge | An operator commercial and technical agreement | Later: strongest recovery, hardest to win because incumbents exist |
+   473→
+   474→Recovery rate is the number that decides profitability. Model C and B recover only on purchases Groway can see, so advances are sized to that reach, and recovery falls back to approved wallet or mobile money prompts.
+   475→
+   476→### 16.4 End-to-end flows
+   477→
+   478→**Airtime or data advance (South Africa and Malawi)**
+   479→
+   480→1. The customer asks through WhatsApp, the till, the portal or USSD (Malawi).
+   481→2. Identify the subject (phone number) and check consent for credit use.
+   482→3. Check eligibility and the limit; show the menu of amounts the customer qualifies for.
+   483→4. Show the quote: amount, fee and total to repay. The customer accepts.
+   484→5. Post the issue entry and call the vending adapter to deliver the airtime.
+   485→6. On the next top-up through a Groway channel, the top-up event calls recovery. The platform takes the allowed amount, tells the vending adapter how much to pass through, posts the entry and sends a message.
+   486→7. If not recovered by the due date: add to bill where an operator bill exists (South Africa top-up customers), otherwise write off after reminders and offers.
+   487→
+   488→**Electricity advance (meter-anchored)**
+   489→
+   490→1. The customer gives the meter number. The vending provider validates the meter and supply details.
+   491→2. Eligibility uses purchase history for that meter and the customer's identity, so a meter changing hands does not inherit credit.
+   492→3. Quote and accept. The vendor issues a single-use token on credit and it is sent by message.
+   493→4. The advance is anchored to the meter number and the customer. On each later purchase through Groway's vending path, a capped share (for example 50%) goes to the advance until repaid.
+   494→5. Where a municipality allocates part of a purchase to arrears, Groway's share is taken after those deductions. *VERIFY* the allocation order with the vending provider.
+   495→
+   496→**Electricity recovery across channels.** A customer can buy tokens at banks, retailers and apps. The debt follows the meter only if every vending channel calls Groway's recovery hook. Options, in order: become a vendor so purchases flow through Groway; agree a deduction hook with a large vending network (one report says Blu Label's platform handles over 60% of top-ups); offer a customer-approved wallet or mobile money repayment; and size advances to what Groway can recover through its own channels. Do not promise customers that repayment is automatic everywhere.
+   497→
+   498→**Merchant float advance**
+   499→
+   500→1. A merchant buying airtime or electricity stock requests float in Merchant OS.
+   501→2. GroCredit tier and sales history set the limit.
+   502→3. The float is delivered; repayment is taken as a share of the merchant's later vending sales or settlements.
+   503→
+   504→**Malawi variants**
+   505→
+   506→- Airtime and ESCOM tokens are bought through a licensed provider's bill and airtime interfaces (for example PayChangu's bills and airtime endpoints).
+   507→- Recovery uses the mobile money payment prompt flow from section 13: when the customer next pays through Groway, the platform deducts the advance first.
+   508→- Menus are in kwacha with tambala precision. Messages are in English and Chichewa.
+   509→
+   510→### 16.5 Product rules by market (illustrative starting points)
+   511→
+   512→| Product | Menu | Fee | Recovery | Eligibility | Overdue |
+   513→| --- | --- | --- | --- | --- | --- |
+   514→| South Africa airtime | R5 to R20 | R1.20 per R10 or part thereof | Whole top-up until repaid | 90 days; recharged R29 a month in 3 months | Add to bill after 30 days |
+   515→| South Africa electricity | R50 to R300 | 10% | Up to 50% of each purchase | 90 days; two months of purchases of R150 or more | Write off after 60 days, after reminders |
+   516→| Malawi airtime | K50 to K2,000 | 10% | Whole top-up until repaid | 90 days; two months of K1,000 or more | Write off after 30 days, after reminders |
+   517→| Malawi electricity | K5,000 to K20,000 | 10% | Up to 50% of each purchase | 90 days; two months of K5,000 or more | Write off after 60 days, after reminders |
+   518→
+   519→All values are configuration, not constants, and each change goes through the credit committee and a recorded decision. Limits are a share of average monthly recharge (30% by default), so small spenders get small advances.
+   520→
+   521→### 16.6 Technical design
+   522→
+   523→**Built (in `src/lib/tshepo/topup`):** product definitions and fee quotes, eligibility and limit ladder, the advance service (issue, recover, overdue), in-memory repository, and presets for the four products above.
+   524→
+   525→**Ledger postings (customer subject is the phone number or meter):**
+   526→
+   527→| Event | Entry |
+   528→| --- | --- |
+   529→| Advance issued | Debit advance receivable (principal plus fee); credit supplier payable (principal); credit fee income (fee) |
+   530→| Recovered at a top-up | Debit collections clearing; credit advance receivable |
+   531→| Written off | Debit bad debt expense; credit advance receivable |
+   532→| Added to the operator bill | Receivable closed against a billed-amount account when the operator confirms; no cash is taken by Groway |
+   533→
+   534→**Ports still to build:**
+   535→
+   536→- **Vending adapter:** deliver airtime, data or an electricity token, return a reference, and confirm. One adapter per supplier or aggregator, per country.
+   537→- **Top-up event source:** a webhook or stream that reports each recharge or purchase by the subject, with an idempotent reference.
+   538→- **Operator or vendor settlement:** daily statements matched to the ledger, with a payable to the supplier for advanced value.
+   539→- **Notifier:** WhatsApp, SMS and USSD messages for offers, confirmations and reminders.
+   540→- **Data model:** add an advance record table and a consent purpose for top-up credit to the Prisma schema.
+   541→- **Routes:** quote, issue, recovery (called by the vending path), status, and an overdue job, all behind the tenant guard.
+   542→
+   543→**Reconciliation:** daily match of supplier statements to issue and recovery entries; unknown vendor outcomes are polled and never assumed to succeed.
+   544→
+   545→### 16.7 Funding and economics
+   546→
+   547→- **Float funding:** someone pays the supplier for the airtime or electricity delivered before the customer repays. Options: lender-funded, Groway-funded, or a supplier credit line. This is a Wave 0 decision.
+   548→- **Fee as a rate:** a fee of R2.40 on a R20 advance repaid in 7 days is 12% for the week. Short terms make fees look small and annual rates very high. Report both to the credit committee and regulators.
+   549→- **Loss drivers:** customers who stop using the number or meter, switch SIMs, or buy through channels Groway does not see. Track recovery rate, days to recover, and net loss by cohort and channel.
+   550→- **Unit economics model:** advance volume, take-up, fee, recovery rate, funding cost, supplier margin, messaging and vending costs, fraud losses. Build it before launch and keep it updated with pilot data.
+   551→
+   552→### 16.8 Regulation, consumer protection and responsible lending
+   553→
+   554→| Area | South Africa | Malawi |
+   555→| --- | --- | --- |
+   556→| Credit | The National Credit Act sets fee and interest ceilings, and since 2016 the registration threshold for credit providers is nil. Whether an advance with an access fee counts as a credit agreement is a legal question that operators have answered by marketing a fee, not interest. Fees charged by a separate service provider can count towards the ceiling. Get a written legal opinion before launch | Lending needs registration under the Financial Services Act regime, and incumbents issue some products through banks. *VERIFY* for any advance sold through Groway's own channel |
+   557→| Electricity | Tokens are issued through vending agreements with Eskom or the municipality; municipalities may allocate part of a purchase to arrears. Reselling electricity needs a vendor agreement. *VERIFY* | ESCOM tokens are sold through licensed channels such as bank and mobile money bill payment; a vendor or provider agreement is needed. *VERIFY* |
+   558→| Data | POPIA: consent for credit use, purpose limits, limits on solely automated decisions *VERIFY* | Data Protection Act 2024: lawful basis, officer, impact assessment, cross-border conditions |
+   559→| Payments | Licensed partner for moving money | Licensed provider only (section 13.7) |
+   560→
+   561→**Responsible-lending guardrails (both countries):**
+   562→
+   563→- Small starter limits that rise only with repayment.
+   564→- One open advance per customer; no rollover or refinancing of an unpaid advance with a new one.
+   565→- A clear quote with the total to repay before acceptance, in the customer's language.
+   566→- Explicit opt-in, an easy opt-out and a cap on advances per month.
+   567→- A hardship route and a human review of complaints.
+   568→- Press criticism of electricity advances in South Africa makes transparent pricing and fair treatment a business requirement, not just a legal one.
+   569→
+   570→### 16.9 Fraud and abuse controls
+   571→
+   572→- Phone number recycling and SIM swap: require tenure on the current SIM where the operator shares it; pause advances after a swap.
+   573→- Advance farming: link accounts by device, identity and payment instrument; block repeat patterns.
+   574→- Meter sharing and meter changes: bind eligibility to the meter and the verified customer.
+   575→- Agent and merchant collusion: velocity rules and dual approval for large float.
+   576→- Negative list: blocked identities and numbers shared across Groway products.
+   577→
+   578→### 16.10 Build plan
+   579→
+   580→| Phase | Scope | Gate |
+   581→| --- | --- | --- |
+   582→| T0: Decisions | Choose models C and B first; supplier and aggregator for South Africa and Malawi; legal opinions; float funding | Funding and legal route confirmed |
+   583→| T1: South Africa airtime and data | Merchant float, then customer advances through Groway channels | Recovery rate and loss inside the base case for two cohorts |
+   584→| T2: South Africa electricity | Meter-anchored advances and a vending hook | Recovery through Groway channels meets target; vendor agreement signed |
+   585→| T3: Malawi | Airtime and ESCOM advances through licensed provider interfaces, with mobile money recovery | Section 13 phase M1 and M2 complete; registration route confirmed |
+   586→| T4: Operator-embedded | USSD and recharge-flow integration with a partner operator in each country | Operator agreement signed |
+   587→
+   588→### 16.11 Backlog
+   589→
+   590→| ID | Story | Market | Depends on | Phase |
+   591→| --- | --- | --- | --- | --- |
+   592→| TC-01 | Choose the first models, suppliers and aggregators; record the decision | Both | None | T0 |
+   593→| TC-02 | Legal opinions: credit characterisation, electricity vending, data | Both | None | T0 |
+   594→| TC-03 | Decide the float funding structure | Both | None | T0 |
+   595→| TC-04 | Add the advance record table and top-up consent purpose to the schema | Both | Wave 0 | T1 |
+   596→| TC-05 | Persist advances through a Prisma repository | Both | TC-04 | T1 |
+   597→| TC-06 | Quote, issue, status and recovery routes behind the tenant guard | Both | TC-05 | T1 |
+   598→| TC-07 | Vending adapter interface and a South Africa airtime and data adapter | South Africa | TC-01 | T1 |
+   599→| TC-08 | Top-up event source and recovery hook in the Groway vending path | Both | TC-06 | T1 |
+
+[showing lines 200-599 of 854; use offset=600 with limit to continue reading]

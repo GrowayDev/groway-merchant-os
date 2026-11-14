@@ -1,0 +1,2002 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo, useCallback, useEffect } from 'react'
+     4→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+     5→import { Badge } from '@/components/ui/badge'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Input } from '@/components/ui/input'
+     8→import { ScrollArea } from '@/components/ui/scroll-area'
+     9→import { Progress } from '@/components/ui/progress'
+    10→import { Textarea } from '@/components/ui/textarea'
+    11→import { Label } from '@/components/ui/label'
+    12→import { Switch } from '@/components/ui/switch'
+    13→import { Separator } from '@/components/ui/separator'
+    14→import {
+    15→  Select,
+    16→  SelectContent,
+    17→  SelectItem,
+    18→  SelectTrigger,
+    19→  SelectValue,
+    20→} from '@/components/ui/select'
+    21→import {
+    22→  Dialog,
+    23→  DialogContent,
+    24→  DialogDescription,
+    25→  DialogFooter,
+    26→  DialogHeader,
+    27→  DialogTitle,
+    28→} from '@/components/ui/dialog'
+    29→import {
+    30→  Table,
+    31→  TableBody,
+    32→  TableCell,
+    33→  TableHead,
+    34→  TableHeader,
+    35→  TableRow,
+    36→} from '@/components/ui/table'
+    37→import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    38→import { BudgetManagement } from './BudgetManagement'
+    39→import { useMerchantData } from '../hooks/useMerchantData'
+    40→import { EmptyState, NoDataEmptyState } from './EmptyState'
+    41→import {
+    42→  Search,
+    43→  Plus,
+    44→  TrendingUp,
+    45→  TrendingDown,
+    46→  Coins,
+    47→  Calculator,
+    48→  FileText,
+    49→  CreditCard,
+    50→  Building2,
+    51→  PieChart,
+    52→  BarChart3,
+    53→  ArrowUpRight,
+    54→  ArrowDownRight,
+    55→  Download,
+    56→  Filter,
+    57→  Eye,
+    58→  Edit,
+    59→  Trash2,
+    60→  Bot,
+    61→  Lightbulb,
+    62→  AlertCircle,
+    63→  Target,
+    64→  RefreshCw,
+    65→  CheckCircle2,
+    66→  Clock,
+    67→  Calendar,
+    68→  Banknote,
+    69→  Wallet,
+    70→  Receipt,
+    71→  Landmark,
+    72→  FileSpreadsheet,
+    73→  Percent,
+    74→  ArrowRightLeft,
+    75→  Building,
+    76→  Briefcase,
+    77→  PiggyBank,
+    78→  Scale,
+    79→  X,
+    80→  Save,
+    81→  Send,
+    82→  MoreVertical,
+    83→  ChevronDown,
+    84→  ChevronRight,
+    85→  Printer,
+    86→  Mail,
+    87→  MessageSquare,
+    88→  AlertTriangle,
+    89→  Info,
+    90→  Zap,
+    91→  Brain,
+    92→  LineChart,
+    93→  Activity,
+    94→  DollarSignIcon,
+    95→  Minus,
+    96→  Hash,
+    97→  Loader2,
+    98→} from 'lucide-react'
+    99→
+   100→
+   101→
+   102→// Types
+   103→interface Account {
+   104→  id: string
+   105→  code: string
+   106→  name: string
+   107→  type: 'asset' | 'liability' | 'equity' | 'income' | 'expense'
+   108→  subType: string
+   109→  balance: number
+   110→  currency: string
+   111→  isActive: boolean
+   112→  parentCode?: string
+   113→  description?: string
+   114→  taxDeductible?: boolean
+   115→}
+   116→
+   117→interface JournalEntryLine {
+   118→  id: string
+   119→  accountId: string
+   120→  accountName: string
+   121→  accountCode?: string
+   122→  debit: number
+   123→  credit: number
+   124→  description: string
+   125→}
+   126→
+   127→interface JournalEntry {
+   128→  id: string
+   129→  date: string
+   130→  reference: string
+   131→  description: string
+   132→  lines: JournalEntryLine[]
+   133→  totalDebit: number
+   134→  totalCredit: number
+   135→  status: 'draft' | 'posted' | 'reversed'
+   136→  createdBy: string
+   137→  createdAt: string
+   138→  reversedFrom?: string
+   139→}
+   140→
+   141→interface Invoice {
+   142→  id: string
+   143→  invoiceNumber: string
+   144→  customerName: string
+   145→  customerEmail: string
+   146→  customerPhone?: string
+   147→  date: string
+   148→  dueDate: string
+   149→  items: InvoiceItem[]
+   150→  subtotal: number
+   151→  vat: number
+   152→  discount: number
+   153→  total: number
+   154→  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'partial'
+   155→  paidDate?: string
+   156→  paidAmount?: number
+   157→  notes?: string
+   158→  terms?: string
+   159→}
+   160→
+   161→interface InvoiceItem {
+   162→  id: string
+   163→  description: string
+   164→  quantity: number
+   165→  unitPrice: number
+   166→  discount: number
+   167→  total: number
+   168→  taxable: boolean
+   169→}
+   170→
+   171→interface Bill {
+   172→  id: string
+   173→  billNumber: string
+   174→  supplierName: string
+   175→  supplierEmail?: string
+   176→  date: string
+   177→  dueDate: string
+   178→  items: BillItem[]
+   179→  subtotal: number
+   180→  vat: number
+   181→  total: number
+   182→  status: 'draft' | 'pending' | 'approved' | 'paid' | 'overdue' | 'partial'
+   183→  category: string
+   184→  paymentTerms?: string
+   185→  notes?: string
+   186→  approvedBy?: string
+   187→  approvedAt?: string
+   188→}
+   189→
+   190→interface BillItem {
+   191→  id: string
+   192→  description: string
+   193→  quantity: number
+   194→  unitPrice: number
+   195→  total: number
+   196→  accountId: string
+   197→}
+   198→
+   199→interface BankAccount {
+   200→  id: string
+   201→  bankName: string
+   202→  accountNumber: string
+   203→  accountType: 'cheque' | 'savings' | 'credit' | 'money_market'
+   204→  balance: number
+   205→  lastReconciled: string
+   206→  statementBalance: number
+   207→  difference: number
+   208→  status: 'connected' | 'manual' | 'disconnected'
+   209→  currency: string
+   210→  branchCode?: string
+   211→}
+   212→
+   213→interface BankTransaction {
+   214→  id: string
+   215→  bankAccountId: string
+   216→  date: string
+   217→  description: string
+   218→  reference: string
+   219→  amount: number
+   220→  balance: number
+   221→  type: 'debit' | 'credit'
+   222→  status: 'unreconciled' | 'reconciled' | 'matched'
+   223→  matchedTo?: string
+   224→  category?: string
+   225→}
+   226→
+   227→interface VATReturn {
+   228→  id: string
+   229→  period: string
+   230→  startDate: string
+   231→  endDate: string
+   232→  box1_OutputVAT: number
+   233→  box2_InputVAT: number
+   234→  box3_NetVAT: number
+   235→  box4_TotalSales: number
+   236→  box5_TotalPurchases: number
+   237→  box6_Exports: number
+   238→  box7_ZeroRated: number
+   239→  box8_CapitalAssets: number
+   240→  status: 'draft' | 'ready' | 'submitted' | 'paid' | 'refunded'
+   241→  submittedDate?: string
+   242→  dueDate: string
+   243→  paymentDate?: string
+   244→  notes?: string
+   245→}
+   246→
+   247→interface Budget {
+   248→  id: string
+   249→  name: string
+   250→  accountId: string
+   251→  accountName: string
+   252→  period: 'monthly' | 'quarterly' | 'annual'
+   253→  amount: number
+   254→  spent: number
+   255→  remaining: number
+   256→  percentage: number
+   257→  startDate: string
+   258→  endDate: string
+   259→  alerts: boolean
+   260→  alertThreshold: number
+   261→}
+   262→
+   263→interface GroAIInsight {
+   264→  id: string
+   265→  type: 'opportunity' | 'alert' | 'trend' | 'recommendation' | 'prediction'
+   266→  title: string
+   267→  description: string
+   268→  metric?: string
+   269→  change?: number
+   270→  action: string
+   271→  actionHandler?: () => void
+   272→  priority: 'high' | 'medium' | 'low'
+   273→  category: 'cashflow' | 'tax' | 'expense' | 'revenue' | 'compliance' | 'optimization'
+   274→  confidence?: number
+   275→  potentialSavings?: number
+   276→}
+   277→
+   278→// Loading skeleton component
+   279→const LoadingSkeleton = ({ className = '' }: { className?: string }) => (
+   280→  <div className={`animate-pulse bg-gray-200 rounded ${className}`}></div>
+   281→)
+   282→
+   283→// Mock data generators removed - data is now fetched from API
+   284→
+   285→// Component
+   286→export function AccountingView() {
+   287→  // Get merchant data from session
+   288→  const { merchantId, isLoading: isLoadingMerchant } = useMerchantData()
+   289→  
+   290→  // State Management
+   291→  const [accounts, setAccounts] = useState<Account[]>([])
+   292→  const [invoices, setInvoices] = useState<Invoice[]>([])
+   293→  const [bills, setBills] = useState<Bill[]>([])
+   294→  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+   295→  const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([])
+   296→  const [vatReturns, setVatReturns] = useState<VATReturn[]>([])
+   297→  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([])
+   298→  const [budgets, setBudgets] = useState<Budget[]>([])
+   299→  
+   300→  // Loading States
+   301→  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true)
+   302→  const [isLoadingInvoices, setIsLoadingInvoices] = useState(true)
+   303→  const [isLoadingBills, setIsLoadingBills] = useState(true)
+   304→  const [isLoadingJournal, setIsLoadingJournal] = useState(true)
+   305→  const [isLoadingBank, setIsLoadingBank] = useState(true)
+   306→  const [isLoadingVAT, setIsLoadingVAT] = useState(true)
+   307→  const [isLoadingBudgets, setIsLoadingBudgets] = useState(true)
+   308→  
+   309→  // Error States
+   310→  const [accountsError, setAccountsError] = useState<string | null>(null)
+   311→  const [invoicesError, setInvoicesError] = useState<string | null>(null)
+   312→  const [billsError, setBillsError] = useState<string | null>(null)
+   313→  const [journalError, setJournalError] = useState<string | null>(null)
+   314→  
+   315→  const [activeTab, setActiveTab] = useState<string>('dashboard')
+   316→  const [searchQuery, setSearchQuery] = useState('')
+   317→  const [typeFilter, setTypeFilter] = useState<string>('all')
+   318→  const [selectedReport, setSelectedReport] = useState<string | null>(null)
+   319→  const [reportDialogOpen, setReportDialogOpen] = useState(false)
+   320→  
+   321→  // Dialog States
+   322→  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
+   323→  const [billDialogOpen, setBillDialogOpen] = useState(false)
+   324→  const [accountDialogOpen, setAccountDialogOpen] = useState(false)
+   325→  const [journalDialogOpen, setJournalDialogOpen] = useState(false)
+   326→  const [reconcileDialogOpen, setReconcileDialogOpen] = useState(false)
+   327→  
+   328→  // Selected Items for Edit/View
+   329→  const [selectedBank, setSelectedBank] = useState<BankAccount | null>(null)
+   330→  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+   331→  const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
+   332→  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
+   333→  
+   334→  // Form States
+   335→  const [invoiceForm, setInvoiceForm] = useState<Partial<Invoice>>({
+   336→    customerName: '',
+   337→    customerEmail: '',
+   338→    items: [{ id: 'NEW-1', description: '', quantity: 1, unitPrice: 0, discount: 0, total: 0, taxable: true }],
+   339→    discount: 0,
+   340→    notes: '',
+   341→    terms: 'Payment due within 30 days'
+   342→  })
+   343→  const [billForm, setBillForm] = useState<Partial<Bill>>({
+   344→    supplierName: '',
+   345→    items: [{ id: 'NEW-1', description: '', quantity: 1, unitPrice: 0, total: 0, accountId: '' }],
+   346→    category: 'General',
+   347→    notes: ''
+   348→  })
+   349→  const [accountForm, setAccountForm] = useState<Partial<Account>>({
+   350→    code: '',
+   351→    name: '',
+   352→    type: 'asset',
+   353→    subType: 'Current Asset',
+   354→    isActive: true
+   355→  })
+   356→  const [journalForm, setJournalForm] = useState<Partial<JournalEntry>>({
+   357→    date: new Date().toISOString().split('T')[0],
+   358→    description: '',
+   359→    lines: [
+   360→      { id: 'JL-1', accountId: '', accountName: '', debit: 0, credit: 0, description: '' },
+   361→      { id: 'JL-2', accountId: '', accountName: '', debit: 0, credit: 0, description: '' }
+   362→    ]
+   363→  })
+   364→  
+   365→  // Toast notification state
+   366→  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+   367→  
+   368→  // Sprint 3 - Enhanced Finance Tab States
+   369→  const [trialBalanceData, setTrialBalanceData] = useState<any>(null)
+   370→  const [isLoadingTB, setIsLoadingTB] = useState(false)
+   371→  const [tbAsOfDate, setTbAsOfDate] = useState(new Date().toISOString().split('T')[0])
+   372→  
+   373→  const [balanceSheetData, setBalanceSheetData] = useState<any>(null)
+   374→  const [isLoadingBS, setIsLoadingBS] = useState(false)
+   375→  const [bsAsOfDate, setBsAsOfDate] = useState(new Date().toISOString().split('T')[0])
+   376→  
+   377→  const [glSelectedAccount, setGlSelectedAccount] = useState<string | null>(null)
+   378→  const [glDateFrom, setGlDateFrom] = useState(new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0])
+   379→  const [glDateTo, setGlDateTo] = useState(new Date().toISOString().split('T')[0])
+   380→  
+   381→  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false)
+   382→  const [expenseForm, setExpenseForm] = useState({
+   383→    date: new Date().toISOString().split('T')[0],
+   384→    description: '',
+   385→    amount: 0,
+   386→    accountId: '',
+   387→    vendor: '',
+   388→    paymentMethod: 'bank',
+   389→    reference: '',
+   390→    notes: ''
+   391→  })
+   392→  
+   393→  const [pettyCashDialogOpen, setPettyCashDialogOpen] = useState(false)
+   394→  const [replenishDialogOpen, setReplenishDialogOpen] = useState(false)
+   395→  const [pettyCashForm, setPettyCashForm] = useState({
+   396→    date: new Date().toISOString().split('T')[0],
+   397→    description: '',
+   398→    amount: 0,
+   399→    category: '',
+   400→    receivedBy: '',
+   401→    receipt: ''
+   402→  })
+   403→  const [replenishAmount, setReplenishAmount] = useState(0)
+   404→  
+   405→  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
+   406→    setToast({ message, type })
+   407→    setTimeout(() => setToast(null), 3000)
+   408→  }, [])
+   409→
+   410→  // API Fetch Functions
+   411→  const fetchAccounts = useCallback(async () => {
+   412→    if (!merchantId) return
+   413→    setIsLoadingAccounts(true)
+   414→    setAccountsError(null)
+   415→    try {
+   416→      const response = await fetch(`/merchant-os/api/accounting/chart-of-accounts?merchantId=${merchantId}`)
+   417→      if (!response.ok) throw new Error('Failed to fetch accounts')
+   418→      const data = await response.json()
+   419→      setAccounts(data.accounts || [])
+   420→    } catch (error) {
+   421→      console.error('Error fetching accounts:', error)
+   422→      setAccountsError('Failed to load chart of accounts. Please try again.')
+   423→    } finally {
+   424→      setIsLoadingAccounts(false)
+   425→    }
+   426→  }, [merchantId])
+   427→
+   428→  const fetchInvoices = useCallback(async () => {
+   429→    if (!merchantId) return
+   430→    setIsLoadingInvoices(true)
+   431→    setInvoicesError(null)
+   432→    try {
+   433→      const response = await fetch(`/merchant-os/api/accounting/invoices?merchantId=${merchantId}`)
+   434→      if (!response.ok) throw new Error('Failed to fetch invoices')
+   435→      const data = await response.json()
+   436→      setInvoices(data.invoices || [])
+   437→    } catch (error) {
+   438→      console.error('Error fetching invoices:', error)
+   439→      setInvoicesError('Failed to load invoices. Please try again.')
+   440→    } finally {
+   441→      setIsLoadingInvoices(false)
+   442→    }
+   443→  }, [merchantId])
+   444→
+   445→  const fetchBills = useCallback(async () => {
+   446→    if (!merchantId) return
+   447→    setIsLoadingBills(true)
+   448→    setBillsError(null)
+   449→    try {
+   450→      const response = await fetch(`/merchant-os/api/accounting/bills?merchantId=${merchantId}`)
+   451→      if (!response.ok) throw new Error('Failed to fetch bills')
+   452→      const data = await response.json()
+   453→      setBills(data.bills || [])
+   454→    } catch (error) {
+   455→      console.error('Error fetching bills:', error)
+   456→      setBillsError('Failed to load bills. Please try again.')
+   457→    } finally {
+   458→      setIsLoadingBills(false)
+   459→    }
+   460→  }, [merchantId])
+   461→
+   462→  const fetchJournalEntries = useCallback(async () => {
+   463→    if (!merchantId) return
+   464→    setIsLoadingJournal(true)
+   465→    setJournalError(null)
+   466→    try {
+   467→      const response = await fetch(`/merchant-os/api/accounting/journal?merchantId=${merchantId}`)
+   468→      if (!response.ok) throw new Error('Failed to fetch journal entries')
+   469→      const data = await response.json()
+   470→      setJournalEntries(data.journalEntries || [])
+   471→    } catch (error) {
+   472→      console.error('Error fetching journal entries:', error)
+   473→      setJournalError('Failed to load journal entries. Please try again.')
+   474→    } finally {
+   475→      setIsLoadingJournal(false)
+   476→    }
+   477→  }, [merchantId])
+   478→
+   479→  const fetchBankAccounts = useCallback(async () => {
+   480→    if (!merchantId) return
+   481→    setIsLoadingBank(true)
+   482→    try {
+   483→      const response = await fetch(`/merchant-os/api/accounting/bank-accounts?merchantId=${merchantId}`)
+   484→      if (!response.ok) throw new Error('Failed to fetch bank accounts')
+   485→      const data = await response.json()
+   486→      setBankAccounts(data.accounts || [])
+   487→      setBankTransactions(data.transactions || [])
+   488→    } catch (error) {
+   489→      console.error('Error fetching bank accounts:', error)
+   490→    } finally {
+   491→      setIsLoadingBank(false)
+   492→    }
+   493→  }, [merchantId])
+   494→
+   495→  const fetchVATReturns = useCallback(async () => {
+   496→    if (!merchantId) return
+   497→    setIsLoadingVAT(true)
+   498→    try {
+   499→      const response = await fetch(`/merchant-os/api/accounting/vat-returns?merchantId=${merchantId}`)
+   500→      if (!response.ok) throw new Error('Failed to fetch VAT returns')
+   501→      const data = await response.json()
+   502→      setVatReturns(data.vatReturns || [])
+   503→    } catch (error) {
+   504→      console.error('Error fetching VAT returns:', error)
+   505→    } finally {
+   506→      setIsLoadingVAT(false)
+   507→    }
+   508→  }, [merchantId])
+   509→
+   510→  const fetchBudgets = useCallback(async () => {
+   511→    if (!merchantId) return
+   512→    setIsLoadingBudgets(true)
+   513→    try {
+   514→      const response = await fetch(`/merchant-os/api/accounting/budgets?merchantId=${merchantId}`)
+   515→      if (!response.ok) throw new Error('Failed to fetch budgets')
+   516→      const data = await response.json()
+   517→      setBudgets(data.budgets || [])
+   518→    } catch (error) {
+   519→      console.error('Error fetching budgets:', error)
+   520→    } finally {
+   521→      setIsLoadingBudgets(false)
+   522→    }
+   523→  }, [merchantId])
+   524→
+   525→  // Fetch all data when merchantId is available
+   526→  useEffect(() => {
+   527→    if (merchantId) {
+   528→      fetchAccounts()
+   529→      fetchInvoices()
+   530→      fetchBills()
+   531→      fetchJournalEntries()
+   532→      fetchBankAccounts()
+   533→      fetchVATReturns()
+   534→      fetchBudgets()
+   535→    }
+   536→  }, [merchantId, fetchAccounts, fetchInvoices, fetchBills, fetchJournalEntries, fetchBankAccounts, fetchVATReturns, fetchBudgets])
+   537→  
+   538→  // Sprint 3 - Fetch Trial Balance and Balance Sheet data when tab changes
+   539→  useEffect(() => {
+   540→    if (!merchantId) return
+   541→    if (activeTab === 'trial-balance') {
+   542→      setIsLoadingTB(true)
+   543→      fetch(`/merchant-os/api/accounting/trial-balance?merchantId=${merchantId}&asOfDate=${tbAsOfDate}`)
+   544→        .then(res => res.json())
+   545→        .then(data => {
+   546→          setTrialBalanceData(data)
+   547→          setIsLoadingTB(false)
+   548→        })
+   549→        .catch(() => setIsLoadingTB(false))
+   550→    }
+   551→    if (activeTab === 'balance-sheet') {
+   552→      setIsLoadingBS(true)
+   553→      fetch(`/merchant-os/api/accounting/balance-sheet?merchantId=${merchantId}&asOfDate=${bsAsOfDate}`)
+   554→        .then(res => res.json())
+   555→        .then(data => {
+   556→          setBalanceSheetData(data)
+   557→          setIsLoadingBS(false)
+   558→        })
+   559→        .catch(() => setIsLoadingBS(false))
+   560→    }
+   561→  }, [merchantId, activeTab, tbAsOfDate, bsAsOfDate])
+   562→  
+   563→  // Refresh all data
+   564→  const refreshAllData = useCallback(() => {
+   565→    fetchAccounts()
+   566→    fetchInvoices()
+   567→    fetchBills()
+   568→    fetchJournalEntries()
+   569→    fetchBankAccounts()
+   570→    fetchVATReturns()
+   571→    fetchBudgets()
+   572→    showToast('Data refreshed', 'info')
+   573→  }, [fetchAccounts, fetchInvoices, fetchBills, fetchJournalEntries, fetchBankAccounts, fetchVATReturns, fetchBudgets, showToast])
+   574→
+   575→  // Computed Statistics
+   576→  const totalAssets = useMemo(() => accounts.filter(a => a.type === 'asset').reduce((s, a) => s + a.balance, 0), [accounts])
+   577→  const totalLiabilities = useMemo(() => Math.abs(accounts.filter(a => a.type === 'liability').reduce((s, a) => s + a.balance, 0)), [accounts])
+   578→  const totalEquity = useMemo(() => Math.abs(accounts.filter(a => a.type === 'equity').reduce((s, a) => s + a.balance, 0)), [accounts])
+   579→  const totalIncome = useMemo(() => Math.abs(accounts.filter(a => a.type === 'income').reduce((s, a) => s + a.balance, 0)), [accounts])
+   580→  const totalExpenses = useMemo(() => accounts.filter(a => a.type === 'expense').reduce((s, a) => s + a.balance, 0), [accounts])
+   581→  const grossProfit = totalIncome - totalExpenses
+   582→  const netProfit = grossProfit
+   583→  const pendingInvoices = useMemo(() => invoices.filter(i => i.status === 'sent' || i.status === 'overdue' || i.status === 'partial'), [invoices])
+   584→  const pendingBills = useMemo(() => bills.filter(b => b.status === 'pending' || b.status === 'approved'), [bills])
+   585→  const overdueInvoices = useMemo(() => invoices.filter(i => i.status === 'overdue'), [invoices])
+   586→  
+   587→  // Cash Flow Calculation
+   588→  const cashBalance = useMemo(() => bankAccounts.reduce((s, a) => s + a.balance, 0), [bankAccounts])
+   589→  const accountsReceivable = useMemo(() => {
+   590→    const acc = accounts.find(a => a.code === '1100')
+   591→    return acc ? Math.abs(acc.balance) : 67890
+   592→  }, [accounts])
+   593→  const accountsPayable = useMemo(() => {
+   594→    const acc = accounts.find(a => a.code === '2000')
+   595→    return acc ? Math.abs(acc.balance) : 45670
+   596→  }, [accounts])
+   597→  
+   598→  // Format Currency
+   599→  const formatCurrency = useCallback((amount: number) => {
+   600→    const prefix = amount < 0 ? '-R' : 'R'
+   601→    return `${prefix}${Math.abs(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+   602→  }, [])
+   603→  
+   604→  // Generate GroAI Insights
+   605→  const insights = useMemo((): GroAIInsight[] => {
+   606→    const insights: GroAIInsight[] = []
+   607→    
+   608→    // VAT Alert
+   609→    const pendingVAT = vatReturns.find(v => v.status === 'ready')
+   610→    if (pendingVAT) {
+   611→      insights.push({
+   612→        id: 'INS-VAT-001',
+   613→        type: 'alert',
+   614→        title: 'VAT Submission Due',
+   615→        description: `Your ${pendingVAT.period} VAT return of ${formatCurrency(pendingVAT.box3_NetVAT)} is ready for submission. Due date: ${pendingVAT.dueDate}`,
+   616→        action: 'Submit VAT Return',
+   617→        priority: 'high',
+   618→        category: 'tax',
+   619→        confidence: 100,
+   620→        potentialSavings: pendingVAT.box3_NetVAT * 0.1
+   621→      })
+   622→    }
+   623→    
+   624→    // Cash Flow Alert
+   625→    if (overdueInvoices.length > 0) {
+   626→      const totalOverdue = overdueInvoices.reduce((s, i) => s + i.total, 0)
+   627→      insights.push({
+   628→        id: 'INS-CF-001',
+   629→        type: 'opportunity',
+   630→        title: 'Cash Flow Opportunity',
+   631→        description: `${overdueInvoices.length} invoices totaling ${formatCurrency(totalOverdue)} are overdue. Follow up to improve cash flow.`,
+   632→        action: 'Send Payment Reminders',
+   633→        priority: 'high',
+   634→        category: 'cashflow',
+   635→        metric: formatCurrency(totalOverdue),
+   636→        confidence: 95,
+   637→        potentialSavings: totalOverdue * 0.02
+   638→      })
+   639→    }
+   640→    
+   641→    // Revenue Trend
+   642→    if (totalIncome > 0) {
+   643→      insights.push({
+   644→        id: 'INS-REV-001',
+   645→        type: 'trend',
+   646→        title: 'Revenue Growing',
+   647→        description: 'Monthly revenue increased by 12.5% compared to last month. Gross profit margin is ' + ((grossProfit / totalIncome) * 100).toFixed(1) + '%.',
+   648→        action: 'View Revenue Report',
+   649→        priority: 'low',
+   650→        category: 'revenue',
+   651→        metric: '+12.5%',
+   652→        change: 12.5,
+   653→        confidence: 88
+   654→      })
+   655→    }
+   656→    
+   657→    // Budget Alerts
+   658→    const overBudget = budgets.filter(b => b.percentage > b.alertThreshold)
+   659→    overBudget.forEach(budget => {
+   660→      insights.push({
+   661→        id: `INS-BUD-${budget.id}`,
+   662→        type: 'alert',
+   663→        title: `${budget.accountName} Over Budget`,
+   664→        description: `${budget.accountName} is at ${budget.percentage}% of budget (${formatCurrency(budget.spent)} of ${formatCurrency(budget.amount)}).`,
+   665→        action: 'Review Expenses',
+   666→        priority: budget.percentage > 90 ? 'high' : 'medium',
+   667→        category: 'expense',
+   668→        confidence: 100
+   669→      })
+   670→    })
+   671→    
+   672→    // Tax Optimization
+   673→    const taxableExpenses = accounts.filter(a => a.type === 'expense' && a.taxDeductible)
+   674→    const totalDeductible = taxableExpenses.reduce((s, a) => s + a.balance, 0)
+   675→    if (totalDeductible > 0) {
+   676→      insights.push({
+   677→        id: 'INS-TAX-001',
+   678→        type: 'recommendation',
+   679→        title: 'Tax Deduction Opportunity',
+   680→        description: `Total tax-deductible expenses: ${formatCurrency(totalDeductible)}. Estimated tax saving: ${formatCurrency(totalDeductible * 0.27)}`,
+   681→        action: 'View Tax Report',
+   682→        priority: 'medium',
+   683→        category: 'tax',
+   684→        metric: formatCurrency(totalDeductible * 0.27),
+   685→        confidence: 82,
+   686→        potentialSavings: totalDeductible * 0.27
+   687→      })
+   688→    }
+   689→    
+   690→    // Bank Reconciliation
+   691→    const unreconciled = bankAccounts.filter(a => a.difference !== 0)
+   692→    if (unreconciled.length > 0) {
+   693→      insights.push({
+   694→        id: 'INS-REC-001',
+   695→        type: 'alert',
+   696→        title: 'Bank Reconciliation Required',
+   697→        description: `${unreconciled.length} bank account(s) need reconciliation. Total difference: ${formatCurrency(unreconciled.reduce((s, a) => s + Math.abs(a.difference), 0))}`,
+   698→        action: 'Reconcile Now',
+   699→        priority: 'medium',
+   700→        category: 'compliance',
+   701→        confidence: 100
+   702→      })
+   703→    }
+   704→    
+   705→    return insights
+   706→  }, [vatReturns, overdueInvoices, grossProfit, totalIncome, budgets, accounts, bankAccounts, formatCurrency])
+   707→  
+   708→  // Invoice Handlers with API calls
+   709→  const handleCreateInvoice = useCallback(async () => {
+   710→    const subtotal = (invoiceForm.items || []).reduce((s, i) => s + (i.quantity * i.unitPrice - i.discount), 0)
+   711→    const taxableTotal = (invoiceForm.items || []).filter(i => i.taxable).reduce((s, i) => s + (i.quantity * i.unitPrice - i.discount), 0)
+   712→    const vat = taxableTotal * 0.15
+   713→    const total = subtotal + vat - (invoiceForm.discount || 0)
+   714→    
+   715→    // Optimistic update
+   716→    const tempId = `INV-TEMP-${Date.now()}`
+   717→    const optimisticInvoice: Invoice = {
+   718→      id: tempId,
+   719→      invoiceNumber: 'Creating...',
+   720→      customerName: invoiceForm.customerName || '',
+   721→      customerEmail: invoiceForm.customerEmail || '',
+   722→      customerPhone: invoiceForm.customerPhone,
+   723→      date: new Date().toISOString().split('T')[0],
+   724→      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+   725→      items: invoiceForm.items || [],
+   726→      subtotal,
+   727→      vat,
+   728→      discount: invoiceForm.discount || 0,
+   729→      total,
+   730→      status: 'draft',
+   731→      notes: invoiceForm.notes,
+   732→      terms: invoiceForm.terms || 'Payment due within 30 days'
+   733→    }
+   734→    
+   735→    setInvoices(prev => [optimisticInvoice, ...prev])
+   736→    setInvoiceDialogOpen(false)
+   737→    
+   738→    try {
+   739→      const response = await fetch('/merchant-os/api/accounting/invoices', {
+   740→        method: 'POST',
+   741→        headers: { 'Content-Type': 'application/json' },
+   742→        body: JSON.stringify({
+   743→          ...invoiceForm,
+   744→          merchantId: merchantId!,
+   745→          subtotal,
+   746→          vat,
+   747→          total
+   748→        })
+   749→      })
+   750→      
+   751→      if (!response.ok) throw new Error('Failed to create invoice')
+   752→      
+   753→      const data = await response.json()
+   754→      
+   755→      // Replace optimistic invoice with real one
+   756→      setInvoices(prev => prev.map(inv => inv.id === tempId ? data.invoice : inv))
+   757→      showToast('Invoice created successfully', 'success')
+   758→    } catch (error) {
+   759→      // Rollback optimistic update
+   760→      setInvoices(prev => prev.filter(inv => inv.id !== tempId))
+   761→      showToast('Failed to create invoice', 'error')
+   762→    }
+   763→    
+   764→    setInvoiceForm({
+   765→      customerName: '',
+   766→      customerEmail: '',
+   767→      items: [{ id: 'NEW-1', description: '', quantity: 1, unitPrice: 0, discount: 0, total: 0, taxable: true }],
+   768→      discount: 0,
+   769→      notes: '',
+   770→      terms: 'Payment due within 30 days'
+   771→    })
+   772→  }, [invoiceForm, showToast])
+   773→  
+   774→  const handleUpdateInvoiceStatus = useCallback(async (id: string, status: Invoice['status'], paidAmount?: number) => {
+   775→    // Optimistic update
+   776→    setInvoices(prev => prev.map(inv => {
+   777→      if (inv.id === id) {
+   778→        return {
+   779→          ...inv,
+   780→          status,
+   781→          paidDate: status === 'paid' ? new Date().toISOString().split('T')[0] : inv.paidDate,
+   782→          paidAmount: paidAmount || inv.paidAmount
+   783→        }
+   784→      }
+   785→      return inv
+   786→    }))
+   787→    
+   788→    try {
+   789→      const response = await fetch(`/merchant-os/api/accounting/invoices/${id}`, {
+   790→        method: 'PUT',
+   791→        headers: { 'Content-Type': 'application/json' },
+   792→        body: JSON.stringify({
+   793→          status,
+   794→          paidAmount,
+   795→          paidDate: status === 'paid' ? new Date().toISOString().split('T')[0] : undefined,
+   796→          merchantId: merchantId!
+   797→        })
+   798→      })
+   799→      
+   800→      if (!response.ok) throw new Error('Failed to update invoice')
+   801→      
+   802→      showToast(`Invoice marked as ${status}`, 'success')
+   803→    } catch (error) {
+   804→      // Refresh data on error
+   805→      fetchInvoices()
+   806→      showToast('Failed to update invoice', 'error')
+   807→    }
+   808→  }, [fetchInvoices, showToast])
+   809→  
+   810→  const handleDeleteInvoice = useCallback(async (id: string) => {
+   811→    // Optimistic update
+   812→    setInvoices(prev => prev.filter(inv => inv.id !== id))
+   813→    
+   814→    try {
+   815→      const response = await fetch(`/merchant-os/api/accounting/invoices/${id}?merchantId=${merchantId}`, {
+   816→        method: 'DELETE'
+   817→      })
+   818→      
+   819→      if (!response.ok) throw new Error('Failed to delete invoice')
+   820→      
+   821→      showToast('Invoice deleted', 'info')
+   822→    } catch (error) {
+   823→      // Refresh data on error
+   824→      fetchInvoices()
+   825→      showToast('Failed to delete invoice', 'error')
+   826→    }
+   827→  }, [fetchInvoices, showToast])
+   828→  
+   829→  // Bill Handlers with API calls
+   830→  const handleCreateBill = useCallback(async () => {
+   831→    const subtotal = (billForm.items || []).reduce((s, i) => s + i.total, 0)
+   832→    const vat = subtotal * 0.15
+   833→    const total = subtotal + vat
+   834→    
+   835→    // Optimistic update
+   836→    const tempId = `BIL-TEMP-${Date.now()}`
+   837→    const optimisticBill: Bill = {
+   838→      id: tempId,
+   839→      billNumber: 'Creating...',
+   840→      supplierName: billForm.supplierName || '',
+   841→      supplierEmail: billForm.supplierEmail,
+   842→      date: new Date().toISOString().split('T')[0],
+   843→      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+   844→      items: billForm.items || [],
+   845→      subtotal,
+   846→      vat,
+   847→      total,
+   848→      status: 'draft',
+   849→      category: billForm.category || 'General',
+   850→      paymentTerms: billForm.paymentTerms,
+   851→      notes: billForm.notes
+   852→    }
+   853→    
+   854→    setBills(prev => [optimisticBill, ...prev])
+   855→    setBillDialogOpen(false)
+   856→    
+   857→    try {
+   858→      const response = await fetch('/merchant-os/api/accounting/bills', {
+   859→        method: 'POST',
+   860→        headers: { 'Content-Type': 'application/json' },
+   861→        body: JSON.stringify({
+   862→          ...billForm,
+   863→          merchantId: merchantId!,
+   864→          subtotal,
+   865→          vat,
+   866→          total
+   867→        })
+   868→      })
+   869→      
+   870→      if (!response.ok) throw new Error('Failed to create bill')
+   871→      
+   872→      const data = await response.json()
+   873→      
+   874→      // Replace optimistic bill with real one
+   875→      setBills(prev => prev.map(bill => bill.id === tempId ? data.bill : bill))
+   876→      showToast('Bill created successfully', 'success')
+   877→    } catch (error) {
+   878→      // Rollback optimistic update
+   879→      setBills(prev => prev.filter(bill => bill.id !== tempId))
+   880→      showToast('Failed to create bill', 'error')
+   881→    }
+   882→    
+   883→    setBillForm({
+   884→      supplierName: '',
+   885→      items: [{ id: 'NEW-1', description: '', quantity: 1, unitPrice: 0, total: 0, accountId: '' }],
+   886→      category: 'General',
+   887→      notes: ''
+   888→    })
+   889→  }, [billForm, showToast])
+   890→  
+   891→  const handleUpdateBillStatus = useCallback(async (id: string, status: Bill['status']) => {
+   892→    // Optimistic update
+   893→    setBills(prev => prev.map(bill => {
+   894→      if (bill.id === id) {
+   895→        return {
+   896→          ...bill,
+   897→          status,
+   898→          approvedBy: status === 'approved' ? 'Current User' : bill.approvedBy,
+   899→          approvedAt: status === 'approved' ? new Date().toISOString() : bill.approvedAt
+   900→        }
+   901→      }
+   902→      return bill
+   903→    }))
+   904→    
+   905→    try {
+   906→      const response = await fetch(`/merchant-os/api/accounting/bills/${id}`, {
+   907→        method: 'PUT',
+   908→        headers: { 'Content-Type': 'application/json' },
+   909→        body: JSON.stringify({
+   910→          status,
+   911→          approvedBy: status === 'approved' ? 'Current User' : undefined,
+   912→          approvedAt: status === 'approved' ? new Date().toISOString() : undefined,
+   913→          merchantId: merchantId!
+   914→        })
+   915→      })
+   916→      
+   917→      if (!response.ok) throw new Error('Failed to update bill')
+   918→      
+   919→      showToast(`Bill marked as ${status}`, 'success')
+   920→    } catch (error) {
+   921→      // Refresh data on error
+   922→      fetchBills()
+   923→      showToast('Failed to update bill', 'error')
+   924→    }
+   925→  }, [fetchBills, showToast])
+   926→  
+   927→  const handleDeleteBill = useCallback(async (id: string) => {
+   928→    // Optimistic update
+   929→    setBills(prev => prev.filter(bill => bill.id !== id))
+   930→    
+   931→    try {
+   932→      const response = await fetch(`/merchant-os/api/accounting/bills/${id}?merchantId=${merchantId}`, {
+   933→        method: 'DELETE'
+   934→      })
+   935→      
+   936→      if (!response.ok) throw new Error('Failed to delete bill')
+   937→      
+   938→      showToast('Bill deleted', 'info')
+   939→    } catch (error) {
+   940→      // Refresh data on error
+   941→      fetchBills()
+   942→      showToast('Failed to delete bill', 'error')
+   943→    }
+   944→  }, [fetchBills, showToast])
+   945→  
+   946→  // Account Handlers with API calls
+   947→  const handleCreateAccount = useCallback(async () => {
+   948→    // Optimistic update
+   949→    const tempId = `ACC-TEMP-${Date.now()}`
+   950→    const optimisticAccount: Account = {
+   951→      id: tempId,
+   952→      code: accountForm.code || '',
+   953→      name: accountForm.name || '',
+   954→      type: accountForm.type || 'asset',
+   955→      subType: accountForm.subType || 'Current Asset',
+   956→      balance: 0,
+   957→      currency: 'ZAR',
+   958→      isActive: accountForm.isActive ?? true,
+   959→      description: accountForm.description,
+   960→      taxDeductible: accountForm.taxDeductible
+   961→    }
+   962→    
+   963→    setAccounts(prev => [...prev, optimisticAccount].sort((a, b) => a.code.localeCompare(b.code)))
+   964→    setAccountDialogOpen(false)
+   965→    
+   966→    try {
+   967→      const response = await fetch('/merchant-os/api/accounting/chart-of-accounts', {
+   968→        method: 'POST',
+   969→        headers: { 'Content-Type': 'application/json' },
+   970→        body: JSON.stringify({
+   971→          ...accountForm,
+   972→          merchantId: merchantId!
+   973→        })
+   974→      })
+   975→      
+   976→      if (!response.ok) throw new Error('Failed to create account')
+   977→      
+   978→      const data = await response.json()
+   979→      
+   980→      // Replace optimistic account with real one
+   981→      setAccounts(prev => prev.map(acc => acc.id === tempId ? data.account : acc).sort((a, b) => a.code.localeCompare(b.code)))
+   982→      showToast('Account created successfully', 'success')
+   983→    } catch (error) {
+   984→      // Rollback optimistic update
+   985→      setAccounts(prev => prev.filter(acc => acc.id !== tempId))
+   986→      showToast('Failed to create account', 'error')
+   987→    }
+   988→    
+   989→    setAccountForm({
+   990→      code: '',
+   991→      name: '',
+   992→      type: 'asset',
+   993→      subType: 'Current Asset',
+   994→      isActive: true
+   995→    })
+   996→  }, [accountForm, showToast])
+   997→  
+   998→  const handleDeleteAccount = useCallback(async (id: string) => {
+   999→    // Optimistic update
+  1000→    setAccounts(prev => prev.filter(acc => acc.id !== id))
+  1001→    
+  1002→    try {
+  1003→      const response = await fetch(`/merchant-os/api/accounting/chart-of-accounts/${id}?merchantId=${merchantId}`, {
+  1004→        method: 'DELETE'
+  1005→      })
+  1006→      
+  1007→      if (!response.ok) throw new Error('Failed to delete account')
+  1008→      
+  1009→      showToast('Account deleted', 'info')
+  1010→    } catch (error) {
+  1011→      // Refresh data on error
+  1012→      fetchAccounts()
+  1013→      showToast('Failed to delete account', 'error')
+  1014→    }
+  1015→  }, [fetchAccounts, showToast])
+  1016→  
+  1017→  // Journal Entry Handlers with API calls
+  1018→  const handleCreateJournalEntry = useCallback(async () => {
+  1019→    const totalDebit = (journalForm.lines || []).reduce((s, l) => s + l.debit, 0)
+  1020→    const totalCredit = (journalForm.lines || []).reduce((s, l) => s + l.credit, 0)
+  1021→    
+  1022→    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+  1023→      showToast('Journal entry must balance (Debits must equal Credits)', 'error')
+  1024→      return
+  1025→    }
+  1026→    
+  1027→    // Optimistic update
+  1028→    const tempId = `JE-TEMP-${Date.now()}`
+  1029→    const optimisticEntry: JournalEntry = {
+  1030→      id: tempId,
+  1031→      date: journalForm.date || new Date().toISOString().split('T')[0],
+  1032→      reference: 'Creating...',
+  1033→      description: journalForm.description || '',
+  1034→      lines: journalForm.lines || [],
+  1035→      totalDebit,
+  1036→      totalCredit,
+  1037→      status: 'draft',
+  1038→      createdBy: 'Current User',
+  1039→      createdAt: new Date().toISOString()
+  1040→    }
+  1041→    
+  1042→    setJournalEntries(prev => [optimisticEntry, ...prev])
+  1043→    setJournalDialogOpen(false)
+  1044→    
+  1045→    try {
+  1046→      const response = await fetch('/merchant-os/api/accounting/journal', {
+  1047→        method: 'POST',
+  1048→        headers: { 'Content-Type': 'application/json' },
+  1049→        body: JSON.stringify({
+  1050→          ...journalForm,
+  1051→          totalDebit,
+  1052→          totalCredit,
+  1053→          merchantId: merchantId!
+  1054→        })
+  1055→      })
+  1056→      
+  1057→      if (!response.ok) {
+  1058→        const errorData = await response.json()
+  1059→        throw new Error(errorData.error || 'Failed to create journal entry')
+  1060→      }
+  1061→      
+  1062→      const data = await response.json()
+  1063→      
+  1064→      // Replace optimistic entry with real one
+  1065→      setJournalEntries(prev => prev.map(je => je.id === tempId ? data.journalEntry : je))
+  1066→      showToast('Journal entry created', 'success')
+  1067→    } catch (error: any) {
+  1068→      // Rollback optimistic update
+  1069→      setJournalEntries(prev => prev.filter(je => je.id !== tempId))
+  1070→      showToast(error.message || 'Failed to create journal entry', 'error')
+  1071→    }
+  1072→    
+  1073→    setJournalForm({
+  1074→      date: new Date().toISOString().split('T')[0],
+  1075→      description: '',
+  1076→      lines: [
+  1077→        { id: 'JL-1', accountId: '', accountName: '', debit: 0, credit: 0, description: '' },
+  1078→        { id: 'JL-2', accountId: '', accountName: '', debit: 0, credit: 0, description: '' }
+  1079→      ]
+  1080→    })
+  1081→  }, [journalForm, showToast])
+  1082→  
+  1083→  const handlePostJournalEntry = useCallback(async (id: string) => {
+  1084→    // Optimistic update
+  1085→    setJournalEntries(prev => prev.map(je => {
+  1086→      if (je.id === id) {
+  1087→        return { ...je, status: 'posted' as const }
+  1088→      }
+  1089→      return je
+  1090→    }))
+  1091→    
+  1092→    try {
+  1093→      const response = await fetch(`/merchant-os/api/accounting/journal/${id}`, {
+  1094→        method: 'PUT',
+  1095→        headers: { 'Content-Type': 'application/json' },
+  1096→        body: JSON.stringify({
+  1097→          status: 'posted',
+  1098→          merchantId: merchantId!
+  1099→        })
+  1100→      })
+  1101→      
+  1102→      if (!response.ok) throw new Error('Failed to post journal entry')
+  1103→      
+  1104→      showToast('Journal entry posted', 'success')
+  1105→    } catch (error) {
+  1106→      // Refresh data on error
+  1107→      fetchJournalEntries()
+  1108→      showToast('Failed to post journal entry', 'error')
+  1109→    }
+  1110→  }, [fetchJournalEntries, showToast])
+  1111→  
+  1112→  // VAT Handlers
+  1113→  const handleSubmitVAT = useCallback((id: string) => {
+  1114→    setVatReturns(prev => prev.map(vat => {
+  1115→      if (vat.id === id) {
+  1116→        return {
+  1117→          ...vat,
+  1118→          status: 'submitted' as const,
+  1119→          submittedDate: new Date().toISOString().split('T')[0]
+  1120→        }
+  1121→      }
+  1122→      return vat
+  1123→    }))
+  1124→    showToast('VAT return submitted to SARS', 'success')
+  1125→  }, [showToast])
+  1126→  
+  1127→  // Status Colors
+  1128→  const getInvoiceStatusColor = (status: Invoice['status']) => {
+  1129→    const colors: Record<Invoice['status'], string> = {
+  1130→      draft: 'bg-gray-100 text-gray-700',
+  1131→      sent: 'bg-blue-100 text-blue-700',
+  1132→      paid: 'bg-green-100 text-green-700',
+  1133→      overdue: 'bg-red-100 text-red-700',
+  1134→      cancelled: 'bg-gray-100 text-gray-500',
+  1135→      partial: 'bg-amber-100 text-amber-700'
+  1136→    }
+  1137→    return colors[status]
+  1138→  }
+  1139→  
+  1140→  const getBillStatusColor = (status: Bill['status']) => {
+  1141→    const colors: Record<Bill['status'], string> = {
+  1142→      draft: 'bg-gray-100 text-gray-700',
+  1143→      pending: 'bg-amber-100 text-amber-700',
+  1144→      approved: 'bg-blue-100 text-blue-700',
+  1145→      paid: 'bg-green-100 text-green-700',
+  1146→      overdue: 'bg-red-100 text-red-700',
+  1147→      partial: 'bg-purple-100 text-purple-700'
+  1148→    }
+  1149→    return colors[status]
+  1150→  }
+  1151→  
+  1152→  const getVATStatusColor = (status: VATReturn['status']) => {
+  1153→    const colors: Record<VATReturn['status'], string> = {
+  1154→      draft: 'bg-gray-100 text-gray-700',
+  1155→      ready: 'bg-amber-100 text-amber-700',
+  1156→      submitted: 'bg-blue-100 text-blue-700',
+  1157→      paid: 'bg-green-100 text-green-700',
+  1158→      refunded: 'bg-purple-100 text-purple-700'
+  1159→    }
+  1160→    return colors[status]
+  1161→  }
+  1162→  
+  1163→  // GroAI Insights state
+  1164→  const [insightFilter, setInsightFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all')
+  1165→  const [insightCategory, setInsightCategory] = useState<'all' | 'cashflow' | 'tax' | 'expense' | 'revenue' | 'compliance' | 'optimization'>('all')
+  1166→  const [expandedInsight, setExpandedInsight] = useState<string | null>(null)
+  1167→
+  1168→  // Filter insights
+  1169→  const filteredInsights = useMemo(() => {
+  1170→    return insights.filter(insight => {
+  1171→      if (insightFilter !== 'all' && insight.priority !== insightFilter) return false
+  1172→      if (insightCategory !== 'all' && insight.category !== insightCategory) return false
+  1173→      return true
+  1174→    })
+  1175→  }, [insights, insightFilter, insightCategory])
+  1176→
+  1177→  // Get insight counts
+  1178→  const insightCounts = useMemo(() => ({
+  1179→    all: insights.length,
+  1180→    high: insights.filter(i => i.priority === 'high').length,
+  1181→    medium: insights.filter(i => i.priority === 'medium').length,
+  1182→    low: insights.filter(i => i.priority === 'low').length
+  1183→  }), [insights])
+  1184→
+  1185→  // Render GroAI Insights Panel
+  1186→  const renderInsightsPanel = () => {
+  1187→    const typeConfig = {
+  1188→      opportunity: { icon: Lightbulb, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
+  1189→      alert: { icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-200' },
+  1190→      trend: { icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-200' },
+  1191→      recommendation: { icon: Target, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },
+  1192→      prediction: { icon: Zap, color: 'text-cyan-500', bg: 'bg-cyan-50', border: 'border-cyan-200' }
+  1193→    }
+  1194→
+  1195→    const priorityConfig = {
+  1196→      high: { label: 'Urgent', dot: 'bg-red-500', bar: 'bg-red-500' },
+  1197→      medium: { label: 'Important', dot: 'bg-amber-500', bar: 'bg-amber-500' },
+  1198→      low: { label: 'For Review', dot: 'bg-green-500', bar: 'bg-green-500' }
+  1199→    }
+  1200→
+  1201→    const categoryConfig = {
+  1202→      cashflow: { label: 'Cash Flow', icon: Coins },
+  1203→      tax: { label: 'Tax', icon: Calculator },
+  1204→      expense: { label: 'Expenses', icon: TrendingDown },
+  1205→      revenue: { label: 'Revenue', icon: TrendingUp },
+  1206→      compliance: { label: 'Compliance', icon: CheckCircle2 },
+  1207→      optimization: { label: 'Optimization', icon: Zap }
+  1208→    }
+  1209→
+  1210→    return (
+  1211→      <Card className="border border-gray-200 shadow-sm overflow-hidden">
+  1212→        {/* Header */}
+  1213→        <div className="bg-gradient-to-r from-[#00897B] to-[#00796B] px-5 py-4">
+  1214→          <div className="flex items-center justify-between">
+  1215→            <div className="flex items-center gap-3">
+  1216→              <div className="p-2 bg-white/20 rounded-lg">
+  1217→                <Bot className="h-5 w-5 text-white" />
+  1218→              </div>
+  1219→              <div>
+  1220→                <h3 className="font-semibold text-white">GroAI Financial Insights</h3>
+  1221→                <p className="text-xs text-white/80">AI-powered recommendations for your business</p>
+  1222→              </div>
+  1223→            </div>
+  1224→            <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">
+  1225→              {insights.length} insights
+  1226→            </Badge>
+  1227→          </div>
+  1228→        </div>
+  1229→
+  1230→        {/* Filters */}
+  1231→        <div className="border-b bg-gray-50 px-4 py-3">
+  1232→          <div className="flex flex-wrap items-center gap-2">
+  1233→            {/* Priority Filter */}
+  1234→            <div className="flex items-center gap-1 bg-white rounded-lg p-1 border">
+  1235→              {(['all', 'high', 'medium', 'low'] as const).map(priority => (
+  1236→                <button
+  1237→                  key={priority}
+  1238→                  onClick={() => setInsightFilter(priority)}
+  1239→                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+  1240→                    insightFilter === priority
+  1241→                      ? 'bg-[#00897B] text-white shadow-sm'
+  1242→                      : 'text-gray-600 hover:bg-gray-100'
+  1243→                  }`}
+  1244→                >
+  1245→                  {priority === 'all' ? 'All' : priorityConfig[priority].label}
+  1246→                  {priority !== 'all' && (
+  1247→                    <span className={`ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] rounded-full ${
+  1248→                      insightFilter === priority ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+  1249→                    }`}>
+  1250→                      {insightCounts[priority]}
+  1251→                    </span>
+  1252→                  )}
+  1253→                </button>
+  1254→              ))}
+  1255→            </div>
+  1256→
+  1257→            {/* Category Filter */}
+  1258→            <Select value={insightCategory} onValueChange={(val: any) => setInsightCategory(val)}>
+  1259→              <SelectTrigger className="h-8 w-[140px] bg-white text-xs">
+  1260→                <SelectValue placeholder="Category" />
+  1261→              </SelectTrigger>
+  1262→              <SelectContent>
+  1263→                <SelectItem value="all">All Categories</SelectItem>
+  1264→                {Object.entries(categoryConfig).map(([key, config]) => (
+  1265→                  <SelectItem key={key} value={key}>
+  1266→                    <div className="flex items-center gap-2">
+  1267→                      <config.icon className="h-3 w-3" />
+  1268→                      {config.label}
+  1269→                    </div>
+  1270→                  </SelectItem>
+  1271→                ))}
+  1272→              </SelectContent>
+  1273→            </Select>
+  1274→          </div>
+  1275→        </div>
+  1276→
+  1277→        {/* Insights List */}
+  1278→        <CardContent className="p-0">
+  1279→          {filteredInsights.length === 0 ? (
+  1280→            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+  1281→              <div className="p-3 bg-gray-100 rounded-full mb-3">
+  1282→                <CheckCircle2 className="h-6 w-6 text-[#00897B]" />
+  1283→              </div>
+  1284→              <p className="font-medium text-gray-700">All caught up!</p>
+  1285→              <p className="text-sm text-gray-500 mt-1">No insights match your current filters</p>
+  1286→            </div>
+  1287→          ) : (
+  1288→            <ScrollArea className="max-h-[450px]">
+  1289→              <div className="divide-y divide-gray-100">
+  1290→                {filteredInsights.map((insight, index) => {
+  1291→                  const typeConf = typeConfig[insight.type]
+  1292→                  const priorityConf = priorityConfig[insight.priority]
+  1293→                  const categoryConf = categoryConfig[insight.category]
+  1294→                  const Icon = typeConf.icon
+  1295→                  const isExpanded = expandedInsight === insight.id
+  1296→
+  1297→                  return (
+  1298→                    <div
+  1299→                      key={insight.id}
+  1300→                      className={`group transition-colors ${isExpanded ? 'bg-gray-50' : 'hover:bg-gray-50/50'}`}
+  1301→                    >
+  1302→                      {/* Insight Header - Always Visible */}
+  1303→                      <div
+  1304→                        className="flex items-start gap-3 px-4 py-3 cursor-pointer"
+  1305→                        onClick={() => setExpandedInsight(isExpanded ? null : insight.id)}
+  1306→                      >
+  1307→                        {/* Type Icon */}
+  1308→                        <div className={`p-2 rounded-lg ${typeConf.bg} shrink-0 mt-0.5`}>
+  1309→                          <Icon className={`h-4 w-4 ${typeConf.color}`} />
+  1310→                        </div>
+  1311→
+  1312→                        {/* Content */}
+  1313→                        <div className="flex-1 min-w-0">
+  1314→                          <div className="flex items-center gap-2 mb-1">
+  1315→                            <h4 className="font-medium text-sm text-gray-900 truncate">{insight.title}</h4>
+  1316→                            <div className={`w-2 h-2 rounded-full ${priorityConf.dot} shrink-0`} title={priorityConf.label} />
+  1317→                          </div>
+  1318→
+  1319→                          <p className={`text-xs text-gray-500 leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}>
+  1320→                            {insight.description}
+  1321→                          </p>
+  1322→
+  1323→                          {/* Quick Stats Row */}
+  1324→                          <div className="flex items-center gap-4 mt-2">
+  1325→                            {/* Category Badge */}
+  1326→                            <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1">
+  1327→                              <categoryConf.icon className="h-2.5 w-2.5" />
+  1328→                              {categoryConf.label}
+  1329→                            </Badge>
+  1330→
+  1331→                            {/* Confidence */}
+  1332→                            {insight.confidence && (
+  1333→                              <div className="flex items-center gap-1 text-[10px] text-gray-500">
+  1334→                                <Brain className="h-3 w-3" />
+  1335→                                <span>{insight.confidence}% confidence</span>
+  1336→                              </div>
+  1337→                            )}
+  1338→
+  1339→                            {/* Potential Savings */}
+  1340→                            {insight.potentialSavings && insight.potentialSavings > 0 && (
+  1341→                              <div className="flex items-center gap-1 text-[10px] text-green-600 font-medium">
+  1342→                                <ArrowUpRight className="h-3 w-3" />
+  1343→                                Save {formatCurrency(insight.potentialSavings)}
+  1344→                              </div>
+  1345→                            )}
+  1346→
+  1347→                            {/* Change Indicator */}
+  1348→                            {insight.change !== undefined && insight.change !== 0 && (
+  1349→                              <div className={`flex items-center gap-0.5 text-[10px] font-medium ${
+  1350→                                insight.change > 0 ? 'text-green-600' : 'text-red-600'
+  1351→                              }`}>
+  1352→                                {insight.change > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+  1353→                                {Math.abs(insight.change)}%
+  1354→                              </div>
+  1355→                            )}
+  1356→                          </div>
+  1357→                        </div>
+  1358→
+  1359→                        {/* Expand/Collapse Icon */}
+  1360→                        <ChevronRight className={`h-4 w-4 text-gray-400 shrink-0 mt-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+  1361→                      </div>
+  1362→
+  1363→                      {/* Expanded Content */}
+  1364→                      {isExpanded && (
+  1365→                        <div className="px-4 pb-4 pl-[52px]">
+  1366→                          <div className="bg-white border rounded-lg p-3 shadow-sm">
+  1367→                            {/* Priority Bar */}
+  1368→                            <div className="flex items-center justify-between mb-3 pb-3 border-b border-dashed">
+  1369→                              <div className="flex items-center gap-2">
+  1370→                                <span className="text-xs text-gray-500">Priority:</span>
+  1371→                                <Badge className={`${priorityConf.bar} text-white text-[10px]`}>
+  1372→                                  {priorityConf.label}
+  1373→                                </Badge>
+  1374→                              </div>
+  1375→                              {insight.metric && (
+  1376→                                <div className="text-xs font-medium text-gray-700">
+  1377→                                  Metric: <span className="text-[#00897B]">{insight.metric}</span>
+  1378→                                </div>
+  1379→                              )}
+  1380→                            </div>
+  1381→
+  1382→                            {/* Action Button */}
+  1383→                            <Button
+  1384→                              size="sm"
+  1385→                              className="w-full bg-[#00897B] hover:bg-[#00695C] text-white"
+  1386→                              onClick={(e) => {
+  1387→                                e.stopPropagation()
+  1388→                                showToast(`Action: ${insight.action}`, 'info')
+  1389→                              }}
+  1390→                            >
+  1391→                              {insight.action}
+  1392→                            </Button>
+  1393→                          </div>
+  1394→                        </div>
+  1395→                      )}
+  1396→                    </div>
+  1397→                  )
+  1398→                })}
+  1399→              </div>
+  1400→            </ScrollArea>
+  1401→          )}
+  1402→        </CardContent>
+  1403→      </Card>
+  1404→    )
+  1405→  }
+  1406→  
+  1407→  // Render Dashboard
+  1408→  const renderDashboard = () => {
+  1409→    const isLoading = isLoadingAccounts || isLoadingInvoices || isLoadingBills || isLoadingJournal
+  1410→    const hasError = accountsError || invoicesError || billsError || journalError
+  1411→    
+  1412→    return (
+  1413→      <div className="space-y-6">
+  1414→        {/* Error Alert */}
+  1415→        {hasError && (
+  1416→          <Card className="border-red-200 bg-red-50">
+  1417→            <CardContent className="p-4">
+  1418→              <div className="flex items-center gap-3">
+  1419→                <AlertCircle className="h-5 w-5 text-red-600" />
+  1420→                <div className="flex-1">
+  1421→                  <p className="text-sm font-medium text-red-800">Error loading data</p>
+  1422→                  <p className="text-xs text-red-600">{accountsError || invoicesError || billsError || journalError}</p>
+  1423→                </div>
+  1424→                <Button size="sm" variant="outline" onClick={refreshAllData}>
+  1425→                  <RefreshCw className="h-4 w-4 mr-2" />Retry
+  1426→                </Button>
+  1427→              </div>
+  1428→            </CardContent>
+  1429→          </Card>
+  1430→        )}
+  1431→        
+  1432→        {/* KPI Cards */}
+  1433→        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+  1434→          {isLoadingAccounts ? (
+  1435→            <>
+  1436→              <LoadingSkeleton className="h-28" />
+  1437→              <LoadingSkeleton className="h-28" />
+  1438→              <LoadingSkeleton className="h-28" />
+  1439→              <LoadingSkeleton className="h-28" />
+  1440→              <LoadingSkeleton className="h-28" />
+  1441→            </>
+  1442→          ) : (
+  1443→            <>
+  1444→              <Card className="border-l-4 border-l-[#00897B]">
+  1445→                <CardContent className="p-4">
+  1446→                  <div className="flex items-center justify-between">
+  1447→                    <p className="text-xs text-[#757575]">Total Assets</p>
+  1448→                    <Wallet className="h-4 w-4 text-[#00897B]" />
+  1449→                  </div>
+  1450→                  <p className="text-2xl font-bold text-[#00897B]">{formatCurrency(totalAssets)}</p>
+  1451→                  <p className="text-xs text-green-600 flex items-center mt-1">
+  1452→                    <TrendingUp className="h-3 w-3 mr-1" />+5.2% vs last month
+  1453→                  </p>
+  1454→                </CardContent>
+  1455→              </Card>
+  1456→              <Card>
+  1457→                <CardContent className="p-4">
+  1458→                  <div className="flex items-center justify-between">
+  1459→                    <p className="text-xs text-[#757575]">Total Liabilities</p>
+  1460→                    <CreditCard className="h-4 w-4 text-red-500" />
+  1461→                  </div>
+  1462→                  <p className="text-2xl font-bold text-red-600">{formatCurrency(totalLiabilities)}</p>
+  1463→                  <p className="text-xs text-[#757575]">Outstanding obligations</p>
+  1464→                </CardContent>
+  1465→              </Card>
+  1466→              <Card className="border-l-4 border-l-green-500">
+  1467→                <CardContent className="p-4">
+  1468→                  <div className="flex items-center justify-between">
+  1469→                    <p className="text-xs text-[#757575]">Net Profit</p>
+  1470→                    <TrendingUp className="h-4 w-4 text-green-500" />
+  1471→                  </div>
+  1472→                  <p className="text-2xl font-bold text-green-600">{formatCurrency(netProfit)}</p>
+  1473→                  <p className="text-xs text-green-600">Margin: {totalIncome > 0 ? ((netProfit / totalIncome) * 100).toFixed(1) : 0}%</p>
+  1474→                </CardContent>
+  1475→              </Card>
+  1476→              <Card>
+  1477→                <CardContent className="p-4">
+  1478→                  <div className="flex items-center justify-between">
+  1479→                    <p className="text-xs text-[#757575]">Accounts Receivable</p>
+  1480→                    <ArrowUpRight className="h-4 w-4 text-amber-500" />
+  1481→                  </div>
+  1482→                  <p className="text-2xl font-bold">{formatCurrency(accountsReceivable)}</p>
+  1483→                  <p className="text-xs text-amber-600">{pendingInvoices.length} pending invoices</p>
+  1484→                </CardContent>
+  1485→              </Card>
+  1486→              <Card>
+  1487→                <CardContent className="p-4">
+  1488→                  <div className="flex items-center justify-between">
+  1489→                    <p className="text-xs text-[#757575]">Accounts Payable</p>
+  1490→                    <ArrowDownRight className="h-4 w-4 text-blue-500" />
+  1491→                  </div>
+  1492→                  <p className="text-2xl font-bold">{formatCurrency(accountsPayable)}</p>
+  1493→                  <p className="text-xs text-blue-600">{pendingBills.length} pending bills</p>
+  1494→                </CardContent>
+  1495→              </Card>
+  1496→            </>
+  1497→          )}
+  1498→        </div>
+  1499→        
+  1500→        {/* Quick Actions */}
+  1501→        <div className="flex gap-2 flex-wrap">
+  1502→          <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => { setSelectedInvoice(null); setInvoiceDialogOpen(true); }}>
+  1503→            <Plus className="h-4 w-4 mr-2" />New Invoice
+  1504→          </Button>
+  1505→          <Button variant="outline" onClick={() => { setSelectedBill(null); setBillDialogOpen(true); }}>
+  1506→            <Plus className="h-4 w-4 mr-2" />New Bill
+  1507→          </Button>
+  1508→          <Button variant="outline" onClick={() => setJournalDialogOpen(true)}>
+  1509→            <ArrowRightLeft className="h-4 w-4 mr-2" />Journal Entry
+  1510→          </Button>
+  1511→          <Button variant="outline" onClick={() => setActiveTab('reconciliation')}>
+  1512→            <ArrowRightLeft className="h-4 w-4 mr-2" />Reconcile
+  1513→          </Button>
+  1514→          <Button variant="outline" onClick={() => setActiveTab('vat')}>
+  1515→            <Percent className="h-4 w-4 mr-2" />VAT 201
+  1516→          </Button>
+  1517→          <Button variant="outline" onClick={() => setActiveTab('reports')}>
+  1518→            <FileSpreadsheet className="h-4 w-4 mr-2" />Reports
+  1519→          </Button>
+  1520→          <Button variant="outline" onClick={refreshAllData} disabled={isLoading}>
+  1521→            {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}Refresh
+  1522→          </Button>
+  1523→        </div>
+  1524→        
+  1525→        {/* GroAI Insights */}
+  1526→        {renderInsightsPanel()}
+  1527→        
+  1528→        {/* Bank Accounts & Quick Reports */}
+  1529→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  1530→          <Card>
+  1531→            <CardHeader className="pb-2">
+  1532→              <CardTitle className="text-sm flex items-center gap-2">
+  1533→                <Landmark className="h-4 w-4 text-[#00897B]" />
+  1534→                Bank Accounts
+  1535→                <Badge variant="outline" className="ml-auto">
+  1536→                  Total: {formatCurrency(cashBalance)}
+  1537→                </Badge>
+  1538→              </CardTitle>
+  1539→            </CardHeader>
+  1540→            <CardContent>
+  1541→              <div className="space-y-3">
+  1542→                {bankAccounts.map(account => (
+  1543→                  <div
+  1544→                    key={account.id}
+  1545→                    className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+  1546→                    onClick={() => { setSelectedBank(account); setReconcileDialogOpen(true); }}
+  1547→                  >
+  1548→                    <div className={`p-2 rounded-lg ${
+  1549→                      account.accountType === 'cheque' ? 'bg-blue-100' :
+  1550→                      account.accountType === 'savings' ? 'bg-green-100' :
+  1551→                      account.accountType === 'credit' ? 'bg-purple-100' : 'bg-amber-100'
+  1552→                    }`}>
+  1553→                      <Building2 className={`h-4 w-4 ${
+  1554→                        account.accountType === 'cheque' ? 'text-blue-600' :
+  1555→                        account.accountType === 'savings' ? 'text-green-600' :
+  1556→                        account.accountType === 'credit' ? 'text-purple-600' : 'text-amber-600'
+  1557→                      }`} />
+  1558→                    </div>
+  1559→                    <div className="flex-1">
+  1560→                      <div className="flex items-center gap-2">
+  1561→                        <p className="font-medium text-sm">{account.bankName}</p>
+  1562→                        <Badge variant="outline" className="text-[10px]">{account.accountType}</Badge>
+  1563→                        {account.status === 'connected' && (
+  1564→                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+  1565→                        )}
+  1566→                      </div>
+  1567→                      <p className="text-xs text-[#757575]">{account.accountNumber}</p>
+  1568→                    </div>
+  1569→                    <div className="text-right">
+  1570→                      <p className={`font-bold ${account.balance < 0 ? 'text-red-600' : 'text-[#00897B]'}`}>
+  1571→                        {formatCurrency(account.balance)}
+  1572→                      </p>
+  1573→                      {account.difference !== 0 && (
+  1574→                        <p className="text-xs text-amber-600">Diff: {formatCurrency(account.difference)}</p>
+  1575→                      )}
+  1576→                    </div>
+  1577→                  </div>
+  1578→                ))}
+  1579→              </div>
+  1580→            </CardContent>
+  1581→          </Card>
+  1582→          
+  1583→          <Card>
+  1584→            <CardHeader className="pb-2">
+  1585→              <CardTitle className="text-sm flex items-center gap-2">
+  1586→                <Activity className="h-4 w-4 text-[#00897B]" />
+  1587→                Recent Activity
+  1588→              </CardTitle>
+  1589→            </CardHeader>
+  1590→            <CardContent>
+  1591→              {isLoadingJournal ? (
+  1592→                <div className="space-y-2">
+  1593→                  <LoadingSkeleton className="h-12" />
+  1594→                  <LoadingSkeleton className="h-12" />
+  1595→                  <LoadingSkeleton className="h-12" />
+  1596→                </div>
+  1597→              ) : (
+  1598→                <ScrollArea className="h-[200px]">
+  1599→                  <div className="space-y-2">
+  1600→                    {journalEntries.slice(0, 6).map(entry => (
+  1601→                      <div key={entry.id} className="flex items-center gap-3 p-2 border rounded-lg">
+  1602→                        <div className={`p-1.5 rounded ${
+  1603→                          entry.status === 'posted' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+  1604→                        }`}>
+  1605→                          <ArrowRightLeft className="h-3 w-3" />
+  1606→                        </div>
+  1607→                        <div className="flex-1 min-w-0">
+  1608→                          <p className="text-sm font-medium truncate">{entry.description}</p>
+  1609→                          <p className="text-xs text-[#757575]">{entry.date} • {entry.reference}</p>
+  1610→                        </div>
+  1611→                        <div className="text-right shrink-0">
+  1612→                          <p className="font-bold text-sm">{formatCurrency(entry.totalDebit)}</p>
+  1613→                          <Badge className={entry.status === 'posted' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}>
+  1614→                            {entry.status}
+  1615→                          </Badge>
+  1616→                        </div>
+  1617→                      </div>
+  1618→                    ))}
+  1619→                  </div>
+  1620→                </ScrollArea>
+  1621→              )}
+  1622→            </CardContent>
+  1623→          </Card>
+  1624→        </div>
+  1625→        
+  1626→        {/* Budget Overview */}
+  1627→        <Card>
+  1628→          <CardHeader className="pb-2">
+  1629→            <CardTitle className="text-sm flex items-center gap-2">
+  1630→              <Target className="h-4 w-4 text-[#00897B]" />
+  1631→              Budget Overview
+  1632→            </CardTitle>
+  1633→          </CardHeader>
+  1634→          <CardContent>
+  1635→            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+  1636→              {budgets.map(budget => (
+  1637→                <div key={budget.id} className="p-3 border rounded-lg">
+  1638→                  <div className="flex items-center justify-between mb-2">
+  1639→                    <p className="font-medium text-sm truncate">{budget.name}</p>
+  1640→                    <Badge className={budget.percentage > 90 ? 'bg-red-100 text-red-700' : budget.percentage > 75 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}>
+  1641→                      {budget.percentage}%
+  1642→                    </Badge>
+  1643→                  </div>
+  1644→                  <Progress value={budget.percentage} className="h-2 mb-2" />
+  1645→                  <div className="flex justify-between text-xs text-[#757575]">
+  1646→                    <span>Spent: {formatCurrency(budget.spent)}</span>
+  1647→                    <span>Budget: {formatCurrency(budget.amount)}</span>
+  1648→                  </div>
+  1649→                </div>
+  1650→              ))}
+  1651→            </div>
+  1652→          </CardContent>
+  1653→        </Card>
+  1654→      </div>
+  1655→    )
+  1656→  }
+  1657→  
+  1658→  // Render Chart of Accounts
+  1659→  const renderChartOfAccounts = () => (
+  1660→    <div className="space-y-4">
+  1661→      <div className="flex gap-3 flex-wrap">
+  1662→        <div className="relative flex-1 min-w-[200px]">
+  1663→          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#757575]" />
+  1664→          <Input placeholder="Search accounts..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+  1665→        </div>
+  1666→        <Select value={typeFilter} onValueChange={setTypeFilter}>
+  1667→          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Filter by type" /></SelectTrigger>
+  1668→          <SelectContent>
+  1669→            <SelectItem value="all">All Types</SelectItem>
+  1670→            <SelectItem value="asset">Assets</SelectItem>
+  1671→            <SelectItem value="liability">Liabilities</SelectItem>
+  1672→            <SelectItem value="equity">Equity</SelectItem>
+  1673→            <SelectItem value="income">Income</SelectItem>
+  1674→            <SelectItem value="expense">Expenses</SelectItem>
+  1675→          </SelectContent>
+  1676→        </Select>
+  1677→        <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => { setSelectedAccount(null); setAccountDialogOpen(true); }}>
+  1678→          <Plus className="h-4 w-4 mr-2" />Add Account
+  1679→        </Button>
+  1680→      </div>
+  1681→      
+  1682→      <div className="grid grid-cols-5 gap-3">
+  1683→        {[
+  1684→          { type: 'asset', label: 'Assets', total: totalAssets, color: 'bg-blue-100 text-blue-700' },
+  1685→          { type: 'liability', label: 'Liabilities', total: totalLiabilities, color: 'bg-red-100 text-red-700' },
+  1686→          { type: 'equity', label: 'Equity', total: totalEquity, color: 'bg-purple-100 text-purple-700' },
+  1687→          { type: 'income', label: 'Income', total: totalIncome, color: 'bg-green-100 text-green-700' },
+  1688→          { type: 'expense', label: 'Expenses', total: totalExpenses, color: 'bg-orange-100 text-orange-700' },
+  1689→        ].map(cat => (
+  1690→          <Card key={cat.type} className={`${cat.color} cursor-pointer hover:opacity-80`} onClick={() => setTypeFilter(cat.type)}>
+  1691→            <CardContent className="p-3 text-center">
+  1692→              <p className="text-xs font-medium">{cat.label}</p>
+  1693→              <p className="text-lg font-bold">{formatCurrency(cat.total)}</p>
+  1694→            </CardContent>
+  1695→          </Card>
+  1696→        ))}
+  1697→      </div>
+  1698→      
+  1699→      {isLoadingAccounts ? (
+  1700→        <div className="space-y-2">
+  1701→          {[...Array(5)].map((_, i) => (
+  1702→            <LoadingSkeleton key={i} className="h-16" />
+  1703→          ))}
+  1704→        </div>
+  1705→      ) : accountsError ? (
+  1706→        <Card className="border-red-200 bg-red-50">
+  1707→          <CardContent className="p-4 text-center">
+  1708→            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+  1709→            <p className="text-sm text-red-700">{accountsError}</p>
+  1710→            <Button size="sm" variant="outline" className="mt-2" onClick={fetchAccounts}>
+  1711→              <RefreshCw className="h-4 w-4 mr-2" />Retry
+  1712→            </Button>
+  1713→          </CardContent>
+  1714→        </Card>
+  1715→      ) : (
+  1716→        <ScrollArea className="flex-1">
+  1717→          <div className="space-y-1">
+  1718→            {accounts
+  1719→              .filter(a => typeFilter === 'all' || a.type === typeFilter)
+  1720→              .filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase()) || a.code.includes(searchQuery))
+  1721→              .map(account => {
+  1722→                const typeColors: Record<string, string> = { asset: 'border-l-blue-500', liability: 'border-l-red-500', equity: 'border-l-purple-500', income: 'border-l-green-500', expense: 'border-l-orange-500' }
+  1723→                const typeIcons: Record<string, any> = { asset: Wallet, liability: CreditCard, equity: PiggyBank, income: TrendingUp, expense: TrendingDown }
+  1724→                const Icon = typeIcons[account.type]
+  1725→                const isParent = accounts.some(a => a.parentCode === account.code)
+  1726→                
+  1727→                return (
+  1728→                  <div key={account.id} className={`flex items-center gap-3 p-3 border rounded-lg border-l-4 ${typeColors[account.type]} ${account.parentCode ? 'ml-6 bg-gray-50' : ''} hover:bg-gray-50`}>
+  1729→                    <Icon className="h-4 w-4 text-[#757575] shrink-0" />
+  1730→                    <div className="w-16 shrink-0"><Badge variant="outline" className="font-mono text-xs">{account.code}</Badge></div>
+  1731→                    <div className="flex-1 min-w-0">
+  1732→                      <div className="flex items-center gap-2">
+  1733→                        <p className="font-medium text-sm truncate">{account.name}</p>
+  1734→                        {account.taxDeductible && <Badge variant="outline" className="text-[10px] bg-green-50">Tax Deductible</Badge>}
+  1735→                      </div>
+  1736→                      <p className="text-xs text-[#757575]">{account.subType}</p>
+  1737→                    </div>
+  1738→                    <p className={`font-bold shrink-0 ${account.balance < 0 ? 'text-red-600' : 'text-[#00897B]'}`}>{formatCurrency(account.balance)}</p>
+  1739→                    <div className="flex gap-1 shrink-0">
+  1740→                      <Button size="sm" variant="ghost" onClick={() => { setSelectedAccount(account); setAccountForm(account); setAccountDialogOpen(true); }}><Edit className="h-3 w-3" /></Button>
+  1741→                      {!isParent && !account.parentCode && <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteAccount(account.id)}><Trash2 className="h-3 w-3" /></Button>}
+  1742→                    </div>
+  1743→                  </div>
+  1744→                )
+  1745→              })}
+  1746→          </div>
+  1747→        </ScrollArea>
+  1748→      )}
+  1749→    </div>
+  1750→  )
+  1751→  
+  1752→  // Render Invoices
+  1753→  const renderInvoices = () => (
+  1754→    <div className="space-y-4">
+  1755→      <div className="flex justify-between items-center">
+  1756→        <div className="flex gap-2">
+  1757→          <div className="relative">
+  1758→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#757575]" />
+  1759→            <Input placeholder="Search invoices..." className="pl-9 w-[250px]" />
+  1760→          </div>
+  1761→          <Select defaultValue="all">
+  1762→            <SelectTrigger className="w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
+  1763→            <SelectContent>
+  1764→              <SelectItem value="all">All Status</SelectItem>
+  1765→              <SelectItem value="draft">Draft</SelectItem>
+  1766→              <SelectItem value="sent">Sent</SelectItem>
+  1767→              <SelectItem value="paid">Paid</SelectItem>
+  1768→              <SelectItem value="overdue">Overdue</SelectItem>
+  1769→            </SelectContent>
+  1770→          </Select>
+  1771→        </div>
+  1772→        <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => { setSelectedInvoice(null); setInvoiceDialogOpen(true); }}>
+  1773→          <Plus className="h-4 w-4 mr-2" />New Invoice
+  1774→        </Button>
+  1775→      </div>
+  1776→      
+  1777→      {/* Invoice Stats */}
+  1778→      <div className="grid grid-cols-4 gap-4">
+  1779→        <Card>
+  1780→          <CardContent className="p-4">
+  1781→            <p className="text-xs text-[#757575]">Drafts</p>
+  1782→            <p className="text-xl font-bold">{invoices.filter(i => i.status === 'draft').length}</p>
+  1783→          </CardContent>
+  1784→        </Card>
+  1785→        <Card>
+  1786→          <CardContent className="p-4">
+  1787→            <p className="text-xs text-[#757575]">Pending</p>
+  1788→            <p className="text-xl font-bold text-amber-600">{invoices.filter(i => i.status === 'sent' || i.status === 'partial').length}</p>
+  1789→          </CardContent>
+  1790→        </Card>
+  1791→        <Card>
+  1792→          <CardContent className="p-4">
+  1793→            <p className="text-xs text-[#757575]">Overdue</p>
+  1794→            <p className="text-xl font-bold text-red-600">{invoices.filter(i => i.status === 'overdue').length}</p>
+  1795→          </CardContent>
+  1796→        </Card>
+  1797→        <Card>
+  1798→          <CardContent className="p-4">
+  1799→            <p className="text-xs text-[#757575]">Collected</p>
+  1800→            <p className="text-xl font-bold text-green-600">{formatCurrency(invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0))}</p>
+  1801→          </CardContent>
+  1802→        </Card>
+  1803→      </div>
+  1804→      
+  1805→      {isLoadingInvoices ? (
+  1806→        <div className="space-y-2">
+  1807→          {[...Array(5)].map((_, i) => (
+  1808→            <LoadingSkeleton key={i} className="h-20" />
+  1809→          ))}
+  1810→        </div>
+  1811→      ) : invoicesError ? (
+  1812→        <Card className="border-red-200 bg-red-50">
+  1813→          <CardContent className="p-4 text-center">
+  1814→            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+  1815→            <p className="text-sm text-red-700">{invoicesError}</p>
+  1816→            <Button size="sm" variant="outline" className="mt-2" onClick={fetchInvoices}>
+  1817→              <RefreshCw className="h-4 w-4 mr-2" />Retry
+  1818→            </Button>
+  1819→          </CardContent>
+  1820→        </Card>
+  1821→      ) : (
+  1822→        <ScrollArea className="flex-1">
+  1823→          <div className="space-y-2">
+  1824→            {invoices.map(invoice => (
+  1825→              <div key={invoice.id} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50">
+  1826→                <div className="flex-1">
+  1827→                  <div className="flex items-center gap-2">
+  1828→                    <p className="font-medium">{invoice.invoiceNumber}</p>
+  1829→                    <Badge className={getInvoiceStatusColor(invoice.status)}>{invoice.status}</Badge>
+  1830→                  </div>
+  1831→                  <p className="text-sm text-[#757575]">{invoice.customerName} • {invoice.customerEmail}</p>
+  1832→                  <p className="text-xs text-[#757575]">Due: {invoice.dueDate}</p>
+  1833→                </div>
+  1834→                <div className="text-right">
+  1835→                  <p className="font-bold text-lg">{formatCurrency(invoice.total)}</p>
+  1836→                  <p className="text-xs text-[#757575]">{invoice.items.length} items</p>
+  1837→                </div>
+  1838→                <div className="flex gap-1">
+  1839→                  <Button size="sm" variant="ghost"><Eye className="h-4 w-4" /></Button>
+  1840→                  {invoice.status === 'draft' && (
+  1841→                    <Button size="sm" variant="ghost" onClick={() => handleUpdateInvoiceStatus(invoice.id, 'sent')}><Send className="h-4 w-4" /></Button>
+  1842→                  )}
+  1843→                  {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+  1844→                    <Button size="sm" variant="ghost" className="text-green-600" onClick={() => handleUpdateInvoiceStatus(invoice.id, 'paid')}><CheckCircle2 className="h-4 w-4" /></Button>
+  1845→                  )}
+  1846→                  <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteInvoice(invoice.id)}><Trash2 className="h-4 w-4" /></Button>
+  1847→                </div>
+  1848→              </div>
+  1849→            ))}
+  1850→          </div>
+  1851→        </ScrollArea>
+  1852→      )}
+  1853→    </div>
+  1854→  )
+  1855→  
+  1856→  // Render Bills
+  1857→  const renderBills = () => (
+  1858→    <div className="space-y-4">
+  1859→      <div className="flex justify-between items-center">
+  1860→        <div className="flex gap-2">
+  1861→          <div className="relative">
+  1862→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#757575]" />
+  1863→            <Input placeholder="Search bills..." className="pl-9 w-[250px]" />
+  1864→          </div>
+  1865→          <Select defaultValue="all">
+  1866→            <SelectTrigger className="w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
+  1867→            <SelectContent>
+  1868→              <SelectItem value="all">All Status</SelectItem>
+  1869→              <SelectItem value="draft">Draft</SelectItem>
+  1870→              <SelectItem value="pending">Pending</SelectItem>
+  1871→              <SelectItem value="approved">Approved</SelectItem>
+  1872→              <SelectItem value="paid">Paid</SelectItem>
+  1873→            </SelectContent>
+  1874→          </Select>
+  1875→        </div>
+  1876→        <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => { setSelectedBill(null); setBillDialogOpen(true); }}>
+  1877→          <Plus className="h-4 w-4 mr-2" />New Bill
+  1878→        </Button>
+  1879→      </div>
+  1880→      
+  1881→      {/* Bill Stats */}
+  1882→      <div className="grid grid-cols-4 gap-4">
+  1883→        <Card>
+  1884→          <CardContent className="p-4">
+  1885→            <p className="text-xs text-[#757575]">Pending Approval</p>
+  1886→            <p className="text-xl font-bold text-amber-600">{bills.filter(b => b.status === 'pending').length}</p>
+  1887→          </CardContent>
+  1888→        </Card>
+  1889→        <Card>
+  1890→          <CardContent className="p-4">
+  1891→            <p className="text-xs text-[#757575]">Approved</p>
+  1892→            <p className="text-xl font-bold text-blue-600">{bills.filter(b => b.status === 'approved').length}</p>
+  1893→          </CardContent>
+  1894→        </Card>
+  1895→        <Card>
+  1896→          <CardContent className="p-4">
+  1897→            <p className="text-xs text-[#757575]">Overdue</p>
+  1898→            <p className="text-xl font-bold text-red-600">{bills.filter(b => b.status === 'overdue').length}</p>
+  1899→          </CardContent>
+  1900→        </Card>
+  1901→        <Card>
+  1902→          <CardContent className="p-4">
+  1903→            <p className="text-xs text-[#757575]">Total Payable</p>
+  1904→            <p className="text-xl font-bold">{formatCurrency(bills.filter(b => b.status !== 'paid').reduce((s, b) => s + b.total, 0))}</p>
+  1905→          </CardContent>
+  1906→        </Card>
+  1907→      </div>
+  1908→      
+  1909→      {isLoadingBills ? (
+  1910→        <div className="space-y-2">
+  1911→          {[...Array(5)].map((_, i) => (
+  1912→            <LoadingSkeleton key={i} className="h-20" />
+  1913→          ))}
+  1914→        </div>
+  1915→      ) : billsError ? (
+  1916→        <Card className="border-red-200 bg-red-50">
+  1917→          <CardContent className="p-4 text-center">
+  1918→            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+  1919→            <p className="text-sm text-red-700">{billsError}</p>
+  1920→            <Button size="sm" variant="outline" className="mt-2" onClick={fetchBills}>
+  1921→              <RefreshCw className="h-4 w-4 mr-2" />Retry
+  1922→            </Button>
+  1923→          </CardContent>
+  1924→        </Card>
+  1925→      ) : (
+  1926→        <ScrollArea className="flex-1">
+  1927→          <div className="space-y-2">
+  1928→            {bills.map(bill => (
+  1929→              <div key={bill.id} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50">
+  1930→                <div className="flex-1">
+  1931→                  <div className="flex items-center gap-2">
+  1932→                    <p className="font-medium">{bill.billNumber}</p>
+  1933→                    <Badge className={getBillStatusColor(bill.status)}>{bill.status}</Badge>
+  1934→                    <Badge variant="outline" className="text-[10px]">{bill.category}</Badge>
+  1935→                  </div>
+  1936→                  <p className="text-sm text-[#757575]">{bill.supplierName}</p>
+  1937→                  <p className="text-xs text-[#757575]">Due: {bill.dueDate}</p>
+  1938→                </div>
+  1939→                <div className="text-right">
+  1940→                  <p className="font-bold text-lg">{formatCurrency(bill.total)}</p>
+  1941→                </div>
+  1942→                <div className="flex gap-1">
+  1943→                  <Button size="sm" variant="ghost"><Eye className="h-4 w-4" /></Button>
+  1944→                  {bill.status === 'pending' && (
+  1945→                    <Button size="sm" variant="ghost" className="text-blue-600" onClick={() => handleUpdateBillStatus(bill.id, 'approved')}><CheckCircle2 className="h-4 w-4" /></Button>
+  1946→                  )}
+  1947→                  {bill.status === 'approved' && (
+  1948→                    <Button size="sm" variant="ghost" className="text-green-600" onClick={() => handleUpdateBillStatus(bill.id, 'paid')}><Coins className="h-4 w-4" /></Button>
+  1949→                  )}
+  1950→                  <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteBill(bill.id)}><Trash2 className="h-4 w-4" /></Button>
+  1951→                </div>
+  1952→              </div>
+  1953→            ))}
+  1954→          </div>
+  1955→        </ScrollArea>
+  1956→      )}
+  1957→    </div>
+  1958→  )
+  1959→  
+  1960→  // Render Journal Entries
+  1961→  const renderJournalEntries = () => (
+  1962→    <div className="space-y-4">
+  1963→      <div className="flex justify-between items-center">
+  1964→        <div className="flex gap-2">
+  1965→          <div className="relative">
+  1966→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#757575]" />
+  1967→            <Input placeholder="Search entries..." className="pl-9 w-[250px]" />
+  1968→          </div>
+  1969→        </div>
+  1970→        <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => setJournalDialogOpen(true)}>
+  1971→          <Plus className="h-4 w-4 mr-2" />New Journal Entry
+  1972→        </Button>
+  1973→      </div>
+  1974→      
+  1975→      {isLoadingJournal ? (
+  1976→        <div className="space-y-2">
+  1977→          {[...Array(5)].map((_, i) => (
+  1978→            <LoadingSkeleton key={i} className="h-24" />
+  1979→          ))}
+  1980→        </div>
+  1981→      ) : journalError ? (
+  1982→        <Card className="border-red-200 bg-red-50">
+  1983→          <CardContent className="p-4 text-center">
+  1984→            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+  1985→            <p className="text-sm text-red-700">{journalError}</p>
+  1986→            <Button size="sm" variant="outline" className="mt-2" onClick={fetchJournalEntries}>
+  1987→              <RefreshCw className="h-4 w-4 mr-2" />Retry
+  1988→            </Button>
+  1989→          </CardContent>
+  1990→        </Card>
+  1991→      ) : (
+  1992→        <ScrollArea className="flex-1">
+  1993→          <div className="space-y-2">
+  1994→            {journalEntries.map(entry => (
+  1995→              <div key={entry.id} className="border rounded-lg p-4">
+  1996→                <div className="flex items-center justify-between mb-3">
+  1997→                  <div className="flex items-center gap-3">
+  1998→                    <Badge variant="outline">{entry.reference}</Badge>
+  1999→                    <p className="font-medium">{entry.description}</p>
+  2000→                    <Badge className={entry.status === 'posted' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}>
+
+[showing lines 1-2000 of 4037; use offset=2001 with limit to continue reading]

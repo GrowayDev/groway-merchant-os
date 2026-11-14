@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>09 · SAPE Rollout &amp; Compliance Timeline — Groway Merchant OS</title>
+<link rel="stylesheet" href="global.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  body{margin:0;}
+  .headline{font-family:var(--font-heading);font-size:var(--fs-h1);font-weight:700;letter-spacing:-0.015em;line-height:1.12;color:var(--ink);}
+  .phase-badge{font-family:var(--font-num);width:30px;height:30px;border-radius:9999px;background:var(--primary);color:var(--white);font-size:var(--fs-small);font-weight:600;flex:none;display:flex;align-items:center;justify-content:center;}
+  .phase-date{font-family:var(--font-num);font-size:var(--fs-h2);font-weight:600;letter-spacing:-0.01em;}
+  .phase-title{font-family:var(--font-heading);font-size:var(--fs-h3);font-weight:600;color:var(--ink);margin-top:14px;}
+  .phase-desc{font-size:var(--fs-body);line-height:1.5;color:var(--ink-soft);margin-top:7px;}
+  .connector{width:34px;height:2px;background:var(--line);align-self:flex-start;margin-top:32px;flex:none;}
+</style>
+</head>
+<body>
+<div class="slide flex flex-col" style="padding:56px 64px 60px;">
+
+  <header>
+    <div class="kicker">Sape · Rollout &amp; Compliance</div>
+    <h1 class="headline" style="margin-top:12px;">From pilot to regulator-grade in four phases</h1>
+  </header>
+
+  <!-- Timeline: flex cards connected by 2px rule lines -->
+  <div class="flex-1 flex items-center">
+    <div class="flex w-full items-stretch">
+
+      <div class="card flex-1 flex flex-col" style="padding:18px;min-height:232px;">
+        <div class="flex items-center" style="gap:10px;">
+          <span class="phase-badge">1</span>
+          <span class="phase-date" style="color:var(--primary);">Q3 2026</span>
+        </div>
+        <h3 class="phase-title">Pilot</h3>
+        <p class="phase-desc">50 merchants, 10 SKUs serialised end-to-end, consumer verify page live</p>
+      </div>
+
+      <div class="connector" data-decor aria-hidden="true"></div>
+
+      <div class="card flex-1 flex flex-col" style="padding:18px;min-height:232px;">
+        <div class="flex items-center" style="gap:10px;">
+          <span class="phase-badge">2</span>
+          <span class="phase-date" style="color:var(--primary);">Q1 2027</span>
+        </div>
+        <h3 class="phase-title">GroSupply integration</h3>
+        <p class="phase-desc">purchase orders authenticated at source (GroSupplyOrderAuth), supplier risk scoring in production</p>
+      </div>
+
+      <div class="connector" data-decor aria-hidden="true"></div>
+
+      <div class="card flex-1 flex flex-col" style="padding:18px;min-height:232px;">
+        <div class="flex items-center" style="gap:10px;">
+          <span class="phase-badge">3</span>
+          <span class="phase-date" style="color:var(--accent);">Oct 2027</span>
+        </div>
+        <h3 class="phase-title">SAHPRA import readiness</h3>
+        <p class="phase-desc">GTIN + batch + expiry enforcement for regulated categories (food-adjacent OTC, supplements)</p>
+      </div>
+
+      <div class="connector" data-decor aria-hidden="true"></div>
+
+      <div class="card flex-1 flex flex-col" style="padding:18px;min-height:232px;">
+        <div class="flex items-center" style="gap:10px;">
+          <span class="phase-badge">4</span>
+          <span class="phase-date" style="color:var(--accent);">Oct 2029</span>
+        </div>
+        <h3 class="phase-title">Unit-level serialisation</h3>
+        <p class="phase-desc">full AI(21) serial coverage for regulated products, authority feed SLAs contractual</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mini-stats -->
+  <div class="flex" style="gap:16px;">
+    <div class="card-soft flex items-center flex-1" style="gap:12px;padding:16px 20px;">
+      <i class="material-icons" aria-hidden="true" style="font-size:22px;color:var(--primary);">speed</i>
+      <p style="font-size:var(--fs-body);line-height:1.4;color:var(--ink-soft);"><span class="num" style="font-weight:600;color:var(--primary);">&lt;500ms</span> verification SLA</p>
+    </div>
+    <div class="card-soft flex items-center flex-1" style="gap:12px;padding:16px 20px;">
+      <i class="material-icons" aria-hidden="true" style="font-size:22px;color:var(--primary);">notifications_active</i>
+      <p style="font-size:var(--fs-body);line-height:1.4;color:var(--ink-soft);"><span class="num" style="font-weight:600;color:var(--primary);">1h</span> authority notification SLA</p>
+    </div>
+    <div class="card-soft flex items-center flex-1" style="gap:12px;padding:16px 20px;">
+      <i class="material-icons" aria-hidden="true" style="font-size:22px;color:var(--primary);">task_alt</i>
+      <p style="font-size:var(--fs-body);line-height:1.4;color:var(--ink-soft);"><span class="num" style="font-weight:600;color:var(--primary);">GS1-ready</span> from day one</p>
+    </div>
+  </div>
+
+  <footer class="deck-foot" style="color:var(--ink-soft);">
+    <span>Groway Merchant OS — Investor &amp; Partner Proposal</span>
+    <span class="num">09 / 13</span>
+  </footer>
+</div>
+</body>
+</html>

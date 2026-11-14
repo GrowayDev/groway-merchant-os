@@ -1,0 +1,252 @@
+/home/z/my-project/tool-results/read_1785325665142_5ff1a574e90c.txt:227:   227→type ViewType = 'dashboard' | 'pos' | 'transactions' | 'inventory' | 'pricing' | 'crm' | 'marketing' | 'staff' | 'accounting' | 'booking' | 'widget' | 'giftcards' | 'grosupply' | 'gromarket' | 'hardware' | 'payments' | 'multilocation' | 'offline' | 'training' | 'qrmenu' | 'floorplan' | 'kitchen' | 'recipe' | 'courses' | 'billsplit' | 'qrselfservice' | 'liquor' | 'hotel' | 'customerfacing' | 'waiterpad' | 'healthbeauty' | 'sars' | 'bankfeed' | 'courier' | 'whatsapp' | 'hardwarebuilding' | 'notifications' | 'settings' | 'more' | 'orders' | 'search' | 'grocredit' | 'enterprise' | 'salesreport' | 'fnbmanagement' | 'funeral' | 'autorepair' | 'dryclean' | 'professional' | 'realestate' | 'architecture' | 'engineering' | 'quantitysurveying' | 'medicalpractice' | 'dentalpractice' | 'childcare' | 'sportleisure' | 'electronicstech' | 'grocery' | 'fashion' | 'agriculture'
+/home/z/my-project/restore-data.ts:11:  { name: 'Tiger Brands', code: 'TIGER', website: 'tigerbrands.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 4, deliveryDays: 1, minOrderUnit: '1 case', notes: 'All Gold, Ace, Koo, Purity, Tastic, Oros. Category leader.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/restore-data.ts:12:  { name: 'Pioneer Foods (PepsiCo)', code: 'PIONEER', website: 'pioneerfoodssa.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 3, deliveryDays: 1, minOrderUnit: '5 units', notes: 'Sasko, Spekko, Ceres, Bokomo, Weet-Bix, Corn Flakes.', supplierType: 'manufacturer', city: 'Cape Town', province: 'Western Cape' },
+/home/z/my-project/restore-data.ts:13:  { name: 'Premier Foods', code: 'PREMIER', website: 'premierfm.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 4, deliveryDays: 1, minOrderUnit: '5 units', notes: 'Snowflake, Albany, Iwisa, Blue Ribbon. Bread & flour leader.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/restore-data.ts:14:  { name: 'Clover SA', code: 'CLOVER', website: 'clover.co.za', verticals: ['Grocery & FMCG', 'Hospitality'], tier: 'gold', bbbeeLevel: 3, deliveryDays: 1, minOrderUnit: '6 units', notes: 'Milk, cheese, yogurt, Tropika, Aquartz. Chilled delivery.', supplierType: 'manufacturer', city: 'Pretoria', province: 'Gauteng' },
+/home/z/my-project/restore-data.ts:15:  { name: 'Coca-Cola Beverages SA', code: 'CCBSA', website: 'coca-colabeverages.co.za', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'gold', bbbeeLevel: 2, deliveryDays: 1, minOrderUnit: '1 tray', notes: 'Coke, Fanta, Sprite, Powerade, Schweppes, Minute Maid.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/restore-data.ts:16:  { name: 'Unilever SA', code: 'UNILEVER', website: 'unilever.co.za', verticals: ['Grocery & FMCG', 'Health & Beauty'], tier: 'gold', bbbeeLevel: 1, deliveryDays: 1, minOrderUnit: '1 case', notes: 'Dove, Sunlight, Omo, Stork, Lifebuoy, Knorr, Rajah.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/restore-data.ts:17:  { name: 'Illovo Sugar (Huletts)', code: 'ILLOVO', website: 'illovo.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 3, deliveryDays: 2, minOrderUnit: '2 bags', notes: 'Huletts, White Sugar, Brown Sugar. Major SA refiner.', supplierType: 'manufacturer', city: 'Durban', province: 'KwaZulu-Natal' },
+/home/z/my-project/restore-data.ts:18:  { name: 'Astral Foods / County Fair', code: 'ASTRAL', website: 'astralfoods.com', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'gold', bbbeeLevel: 4, deliveryDays: 1, minOrderUnit: '5 kg', notes: 'Goldi, County Fair, Festive. SA\'s largest poultry producer.', supplierType: 'manufacturer', city: 'Centurion', province: 'Gauteng' },
+/home/z/my-project/restore-data.ts:19:  { name: 'Rainbow Chicken', code: 'RAINBOW', website: 'rainbowchicken.co.za', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'gold', bbbeeLevel: 3, deliveryDays: 1, minOrderUnit: '5 kg', notes: 'Fresh and frozen chicken products. National distribution.', supplierType: 'manufacturer', city: 'Hammarsdale', province: 'KwaZulu-Natal' },
+/home/z/my-project/restore-data.ts:101:    const categories = ['Food & Beverage', 'FMCG', 'Health & Beauty', 'Pharmaceuticals', 'Electronics', 'Hardware & Building', 'Automotive', 'Textiles & Apparel', 'Agriculture', 'Chemicals']
+/home/z/my-project/restore-data.ts:164:  const verticals = ['Food & Beverage', 'Grocery & FMCG', 'Health & Beauty', 'Hardware & Building', 'Electronics & Tech']
+/home/z/my-project/groway-pitch-deck/slide06-merchant.html:12:          <span style="background:#1565C0;color:#FFFFFF;padding:5pt 10pt;border-radius:4pt;font-size:11pt;">Grocery & FMCG</span>
+/home/z/my-project/seed-merchants.ts:62:      { name: 'Metro Wholesale', code: 'METRO', categories: 'FMCG' },
+/home/z/my-project/seed-grosupply.ts:47:      categories: JSON.stringify(['Grocery', 'Beverages', 'Snacks', 'Dry Goods']),
+/home/z/my-project/prisma/seed-suppliers-excel.ts:15:  'Grocery & FMCG': 'Grocery & FMCG',
+/home/z/my-project/prisma/seed-suppliers-excel.ts:64:  if (verticals.includes('Food & Beverage') || verticals.includes('Grocery & FMCG')) {
+/home/z/my-project/prisma/seed-simple.ts:8:const categories = ['Food & Beverage', 'FMCG', 'Health & Beauty', 'Electronics', 'Hardware', 'Automotive', 'Textiles', 'Agriculture']
+/home/z/my-project/prisma/seed-suppliers.ts:14:  { name: 'Tiger Brands', code: 'TIGER', website: 'tigerbrands.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 4, deliveryDays: 1, minOrderUnit: '1 case', notes: 'All Gold, Ace, Koo, Purity, Tastic, Oros. Category leader.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:15:  { name: 'Pioneer Foods (PepsiCo)', code: 'PIONEER', website: 'pioneerfoodssa.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 3, deliveryDays: 1, minOrderUnit: '5 units', notes: 'Sasko, Spekko, Ceres, Bokomo, Weet-Bix, Corn Flakes.', supplierType: 'manufacturer', city: 'Cape Town', province: 'Western Cape' },
+/home/z/my-project/prisma/seed-suppliers.ts:16:  { name: 'Premier Foods', code: 'PREMIER', website: 'premierfm.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 4, deliveryDays: 1, minOrderUnit: '5 units', notes: 'Snowflake, Albany, Iwisa, Blue Ribbon. Bread & flour leader.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:17:  { name: 'Clover SA', code: 'CLOVER', website: 'clover.co.za', verticals: ['Grocery & FMCG', 'Hospitality'], tier: 'gold', bbbeeLevel: 3, deliveryDays: 1, minOrderUnit: '6 units', notes: 'Milk, cheese, yogurt, Tropika, Aquartz. Chilled delivery.', supplierType: 'manufacturer', city: 'Pretoria', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:18:  { name: 'Coca-Cola Beverages SA', code: 'CCBSA', website: 'coca-colabeverages.co.za', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'gold', bbbeeLevel: 2, deliveryDays: 1, minOrderUnit: '1 tray', notes: 'Coke, Fanta, Sprite, Powerade, Schweppes, Minute Maid.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:19:  { name: 'Unilever SA', code: 'UNILEVER', website: 'unilever.co.za', verticals: ['Grocery & FMCG', 'Health & Beauty'], tier: 'gold', bbbeeLevel: 1, deliveryDays: 1, minOrderUnit: '1 case', notes: 'Dove, Sunlight, Omo, Stork, Lifebuoy, Knorr, Rajah.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:20:  { name: 'Illovo Sugar (Huletts)', code: 'ILLOVO', website: 'illovo.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 3, deliveryDays: 2, minOrderUnit: '2 bags', notes: 'Huletts, White Sugar, Brown Sugar. Major SA refiner.', supplierType: 'manufacturer', city: 'Durban', province: 'KwaZulu-Natal' },
+/home/z/my-project/prisma/seed-suppliers.ts:21:  { name: 'Astral Foods / County Fair', code: 'ASTRAL', website: 'astralfoods.com', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'gold', bbbeeLevel: 4, deliveryDays: 1, minOrderUnit: '5 kg', notes: 'Goldi, County Fair, Festive. SA\'s largest poultry producer.', supplierType: 'manufacturer', city: 'Centurion', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:22:  { name: 'Rainbow Chicken', code: 'RAINBOW', website: 'rainbowchicken.co.za', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'gold', bbbeeLevel: 3, deliveryDays: 1, minOrderUnit: '5 kg', notes: 'Fresh and frozen chicken products. National distribution.', supplierType: 'manufacturer', city: 'Hammarsdale', province: 'KwaZulu-Natal' },
+/home/z/my-project/prisma/seed-suppliers.ts:23:  { name: 'Karan Beef', code: 'KARAN', website: 'karanbeef.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 2, deliveryDays: 1, minOrderUnit: '10 kg', notes: 'SA\'s largest cattle feedlot. Chilled beef. HACCP certified.', supplierType: 'farmer', city: 'Heidelberg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:24:  { name: 'Eskort Ltd', code: 'ESKORT', website: 'eskort.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 3, deliveryDays: 1, minOrderUnit: '5 kg', notes: 'Bacon, ham, sausages, boerewors. SABS HACCP.', supplierType: 'manufacturer', city: 'Pretoria', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:25:  { name: 'Oceana Group', code: 'OCEANA', website: 'oceana.co.za', verticals: ['Grocery & FMCG'], tier: 'gold', bbbeeLevel: 2, deliveryDays: 3, minOrderUnit: '12 cans', notes: 'Lucky Star pilchards, canned fish. Major SA seafood.', supplierType: 'manufacturer', city: 'Cape Town', province: 'Western Cape' },
+/home/z/my-project/prisma/seed-suppliers.ts:26:  { name: 'Quantum Foods', code: 'QUANTUM', website: 'quantumfoods.co.za', verticals: ['Grocery & FMCG', 'Hospitality'], tier: 'gold', bbbeeLevel: 3, deliveryDays: 1, minOrderUnit: '1 tray', notes: 'Eggs (Eggs2Go, Nulaid). National egg distribution.', supplierType: 'farmer', city: 'Wellington', province: 'Western Cape' },
+/home/z/my-project/prisma/seed-suppliers.ts:52:  { name: 'Bidpaper Plus', code: 'BIDPAPER', website: 'bidpaper.co.za', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'gold', bbbeeLevel: 2, deliveryDays: 5, minOrderUnit: '500 units', notes: 'Eco packaging, bags, cups, containers. FSC options.', supplierType: 'distributor', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:64:  { name: 'Kazang (Mastercard)', code: 'KAZANG', website: 'kazang.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage', 'Liquor & Nightlife', 'Health & Beauty', 'Fashion & Apparel', 'Health & Pharmacy', 'Hospitality', 'Hardware & Building', 'Electronics & Tech', 'Sport & Leisure', 'Childcare & Education', 'Professional Services'], tier: 'gold', bbbeeLevel: 1, deliveryDays: 0, minOrderUnit: '1 integration', notes: 'Prepaid services, airtime, electricity tokens. API-based.', supplierType: 'distributor', city: 'Cape Town', province: 'Western Cape' },
+/home/z/my-project/prisma/seed-suppliers.ts:71:  { name: 'Sea Harvest Group', code: 'SEAHARVEST', website: 'seaharvest.co.za', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'silver', bbbeeLevel: 1, deliveryDays: 2, minOrderUnit: '10 kg', notes: 'Frozen fish, seafood. Leading SA seafood company.', supplierType: 'manufacturer', city: 'Cape Town', province: 'Western Cape' },
+/home/z/my-project/prisma/seed-suppliers.ts:78:  { name: 'PepsiCo SA (Simba)', code: 'SIMBA', website: 'pepsico.co.za', verticals: ['Grocery & FMCG', 'Food & Beverage'], tier: 'gold', bbbeeLevel: 2, deliveryDays: 1, minOrderUnit: '48 units', notes: 'Simba chips, Lay\'s, Doritos. High-velocity snacks.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:81:  { name: 'Packit', code: 'PACKIT', website: 'packitsa.co.za', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'bronze', bbbeeLevel: 3, deliveryDays: 5, minOrderUnit: '500 units', notes: 'Paper bags, packaging. SA packaging solutions.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:82:  { name: 'Willowton Group', code: 'WILLOWTON', website: 'willowton.co.za', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'silver', bbbeeLevel: 2, deliveryDays: 3, minOrderUnit: '2 drums', notes: 'Sunflower oil, cooking oils. Major SA producer.', supplierType: 'manufacturer', city: 'Pietermaritzburg', province: 'KwaZulu-Natal' },
+/home/z/my-project/prisma/seed-suppliers.ts:83:  { name: 'Cerebos', code: 'CEREBOS', website: 'cerebos.co.za', verticals: ['Food & Beverage', 'Grocery & FMCG'], tier: 'bronze', bbbeeLevel: 3, deliveryDays: 5, minOrderUnit: '2 bags', notes: 'Salt, spices. Zero-rated staple.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:87:  { name: 'P&G SA', code: 'PG', website: 'pg.com', verticals: ['Health & Beauty', 'Grocery & FMCG'], tier: 'silver', bbbeeLevel: 1, deliveryDays: 3, minOrderUnit: '12 units', notes: 'Gillette, Pantene, Head & Shoulders.', supplierType: 'manufacturer', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:88:  { name: 'MTN', code: 'MTN', website: 'mtn.co.za', verticals: ['Grocery & FMCG'], tier: 'gold', bbbeeLevel: 1, deliveryDays: 0, minOrderUnit: '1 voucher', notes: 'Airtime, data. Commission-based.', supplierType: 'distributor', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:89:  { name: 'Vodacom', code: 'VODACOM', website: 'vodacom.co.za', verticals: ['Grocery & FMCG'], tier: 'gold', bbbeeLevel: 1, deliveryDays: 0, minOrderUnit: '1 voucher', notes: 'Airtime, data. Commission-based.', supplierType: 'distributor', city: 'Johannesburg', province: 'Gauteng' },
+/home/z/my-project/prisma/seed-suppliers.ts:97:  'Grocery & FMCG': 'Grocery & FMCG',
+/home/z/my-project/prisma/suppliers-from-excel.json:65:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:75:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:85:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:95:    "verticals": "Grocery & FMCG, Hospitality",
+/home/z/my-project/prisma/suppliers-from-excel.json:105:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:115:    "verticals": "Grocery & FMCG, Health & Beauty",
+/home/z/my-project/prisma/suppliers-from-excel.json:125:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:135:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:145:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:155:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:165:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:175:    "verticals": "Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:185:    "verticals": "Grocery & FMCG, Hospitality",
+/home/z/my-project/prisma/suppliers-from-excel.json:445:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:565:    "verticals": "Grocery & FMCG, All Verticals",
+/home/z/my-project/prisma/suppliers-from-excel.json:575:    "verticals": "Grocery & FMCG, Hospitality",
+/home/z/my-project/prisma/suppliers-from-excel.json:625:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:645:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:655:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:665:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:675:    "verticals": "Grocery & FMCG, Health & Beauty",
+/home/z/my-project/prisma/suppliers-from-excel.json:685:    "verticals": "Grocery & FMCG, Childcare & Edu",
+/home/z/my-project/prisma/suppliers-from-excel.json:695:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:705:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:715:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:725:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:735:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:755:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:775:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:785:    "verticals": "Food & Bev, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:815:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:925:    "verticals": "Liquor & Nightlife, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:935:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:945:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:955:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:965:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:975:    "verticals": "Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:985:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:995:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:1005:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:1015:    "verticals": "Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:1025:    "verticals": "Grocery & FMCG, All Verticals",
+/home/z/my-project/prisma/suppliers-from-excel.json:1035:    "verticals": "Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:1045:    "verticals": "Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:1055:    "verticals": "Grocery & FMCG, Food & Bev",
+/home/z/my-project/prisma/suppliers-from-excel.json:1565:    "verticals": "Hospitality, Grocery & FMCG",
+/home/z/my-project/prisma/suppliers-from-excel.json:1585:    "verticals": "Hospitality, Grocery & FMCG",
+/home/z/my-project/GAP_ANALYSIS.md:373:| Grocery & FMCG | POS, Inventory, Auto-Reorder | ✅ 100% |
+/home/z/my-project/prisma/admin-seed.ts:113:        businessName: 'Soweto Spaza Shop',
+/home/z/my-project/prisma/admin-seed.ts:114:        tradingName: 'Soweto Spaza',
+/home/z/my-project/prisma/admin-seed.ts:119:        vertical: 'Grocery & FMCG',
+/home/z/my-project/prisma/admin-seed.ts:120:        subVertical: 'Spaza Shop',
+/home/z/my-project/prisma/admin-seed.ts:144:        vertical: 'Grocery & FMCG',
+/home/z/my-project/scripts/comprehensive-seed.ts:13:  { email: 'spaza@groway.co.za', firstName: 'Spaza', lastName: 'Shop', role: 'merchant' },
+/home/z/my-project/scripts/comprehensive-seed.ts:24:  { name: 'Demo Spaza Shop', vertical: 'retail', email: 'spaza@groway.co.za' },
+/home/z/my-project/scripts/comprehensive-seed.ts:25:  { name: 'Demo Grocery Store', vertical: 'grocery', email: 'demo@groway.co.za' },
+/home/z/my-project/scripts/generate-merchant-os-doc.ts:315:        // Vertical 3: Grocery & FMCG
+/home/z/my-project/scripts/generate-merchant-os-doc.ts:316:        createHeading2("2.3 Grocery & FMCG"),
+/home/z/my-project/scripts/generate-merchant-os-doc.ts:317:        createBody("The Grocery & FMCG vertical serves retail establishments selling fast-moving consumer goods, with support for high-volume barcode scanning, promotions, and supplier integration via GroSupply."),
+/home/z/my-project/scripts/generate-merchant-os-doc.ts:320:        createBullet("Spaza Shop - 567 SKUs: Simple POS, credit customers, airtime"),
+/home/z/my-project/scripts/generate-merchant-os-doc.ts:662:            new TableRow({ children: [createTableCell("Grocery & FMCG", false, 2340), createTableCell("GoPay Payments, GroSupply, Airtime, Utility Bills, Vouchers, GroCredit", false, 7020)] }),
+/home/z/my-project/scripts/seed-grosupply.ts:18:  'Food & Beverage', 'Liquor & Nightlife', 'Grocery & FMCG',
+/home/z/my-project/scripts/seed-grosupply.ts:28:  'Grocery & FMCG': ['Personal Care', 'Household', 'Cleaning', 'Snacks', 'Confectionery', 'Beverages', 'Dry Goods'],
+/home/z/my-project/scripts/create-grosupply-doc.ts:136:          children: [new TextRun({ text: "The platform currently hosts 334 verified suppliers across 12 business verticals including F&B, Liquor, Grocery, Health & Beauty, Fashion, Pharmacy, Hospitality, Hardware, Electronics, Sport, Childcare, and Professional Services. Suppliers are tiered as Gold (152), Silver (128), or Bronze (54) based on performance metrics and B-BBEE compliance levels.", font: "Times New Roman", size: 22 })]
+/home/z/my-project/scripts/create-grosupply-doc.ts:420:              new TableCell({ borders: cellBorders, width: { size: 2800, type: WidthType.DXA }, children: [new Paragraph({ children: [new TextRun({ text: "Grocery", size: 20 })] })] }),
+/home/z/my-project/scripts/create-grosupply-doc.ts:421:              new TableCell({ borders: cellBorders, width: { size: 3280, type: WidthType.DXA }, children: [new Paragraph({ children: [new TextRun({ text: "Supermarket, Convenience, Spaza", size: 20 })] })] }),
+/home/z/my-project/scripts/create-grosupply-doc.ts:422:              new TableCell({ borders: cellBorders, width: { size: 3280, type: WidthType.DXA }, children: [new Paragraph({ children: [new TextRun({ text: "FMCG, Wholesalers, Distributors", size: 20 })] })] })
+/home/z/my-project/scripts/generate-groway-product-doc.py:540:        ['Grocery & FMCG', 'Superette, Spaza Shop, Butchery, Deli, Farm Stall, Cash & Carry, Bakery Retail', 'Batch tracking, Supplier management, Auto-reorder'],
+/home/z/my-project/scripts/generate-groway-product-doc.py:768:    add_section_header(story, styles, "Journey 1: Spaza Shop Owner Goes Digital", 2)
+/home/z/my-project/scripts/generate-groway-product-doc.py:770:    spaza_journey = [
+/home/z/my-project/scripts/generate-groway-product-doc.py:772:        {'action': 'Owner signs up via Merchant OS app', 'response': 'Account created, vertical selected (Grocery), demo products loaded', 'benefit': 'Zero setup friction, instant value'},
+/home/z/my-project/scripts/generate-groway-product-doc.py:779:    story.append(create_journey_table(styles, spaza_journey))
+/home/z/my-project/scripts/generate-groway-product-doc.py:787:        {'action': 'User tops up at local spaza shop', 'response': 'Cash deposited, balance updated instantly', 'benefit': 'Physical cash becomes digital'},
+/home/z/my-project/scripts/generate-groway-product-doc.py:841:        "<b>Informal Business Focus:</b> Designed for Shisa Nyama, spaza shops, and shebeens, not just formal retail",
+/home/z/my-project/scripts/import-wholesalers.ts:46:    'Grocery & FMCG': 'Grocery & FMCG',
+/home/z/my-project/scripts/import-wholesalers.ts:55:    'Spaza': 'Spaza Shop',
+/home/z/my-project/scripts/seed-catalog.ts:19:  'Food & Beverage', 'Liquor & Nightlife', 'Grocery & FMCG', 'Health & Beauty',
+/home/z/my-project/scripts/seed-catalog.ts:26:  'Grocery & FMCG': ['Household', 'Personal Care', 'Cleaning', 'Confectionery'],
+/home/z/my-project/scripts/groway-product-document.py:654:        ['Grocery & FMCG', 'Superette, Spaza Shop, Butchery, Deli, Farm Stall, Cash & Carry, Bakery Retail', 'Batch tracking, Supplier management, Auto-reorder'],
+/home/z/my-project/scripts/groway-product-document.py:949:    add_section_header(story, styles, "Journey 1: Spaza Shop Owner Goes Digital", 2)
+/home/z/my-project/scripts/groway-product-document.py:951:    spaza_journey = [
+/home/z/my-project/scripts/groway-product-document.py:953:        {'action': 'Owner signs up via Merchant OS app', 'response': 'Account created, vertical selected (Grocery), demo products loaded', 'benefit': 'Zero setup friction, instant value'},
+/home/z/my-project/scripts/groway-product-document.py:960:    story.append(create_journey_table(styles, spaza_journey))
+/home/z/my-project/scripts/groway-product-document.py:968:        {'action': 'User tops up at local spaza shop', 'response': 'Cash deposited, balance updated instantly', 'benefit': 'Physical cash becomes digital'},
+/home/z/my-project/scripts/groway-product-document.py:1024:        "<b>Informal Business Focus:</b> Designed for Shisa Nyama, spaza shops, and shebeens, not just formal retail",
+/home/z/my-project/scripts/seed-suppliers.ts:26:  'Food & Beverage', 'Liquor & Nightlife', 'Grocery & FMCG', 'Health & Beauty',
+/home/z/my-project/scripts/seed-suppliers.ts:34:  'Grocery & FMCG': ['Household', 'Personal Care', 'Cleaning', 'Stationery', 'Confectionery', 'Pet Food', 'Baby Products', 'Canned Goods'],
+/home/z/my-project/scripts/import-catalogs.ts:10:  'Jumbo Cash & Carry': { type: 'cash_and_carry', description: 'Trade-only. Spaza & tuck shop focus', website: 'jumbo.co.za' },
+/home/z/my-project/scripts/import-catalogs.ts:14:  'Devland Cash & Carry': { type: 'cash_and_carry', description: '20+ branches nationwide. Township FMCG staples', website: 'devland.co.za' },
+/home/z/my-project/scripts/seed_wholesalers.ts:64:    'Grocery & FMCG': 'Grocery & FMCG',
+/home/z/my-project/scripts/create-grant-proposal.js:252:          children: [new TextRun({ text: "Our core innovation lies in recognizing that African businesses are fundamentally different from their Western counterparts. A Shisa Nyama (informal barbecue restaurant) has different operational needs, compliance requirements, and customer expectations than a fine dining establishment. A spaza shop operates differently from a supermarket chain.", size: 24, font: "Times New Roman" })]
+/home/z/my-project/scripts/generate-figma-mockups.ts:86:    - Category tabs: All, F&B, Liquor, Grocery, Health, Electronics
+/home/z/my-project/scripts/create-merchant-os-doc.ts:139:          children: [new TextRun({ text: "The platform supports 11 business verticals including Food & Beverage, Liquor, Grocery, Health & Beauty, Fashion, Pharmacy, Hospitality, Hardware, Electronics, Sport, and Professional Services. Each vertical receives specialized features and compliance tooling tailored to their industry requirements.", font: "Times New Roman", size: 22 })]
+/home/z/my-project/scripts/create-merchant-os-doc.ts:347:              new TableCell({ borders: cellBorders, width: { size: 2340, type: WidthType.DXA }, children: [new Paragraph({ children: [new TextRun({ text: "Grocery", size: 20 })] })] }),
+/home/z/my-project/scripts/seed-merchant-users.ts:11:    { userId: 'user-demo', merchantId: 'merchant-grocery', role: 'owner', branchId: 'branch-merchant-grocery' },
+/home/z/my-project/scripts/seed-merchant-users.ts:14:    { userId: 'user-spaza', merchantId: 'merchant-retail', role: 'owner', branchId: 'branch-merchant-retail' },
+/home/z/my-project/scripts/seed-merchant-users.ts:16:    { userId: 'user-admin', merchantId: 'merchant-grocery', role: 'admin', branchId: 'branch-merchant-grocery' },
+/home/z/my-project/scripts/seed-merchant-users.ts:44:  for (const user of ['user-demo', 'user-salon', 'user-restaurant', 'user-spaza', 'user-barber']) {
+/home/z/my-project/scripts/seed-data.ts:17:    { id: 'user-spaza', email: 'spaza@groway.co.za', name: 'Spaza Shop', role: 'merchant' },
+/home/z/my-project/scripts/seed-data.ts:45:    { id: 'merchant-retail', code: 'SHP001', name: 'Demo Spaza Shop', tradingName: 'Demo Spaza', vertical: 'retail', email: 'spaza@groway.co.za' },
+/home/z/my-project/scripts/seed-data.ts:46:    { id: 'merchant-grocery', code: 'GRO001', name: 'Demo Grocery Store', tradingName: 'Demo Grocery', vertical: 'grocery', email: 'demo@groway.co.za' },
+/home/z/my-project/scripts/seed_wholesalers.py:24:        'Grocery & FMCG': 'Grocery & FMCG',
+/home/z/my-project/prisma/seed-comprehensive.ts:10:  'Food & Beverage', 'FMCG', 'Health & Beauty', 'Pharmaceuticals', 'Electronics',
+/home/z/my-project/prisma/seed-comprehensive.ts:51:  'FMCG': [
+/home/z/my-project/seed-merchants.mjs:56:      { name: 'Metro Wholesale', code: 'METRO', category: 'FMCG' },
+/home/z/my-project/prisma/seed-demo.ts:36:    email: 'spaza@groway.co.za',
+/home/z/my-project/prisma/seed-demo.ts:38:    name: 'Spaza Shop Demo',
+/home/z/my-project/prisma/seed-demo.ts:39:    merchantName: 'Mama Thandi Spaza',
+/home/z/my-project/prisma/seed-demo.ts:40:    tradingName: 'Mama Thandi Spaza Shop',
+/home/z/my-project/prisma/seed-demo.ts:41:    vertical: 'grocery',
+/home/z/my-project/prisma/seed-demo.ts:42:    subVertical: 'spaza',
+/home/z/my-project/prisma/seed.ts:24:      name: 'Spaza Holdings (Pty) Ltd',
+/home/z/my-project/prisma/seed.ts:30:      contactEmail: 'thabo@spazaholdings.co.za',
+/home/z/my-project/prisma/seed.ts:75:      name: 'Spaza Holdings - Sandton',
+/home/z/my-project/prisma/seed.ts:78:      vertical: 'Grocery',
+/home/z/my-project/prisma/seed.ts:92:      name: 'Spaza Holdings - Rosebank',
+/home/z/my-project/prisma/seed.ts:95:      vertical: 'Grocery',
+/home/z/my-project/prisma/seed.ts:112:      vertical: 'Grocery',
+/home/z/my-project/prisma/seed.ts:130:          email: 'thabo@spazaholdings.co.za',
+/home/z/my-project/prisma/seed.ts:141:          email: 'nomsa@spazaholdings.co.za',
+/home/z/my-project/prisma/seed.ts:321:        vertical: 'Grocery & FMCG',
+/home/z/my-project/inventory_mgmt.md:45:|   | DEAR Systems\' batch traceability --- all here, unified, for spaza  |
+/home/z/my-project/inventory_mgmt.md:378:  Grocery/FMCG   Pack size                  Flavour/Type                      Brand                         Flour: 3 × 2 × 3 =
+/home/z/my-project/inventory_mgmt.md:507:                              scanner              grocery, pharmacy,  catalogue uses EAN-13. GS1 SA
+/home/z/my-project/inventory_mgmt.md:508:                                                   FMCG                registry lookup on unknown scan.
+/home/z/my-project/inventory_mgmt.md:594:  Grocery &      1,200 SKUs     EAN-13 barcodes,   VAT treatment pre-set per item
+/home/z/my-project/inventory_mgmt.md:599:  Spaza Shop     600 SKUs       Top-moving         Large-icon product images. Price
+/home/z/my-project/inventory_mgmt.md:684:                   Food Facts registry creation for spaza 
+/home/z/my-project/inventory_mgmt.md:796:| -   Quantity tally: shows         |     (grocery/butchery)            |
+/home/z/my-project/inventory_mgmt.md:810:|                                   |     high-volume grocery and       |
+/home/z/my-project/inventory_mgmt.md:975:                  Auto-selected by inventory                  grocery, F&B,
+/home/z/my-project/inventory_mgmt.md:990:  Near-expiry     Manager selects specific    Manager PIN +   Grocery, fresh
+/home/z/my-project/inventory_mgmt.md:1116:  Approaching   before expiry expiry report.   rotation. Adjust   Grocery standard: 60
+/home/z/my-project/inventory_mgmt.md:1345:              (A-items        during        SKUs. A-items are           grocery,
+/home/z/my-project/inventory_mgmt.md:1457:  Tier 1     Simple          stock_on_hand ≤             Spaza shops. Small Optional ---
+/home/z/my-project/inventory_mgmt.md:1463:  Tier 2     Par-Level       Reorder qty = par_level −   Grocery, pharmacy, Optional auto-RFQ
+/home/z/my-project/inventory_mgmt.md:1472:             Reorder         history + day-of-week +     grocery, pharmacy, created, manager
+/home/z/my-project/inventory_mgmt.md:1508:                                                             spaza and grocery.
+/home/z/my-project/inventory_mgmt.md:1768:  **Superette/Grocery**       Barcode + PLU      ✅         ✅          ✅           ---          ✅          ---
+/home/z/my-project/inventory_mgmt.md:1770:  **Spaza Shop**              Simple count       ---        ---         ---          ---          ---         ---
+/home/z/my-project/inventory_mgmt.md:2245:  Stock Turnover  COGS ÷ Average     How many times you    Grocery:
+/home/z/my-project/inventory_mgmt.md:2254:  Days Inventory  365 ÷ Stock        How many days of      Grocery: 14--30
+/home/z/my-project/inventory_mgmt.md:2265:                  100.               focus to high-margin  30--45%. Grocery
+/home/z/my-project/inventory_mgmt.md:2960:                                                          restaurant\|grocery\|pharmacy\|liquor\|fashion
+/home/z/my-project/INVENTORY_GAP_ANALYSIS.md:17:| **Grocery & Superette** | 1,200 SKUs | ~60 SKUs in skuCatalog.ts | **93% Missing** |
+/home/z/my-project/INVENTORY_GAP_ANALYSIS.md:18:| **Spaza Shop** | 600 SKUs | ~30 SKUs (partial) | **95% Missing** |
+/home/z/my-project/INVENTORY_GAP_ANALYSIS.md:60:### Grocery & FMCG (7 sub-verticals)
+/home/z/my-project/INVENTORY_GAP_ANALYSIS.md:64:| Spaza Shop | ✅ Partial | Add informal trade pricing benchmarks |
+/home/z/my-project/src/app/grocredit/page.tsx:540:                      <option value="grocery">Grocery / FMCG</option>
+/home/z/my-project/src/app/product-demo/page.tsx:130:    verticals: ['FMCG', 'Liquor', 'Pharmacy', 'Hardware'],
+/home/z/my-project/src/app/product-demo/page.tsx:263:    business: 'Mama Nomsa\'s Spaza',
+/home/z/my-project/src/app/product-demo/page.tsx:1369:        {['FMCG', 'Liquor', 'Pharmacy', 'Hardware'].map((cat, i) => (
+/home/z/my-project/src/app/salesforce/portal/page.tsx:86:    businessName: "Sipho's Spaza Shop",
+/home/z/my-project/src/app/salesforce/portal/page.tsx:316:                <option>Sipho's Spaza Shop</option>
+/home/z/my-project/src/app/salesforce/api/leads/route.ts:244:      businessName: "Sipho's Spaza Shop",
+/home/z/my-project/src/app/salesforce/api/leads/route.ts:253:      vertical: 'spaza',
+/home/z/my-project/src/app/agent-network/page.tsx:81:    business: "Sipho's Spaza Shop",
+/home/z/my-project/src/app/agent-network/portal/page.tsx:78:    businessName: "Sipho's Spaza Shop",
+/home/z/my-project/src/app/page.tsx:77:  { name: 'Grocery & FMCG', icon: ShoppingBag, subCount: 7 },
+/home/z/my-project/src/app/page.tsx:561:        {['All', 'F&B', 'Liquor', 'Grocery'].map((cat, idx) => (
+/home/z/my-project/src/app/enterprise/portal/page.tsx:1770:                    <SelectItem value="Grocery">Grocery</SelectItem>
+/home/z/my-project/src/app/grosupply/page.tsx:41:    description: 'Access 500+ B-BBEE verified South African suppliers across all verticals — from grocery to pharmacy.',
+/home/z/my-project/src/app/grosupply/supplier/portal/pricing/page.tsx:140:  { id: 'grocery', name: 'Grocery' },
+/home/z/my-project/src/app/grosupply/supplier/portal/pricing/page.tsx:164:  { id: 'PRD-011', sku: 'GR-CER-001', name: 'Rice Basmati 10kg', category: 'grocery', supplier: 'sup_001', currentPrice: 195.00, costPrice: 145.00, newPrice: null, stock: 120, stockStatus: 'in_stock', lastUpdated: '2026-01-12' },
+/home/z/my-project/src/app/grosupply/supplier/portal/products/page.tsx:231:  { id: 'grocery', name: 'Grocery', subCategories: ['Canned Goods', 'Dry Goods', 'Snacks', 'Condiments'] },
+/home/z/my-project/src/app/grosupply/supplier/portal/products/page.tsx:1025:      category: p.category || 'grocery',
+/home/z/my-project/src/app/grosupply/supplier/onboarding/page.tsx:52:  { id: 'grocery', name: 'Grocery & FMCG', icon: ShoppingBag, subVerticals: ['Supermarket', 'Convenience Store', 'Spaza Shop', 'Wholesaler', 'Fruit & Veg', 'Butchery', 'Cash & Carry'] },
+/home/z/my-project/src/app/grosupply/marketplace/page.tsx:85:  { id: 'Grocery & FMCG', name: 'Grocery & FMCG', icon: ShoppingBag },
+/home/z/my-project/src/app/grosupply/marketplace/page.tsx:132:    'Grocery & FMCG': 'bg-green-100 text-green-800',
+/home/z/my-project/src/app/page.tsx.backup:76:  { name: 'Grocery & FMCG', icon: ShoppingBag, subCount: 7 },
+/home/z/my-project/src/app/page.tsx.backup:560:        {['All', 'F&B', 'Liquor', 'Grocery'].map((cat, idx) => (
+/home/z/my-project/src/app/app/page.tsx:497:    return { vertical: 'grocery-fmcg', subVertical: 'spaza-shop', name: 'Spaza Shop' }
+/home/z/my-project/src/app/admin-console/app/components/AnalyticsView.tsx:63:    { name: 'Grocery & FMCG', merchants: 2890, volume: 9800000, share: 21 },
+/home/z/my-project/src/app/admin-console/app/components/AnalyticsView.tsx:255:                  { name: 'Durban Fresh Market', vertical: 'Grocery', transactions: 28900, volume: 6200000, growth: 12 },
+/home/z/my-project/src/app/admin-console/app/components/SalesforceView.tsx:265:    customerName: 'Spaza Store SA',
+/home/z/my-project/src/app/consumer-wallet/page.tsx.v9916_backup:1051:        { id: 'tx-001', type: 'qr_pay', direction: 'debit', counterpartyName: 'Sipho Spaza Shop', amountCents: BigInt(4500), createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+/home/z/my-project/src/app/consumer-wallet/page.tsx.v9916_backup:5412:                  <p className="font-semibold text-[#C62828]">Grocery Budget</p>
+/home/z/my-project/src/app/consumer-wallet/page.tsx.v9916_backup:5416:              <p className="text-sm text-[#757575]">You've used 85% of your R3,000 grocery budget with 10 days remaining.</p>
+/home/z/my-project/src/app/consumer-wallet/page.tsx.v9916_backup:5510:                  { type: 'payment', name: 'Sipho Spaza Shop', amount: -4500, time: '2:30 PM', icon: QrCode },
+/home/z/my-project/src/app/consumer-wallet/page.tsx.app_backup:1051:        { id: 'tx-001', type: 'qr_pay', direction: 'debit', counterpartyName: 'Sipho Spaza Shop', amountCents: BigInt(4500), createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+/home/z/my-project/src/app/consumer-wallet/page.tsx.app_backup:5412:                  <p className="font-semibold text-[#C62828]">Grocery Budget</p>
+/home/z/my-project/src/app/consumer-wallet/page.tsx.app_backup:5416:              <p className="text-sm text-[#757575]">You've used 85% of your R3,000 grocery budget with 10 days remaining.</p>
+/home/z/my-project/src/app/consumer-wallet/page.tsx.app_backup:5510:                  { type: 'payment', name: 'Sipho Spaza Shop', amount: -4500, time: '2:30 PM', icon: QrCode },
+/home/z/my-project/src/app/consumer-wallet/app/page.tsx.shorter_backup:860:        { id: 'tx-001', type: 'qr_pay', direction: 'debit', counterpartyName: 'Sipho Spaza Shop', amountCents: BigInt(4500), createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+/home/z/my-project/src/app/consumer-wallet/app/page.tsx.shorter_backup:4690:                  <p className="font-semibold text-[#C62828]">Grocery Budget</p>
+/home/z/my-project/src/app/consumer-wallet/app/page.tsx.shorter_backup:4694:              <p className="text-sm text-[#757575]">You've used 85% of your R3,000 grocery budget with 10 days remaining.</p>
+/home/z/my-project/src/app/consumer-wallet/app/page.tsx.shorter_backup:4788:                  { type: 'payment', name: 'Sipho Spaza Shop', amount: -4500, time: '2:30 PM', icon: QrCode },
+/home/z/my-project/src/app/api/platform/config/route.ts:211:      { id: 'grocery', name: 'Grocery', icon: 'shopping-cart' },
+/home/z/my-project/src/app/api/salesforce/visits/route.ts:414:    { name: 'Spaza Store SA', phone: '+27 72 111 2222', address: '12 DF Malan Dr, Mamelodi' },
+/home/z/my-project/src/app/api/consumer/transactions/route.ts:67:        counterpartyName: 'Sipho Spaza Shop',
+/home/z/my-project/src/app/api/consumer/wallet/transactions/route.ts:14:    description: 'Payment to Sipho Spaza Shop',
+/home/z/my-project/src/app/api/consumer/wallet/transactions/route.ts:18:    counterpartyName: 'Sipho Spaza Shop',
+/home/z/my-project/src/app/api/consumer/loyalty/route.ts:57:        description: 'Purchase at Sipho Spaza Shop',
+/home/z/my-project/src/app/api/consumer/insurance/products/route.ts:51:      'Grocery benefit for 6 months after claim',
+/home/z/my-project/src/app/api/consumer/offers/route.ts:115:    description: 'Earn 2X cashback on all grocery purchases this weekend. Stock up and save more!',
+/home/z/my-project/src/app/api/seed/route.ts:124:  const categories = ['Beverages', 'Dairy', 'Fresh Produce', 'Grocery', 'Frozen', 'Cleaning', 'Packaging', 'Bakery', 'Butchery', 'Dry Goods'];
+/home/z/my-project/src/app/api/seed/route.ts:155:  const verticals = ['food_beverage', 'grocery', 'hospitality', 'health_beauty', 'retail'];
+/home/z/my-project/src/app/api/seed/route.ts:156:  const categories = ['Beverages', 'Dairy', 'Fresh Produce', 'Grocery', 'Frozen', 'Cleaning', 'Packaging', 'Bakery', 'Butchery', 'Snacks'];
+/home/z/my-project/src/app/api/seed-demo/route.ts:38:    email: 'spaza@groway.co.za',
+/home/z/my-project/src/app/api/seed-demo/route.ts:40:    name: 'Spaza Shop Demo',
+/home/z/my-project/src/app/api/seed-demo/route.ts:41:    merchantName: 'Mama Thandi Spaza',
+/home/z/my-project/src/app/api/seed-demo/route.ts:42:    tradingName: 'Mama Thandi Spaza Shop',
+/home/z/my-project/src/app/api/seed-demo/route.ts:43:    vertical: 'grocery',
+/home/z/my-project/src/app/api/seed-demo/route.ts:44:    subVertical: 'spaza',
+/home/z/my-project/src/app/api/grosupply/sync-skus/route.ts:43:  // Grocery & FMCG
+/home/z/my-project/src/app/api/grosupply/sync-skus/route.ts:44:  { sku: 'GR-SUP-001', vertical: 'Grocery & FMCG', subVertical: 'Superette', category: 'Staples', description: 'Ace Instant Maize Meal 5kg', costPrice: 52, supplier: 'Tiger Brands', leadDays: 1, minOrderQty: 5 },
+/home/z/my-project/src/app/api/grosupply/sync-skus/route.ts:45:  { sku: 'GR-SUP-002', vertical: 'Grocery & FMCG', subVertical: 'Superette', category: 'Staples', description: 'Tastic Rice 5kg', costPrice: 68, supplier: 'Pioneer Foods', leadDays: 1, minOrderQty: 5 },
+/home/z/my-project/src/app/api/grosupply/sync-skus/route.ts:46:  { sku: 'GR-SUP-003', vertical: 'Grocery & FMCG', subVertical: 'Superette', category: 'Staples', description: 'Snowflake Flour 2.5kg', costPrice: 32, supplier: 'Premier Foods', leadDays: 1, minOrderQty: 12 },
+
+[Showing results with pagination = limit: 250]

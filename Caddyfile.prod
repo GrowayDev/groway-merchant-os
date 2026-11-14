@@ -1,0 +1,49 @@
+# =============================================================================
+# Groway Merchant OS — Production Caddyfile
+# Automatic HTTPS via Let's Encrypt. Replace groway.example.com with your domain.
+# Designed and Built by Motheto Selepe.
+# =============================================================================
+
+# Replace groway.example.com with your actual domain (e.g., groway.yourdomain.co.za)
+groway.example.com {
+    encode gzip zstd
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Remove server version header
+        -Server
+    }
+
+    # Reverse proxy to the Next.js app
+    reverse_proxy groway:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Enable static file caching
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff2
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # Access logs
+    log {
+        output file /data/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+        format json
+    }
+}
+
+# Optional: redirect www to apex (or vice versa)
+# www.groway.example.com {
+#     redir https://groway.example.com{uri} permanent
+# }

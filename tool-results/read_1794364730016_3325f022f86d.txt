@@ -1,0 +1,2002 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo, useCallback, useEffect } from 'react'
+     4→import { getAllSKUs } from '../data/skuCatalog'
+     5→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+     6→import { Badge } from '@/components/ui/badge'
+     7→import { Button } from '@/components/ui/button'
+     8→import { Input } from '@/components/ui/input'
+     9→import { ScrollArea } from '@/components/ui/scroll-area'
+    10→import { Progress } from '@/components/ui/progress'
+    11→import { Textarea } from '@/components/ui/textarea'
+    12→import { Separator } from '@/components/ui/separator'
+    13→import { Label } from '@/components/ui/label'
+    14→import {
+    15→  Select,
+    16→  SelectContent,
+    17→  SelectItem,
+    18→  SelectTrigger,
+    19→  SelectValue,
+    20→} from '@/components/ui/select'
+    21→import {
+    22→  Dialog,
+    23→  DialogContent,
+    24→  DialogDescription,
+    25→  DialogFooter,
+    26→  DialogHeader,
+    27→  DialogTitle,
+    28→} from '@/components/ui/dialog'
+    29→import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    30→import {
+    31→  Search,
+    32→  Plus,
+    33→  Edit,
+    34→  Package,
+    35→  AlertTriangle,
+    36→  TrendingDown,
+    37→  TrendingUp,
+    38→  BarChart3,
+    39→  Grid,
+    40→  List,
+    41→  ArrowUpRight,
+    42→  ArrowDownRight,
+    43→  CheckCircle2,
+    44→  XCircle,
+    45→  RefreshCw,
+    46→  Download,
+    47→  Scan,
+    48→  ClipboardList,
+    49→  History,
+    50→  Truck,
+    51→  PackagePlus,
+    52→  Minus,
+    53→  Coins,
+    54→  Layers,
+    55→  Calendar,
+    56→  Zap,
+    57→  Brain,
+    58→  LineChart,
+    59→  Activity,
+    60→  Target,
+    61→  Lightbulb,
+    62→  ShoppingCart,
+    63→  ArrowRight,
+    64→  Sparkles,
+    65→  Bot,
+    66→  Store,
+    67→  Link2,
+    68→  X,
+    69→  Eye,
+    70→  EyeOff,
+    71→  Trash2,
+    72→  FileText,
+    73→  Clock,
+    74→  Users,
+    75→  Save,
+    76→  ChevronRight,
+    77→  Play,
+    78→  Pause,
+    79→  Upload,
+    80→  Bell,
+    81→  BellRing,
+    82→  ArrowLeftRight,
+    83→  Building2,
+    84→  AlertCircle,
+    85→  Timer,
+    86→  Info,
+    87→  Camera,
+    88→} from 'lucide-react'
+    89→import { BulkImportDialog } from './BulkImportDialog'
+    90→
+    91→// Types
+    92→interface InventoryItem {
+    93→  id: string
+    94→  name: string
+    95→  category: string
+    96→  sku: string
+    97→  barcode: string
+    98→  price: number
+    99→  cost: number
+   100→  stock: number
+   101→  minStock: number
+   102→  reorderPoint: number
+   103→  reorderQty: number
+   104→  unit: string
+   105→  location: string
+   106→  batchTracked: boolean
+   107→  expiryTracked: boolean
+   108→  lastUpdated: string
+   109→  batches?: Batch[]
+   110→  velocity?: number
+   111→  daysOfStock?: number
+   112→  forecast7Days?: number
+   113→  supplier?: string
+   114→  supplierLeadTime?: number
+   115→}
+   116→
+   117→interface Batch {
+   118→  batchNo: string
+   119→  qty: number
+   120→  expiry: string
+   121→  status: 'active' | 'expired' | 'expiring_soon' | 'depleted'
+   122→  receivedDate: string
+   123→  cost: number
+   124→}
+   125→
+   126→interface StockMovement {
+   127→  id: string
+   128→  type: 'sale' | 'return' | 'grn' | 'adjustment' | 'transfer_in' | 'transfer_out' | 'stocktake'
+   129→  direction: 'in' | 'out'
+   130→  productName: string
+   131→  sku: string
+   132→  quantity: number
+   133→  reason?: string
+   134→  user: string
+   135→  timestamp: string
+   136→  value: number
+   137→  fromLocation?: string
+   138→  toLocation?: string
+   139→  batchNo?: string
+   140→}
+   141→
+   142→interface GroSupplySuggestion {
+   143→  id: string
+   144→  productName: string
+   145→  sku: string
+   146→  currentStock: number
+   147→  suggestedOrder: number
+   148→  supplier: string
+   149→  leadTime: number
+   150→  estimatedCost: number
+   151→  reason: string
+   152→  urgency: 'critical' | 'high' | 'normal'
+   153→  savings?: number
+   154→}
+   155→
+   156→interface StocktakeSession {
+   157→  id: string
+   158→  type: 'full' | 'category' | 'low_stock' | 'blind'
+   159→  status: 'pending' | 'in_progress' | 'completed'
+   160→  categoryName?: string
+   161→  items: { item: InventoryItem; systemQty: number; countedQty: number | null; notes: string }[]
+   162→  startedAt: string
+   163→  completedAt?: string
+   164→}
+   165→
+   166→interface GRNItem {
+   167→  item: InventoryItem
+   168→  quantity: number
+   169→  batchNo?: string
+   170→  expiry?: string
+   171→  cost: number
+   172→}
+   173→
+   174→interface StockTransfer {
+   175→  id: string
+   176→  fromLocation: string
+   177→  toLocation: string
+   178→  items: { item: InventoryItem; quantity: number; batchNo?: string }[]
+   179→  status: 'draft' | 'pending' | 'in_transit' | 'completed' | 'cancelled'
+   180→  requestedBy: string
+   181→  approvedBy?: string
+   182→  createdAt: string
+   183→  notes?: string
+   184→}
+   185→
+   186→interface ReorderAlert {
+   187→  id: string
+   188→  item: InventoryItem
+   189→  type: 'out_of_stock' | 'low_stock' | 'expiring_soon' | 'reorder_point'
+   190→  message: string
+   191→  createdAt: string
+   192→  acknowledged: boolean
+   193→}
+   194→
+   195→interface StockSnapshot {
+   196→  id: string
+   197→  name: string
+   198→  createdAt: string
+   199→  itemCount: number
+   200→  totalValue: number
+   201→  notes?: string
+   202→}
+   203→
+   204→// Locations for transfers
+   205→const stockLocations = [
+   206→  'Main Storage',
+   207→  'Back Room',
+   208→  'Counter Area',
+   209→  'Storage A',
+   210→  'Storage B',
+   211→  'Cold Storage',
+   212→  'Display Area',
+   213→  'Safe',
+   214→  'Office',
+   215→  'Warehouse'
+   216→]
+   217→
+   218→// Stock value history data
+   219→const stockValueHistory = [
+   220→  { day: 'Mon', value: 24500, trend: 'up' },
+   221→  { day: 'Tue', value: 22800, trend: 'down' },
+   222→  { day: 'Wed', value: 26100, trend: 'up' },
+   223→  { day: 'Thu', value: 25400, trend: 'down' },
+   224→  { day: 'Fri', value: 27800, trend: 'up' },
+   225→  { day: 'Sat', value: 23900, trend: 'down' },
+   226→  { day: 'Sun', value: 26500, trend: 'up' },
+   227→]
+   228→
+   229→// Generate inventory from SKU catalog based on vertical/sub-vertical
+   230→const generateInventoryFromSKUs = (verticalId: string, subVerticalId: string): InventoryItem[] => {
+   231→  const skus = getAllSKUs(verticalId, subVerticalId)
+   232→  
+   233→  // Supplier pools by vertical type
+   234→  const supplierPools: Record<string, string[]> = {
+   235→    'fnb': ['Crown National', 'Clover SA', 'Coca-Cola Peninsula', 'McCain SA', 'Nestle SA', 'Albany Bakery', 'Rainbow Chicken', 'Nola Oils', 'Tiger Brands', 'Freshmark'],
+   236→    'liquor': ['Distell SA', 'Brandhouse', 'SAB Miller', 'DGB', 'KWV', 'Heineken SA', 'SA breweries'],
+   237→    'grocery': ['Shoprite DC', 'Pick n Pay DC', 'Tiger Brands', 'Clover SA', 'Nestle SA', 'Unilever SA', 'Premier Foods'],
+   238→    'health-beauty': ['Salon Supplies SA', 'L\'Oreal SA', 'Unilever SA', 'Estee Lauder', 'Generic Beauty Supply', 'Professional Hair Supply'],
+   239→    'fashion': ['The Foschini Group', 'Edcon', 'Mr Price Group', 'Truworths', 'Pepkor', 'Generic Clothing Supply'],
+   240→    'health-pharmacy': ['Pharmacy Direct', 'Unichem', 'Alpha Pharm', 'Kagiso Health', 'Generic Pharma Supply'],
+   241→    'hospitality': ['Bidvest Foodservice', 'Caterers Warehouse', 'Hotel Supplies SA', 'Brits Food Equipment'],
+   242→    'hardware': ['Builders Warehouse', 'Cashbuild', 'Chamberlains', 'Build it', 'BUCO', 'Hardware Distributors SA'],
+   243→    'electronics': ['Rectron', 'Esquire', 'Core Group', 'Miro SA', 'Drive Control Corp', 'Electronic Distributors'],
+   244→    'sport-leisure': ['Sportsmans Warehouse', 'Total Sports', 'Sports Authority SA', 'Generic Sports Supply'],
+   245→    'childcare': ['Educational Suppliers SA', 'Toy Kingdom', 'ETV Supplies', 'Generic Education Supply'],
+   246→    'professional': ['Generic Service Supply', 'Local Suppliers', 'Service Industry Supply Co'],
+   247→  }
+   248→  
+   249→  const suppliers = supplierPools[verticalId] || ['Generic Supplier']
+   250→  const locations = stockLocations.slice(0, 6)
+   251→  
+   252→  return skus.map((sku, index) => {
+   253→    const stock = Math.floor(Math.random() * 100) + (index % 5 === 0 ? 0 : 5)
+   254→    const cost = sku.price * (0.4 + Math.random() * 0.3)
+   255→    const minStock = Math.floor(Math.random() * 15) + 5
+   256→    const reorderPoint = minStock * 2
+   257→    const velocity = Math.floor(Math.random() * 30) + 5
+   258→    const isBatchTracked = index % 3 === 0
+   259→    const isExpiryTracked = index % 4 === 0
+   260→    
+   261→    // Generate batches for batch-tracked items
+   262→    const batches: Batch[] = isBatchTracked ? [
+   263→      {
+   264→        batchNo: `B${Date.now().toString().slice(-6)}-${index}`,
+   265→        qty: Math.floor(stock * 0.6),
+   266→        expiry: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+   267→        status: 'active',
+   268→        receivedDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+   269→        cost: cost
+   270→      },
+   271→      {
+   272→        batchNo: `B${Date.now().toString().slice(-6)}-${index + 1}`,
+   273→        qty: Math.floor(stock * 0.4),
+   274→        expiry: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+   275→        status: 'expiring_soon',
+   276→        receivedDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+   277→        cost: cost * 0.95
+   278→      }
+   279→    ] : undefined
+   280→    
+   281→    return {
+   282→      id: `INV-${String(index + 1).padStart(4, '0')}`,
+   283→      name: sku.name,
+   284→      category: sku.category,
+   285→      sku: `${sku.category.substring(0, 3).toUpperCase()}-${String(index + 1).padStart(3, '0')}`,
+   286→      barcode: `600${String(Math.floor(Math.random() * 10000000000)).padStart(11, '0')}`,
+   287→      price: sku.price,
+   288→      cost: Math.round(cost * 100) / 100,
+   289→      stock,
+   290→      minStock,
+   291→      reorderPoint,
+   292→      reorderQty: reorderPoint * 2,
+   293→      unit: 'unit',
+   294→      location: locations[index % locations.length],
+   295→      batchTracked: isBatchTracked,
+   296→      expiryTracked: isExpiryTracked,
+   297→      lastUpdated: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+   298→      batches,
+   299→      velocity,
+   300→      daysOfStock: stock > 0 ? Math.round((stock / velocity) * 10) / 10 : 0,
+   301→      forecast7Days: Math.round(velocity * 7 * (0.8 + Math.random() * 0.4)),
+   302→      supplier: suppliers[index % suppliers.length],
+   303→      supplierLeadTime: Math.floor(Math.random() * 5) + 1,
+   304→    }
+   305→  })
+   306→}
+   307→
+   308→// Generate movements based on inventory
+   309→const generateMovementsFromInventory = (inventory: InventoryItem[]): StockMovement[] => {
+   310→  const types: StockMovement['type'][] = ['sale', 'return', 'grn', 'adjustment', 'transfer_in', 'transfer_out', 'stocktake']
+   311→  const productNames = inventory.slice(0, 5).map(i => i.name)
+   312→  const users = ['Thandi M.', 'Sipho K.', 'System', 'Johan P.', 'Maria S.', 'Peter N.']
+   313→  const reasons = ['Stock correction', 'Damaged goods', 'Theft reported', 'Found during stocktake', 'Supplier return', 'Quality issue']
+   314→  
+   315→  return Array.from({ length: 30 }, (_, i) => {
+   316→    const type = types[Math.floor(Math.random() * types.length)]
+   317→    const isOut = ['sale', 'transfer_out'].includes(type)
+   318→    const randomProduct = productNames[Math.floor(Math.random() * productNames.length)] || 'Product'
+   319→    const item = inventory.find(p => p.name === randomProduct)
+   320→    
+   321→    return {
+   322→      id: `MOV-${String(i + 1).padStart(6, '0')}`,
+   323→      type,
+   324→      direction: isOut ? 'out' : 'in',
+   325→      productName: randomProduct,
+   326→      sku: item?.sku || `SKU-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+   327→      quantity: 1 + Math.floor(Math.random() * 50),
+   328→      reason: type === 'adjustment' ? reasons[Math.floor(Math.random() * reasons.length)] : undefined,
+   329→      user: users[Math.floor(Math.random() * users.length)],
+   330→      timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+   331→      value: Math.floor(Math.random() * 5000) / 100,
+   332→      fromLocation: type === 'transfer_out' ? stockLocations[Math.floor(Math.random() * 5)] : undefined,
+   333→      toLocation: type === 'transfer_in' ? stockLocations[Math.floor(Math.random() * 5)] : undefined,
+   334→      batchNo: item?.batchTracked ? `B${Date.now().toString().slice(-6)}` : undefined,
+   335→    }
+   336→  })
+   337→}
+   338→
+   339→// Generate GroSupply suggestions based on inventory
+   340→const generateGroSupplySuggestionsFromInventory = (inventory: InventoryItem[]): GroSupplySuggestion[] => {
+   341→  const lowStockItems = inventory.filter(i => i.stock <= i.reorderPoint).slice(0, 4)
+   342→  
+   343→  return lowStockItems.map((item, index) => ({
+   344→    id: `GS-${String(index + 1).padStart(3, '0')}`,
+   345→    productName: item.name,
+   346→    sku: item.sku,
+   347→    currentStock: item.stock,
+   348→    suggestedOrder: item.reorderQty,
+   349→    supplier: item.supplier || 'Unknown Supplier',
+   350→    leadTime: item.supplierLeadTime || 3,
+   351→    estimatedCost: Math.round(item.reorderQty * (item.cost || item.price * 0.5) * 100) / 100,
+   352→    reason: item.stock === 0 ? 'Out of stock' : 'Below reorder point',
+   353→    urgency: item.stock === 0 ? 'critical' as const : 'high' as const,
+   354→    savings: Math.round(Math.random() * 150),
+   355→  }))
+   356→}
+   357→
+   358→// Generate reorder alerts
+   359→const generateReorderAlerts = (inventory: InventoryItem[]): ReorderAlert[] => {
+   360→  const alerts: ReorderAlert[] = []
+   361→  
+   362→  inventory.forEach(item => {
+   363→    if (item.stock === 0) {
+   364→      alerts.push({
+   365→        id: `ALERT-${item.id}-OOS`,
+   366→        item,
+   367→        type: 'out_of_stock',
+   368→        message: `${item.name} is out of stock and needs immediate reorder`,
+   369→        createdAt: new Date().toISOString(),
+   370→        acknowledged: false
+   371→      })
+   372→    } else if (item.stock <= item.reorderPoint) {
+   373→      alerts.push({
+   374→        id: `ALERT-${item.id}-LOW`,
+   375→        item,
+   376→        type: 'low_stock',
+   377→        message: `${item.name} is below reorder point (${item.stock}/${item.reorderPoint})`,
+   378→        createdAt: new Date().toISOString(),
+   379→        acknowledged: false
+   380→      })
+   381→    }
+   382→    
+   383→    // Check for expiring batches
+   384→    if (item.batches) {
+   385→      item.batches.forEach(batch => {
+   386→        if (batch.status === 'expiring_soon') {
+   387→          alerts.push({
+   388→            id: `ALERT-${item.id}-${batch.batchNo}`,
+   389→            item,
+   390→            type: 'expiring_soon',
+   391→            message: `${item.name} batch ${batch.batchNo} expires on ${batch.expiry}`,
+   392→            createdAt: new Date().toISOString(),
+   393→            acknowledged: false
+   394→          })
+   395→        }
+   396→      })
+   397→    }
+   398→  })
+   399→  
+   400→  return alerts
+   401→}
+   402→
+   403→// Generate stock snapshots
+   404→const generateStockSnapshots = (): StockSnapshot[] => [
+   405→  { id: 'SNAP-001', name: 'Month End - January 2026', createdAt: '2026-01-31', itemCount: 245, totalValue: 156780, notes: 'Month end stock count' },
+   406→  { id: 'SNAP-002', name: 'Quarterly Audit Q4 2025', createdAt: '2025-12-31', itemCount: 312, totalValue: 189450, notes: 'Quarterly audit' },
+   407→  { id: 'SNAP-003', name: 'Year End 2025', createdAt: '2025-12-28', itemCount: 298, totalValue: 178900 },
+   408→]
+   409→
+   410→// Props interface
+   411→interface InventoryViewProps {
+   412→  verticalId?: string
+   413→  subVerticalId?: string
+   414→}
+   415→
+   416→// Component
+   417→export function InventoryView({ verticalId = 'fnb', subVerticalId = 'qsr' }: InventoryViewProps) {
+   418→  // Track the current vertical/subVertical to detect changes
+   419→  const [currentVertical, setCurrentVertical] = useState(`${verticalId}-${subVerticalId}`)
+   420→  
+   421→  // Use state for mutable inventory that can be modified
+   422→  const [inventory, setInventory] = useState<InventoryItem[]>(() => generateInventoryFromSKUs(verticalId, subVerticalId))
+   423→  const [movements, setMovements] = useState<StockMovement[]>(() => generateMovementsFromInventory([]))
+   424→  const [groSupplySuggestions, setGroSupplySuggestions] = useState<GroSupplySuggestion[]>(() => generateGroSupplySuggestionsFromInventory([]))
+   425→  const [reorderAlerts, setReorderAlerts] = useState<ReorderAlert[]>(() => [])
+   426→  const [stockSnapshots] = useState<StockSnapshot[]>(() => generateStockSnapshots())
+   427→  const [stockTransfers, setStockTransfers] = useState<StockTransfer[]>([])
+   428→  
+   429→  // Initialize/reset inventory when vertical/subVertical changes
+   430→  if (`${verticalId}-${subVerticalId}` !== currentVertical) {
+   431→    const newInventory = generateInventoryFromSKUs(verticalId, subVerticalId)
+   432→    setInventory(newInventory)
+   433→    setMovements(generateMovementsFromInventory(newInventory))
+   434→    setGroSupplySuggestions(generateGroSupplySuggestionsFromInventory(newInventory))
+   435→    setReorderAlerts(generateReorderAlerts(newInventory))
+   436→    setCurrentVertical(`${verticalId}-${subVerticalId}`)
+   437→  }
+   438→  
+   439→  const [activeTab, setActiveTab] = useState<string>('dashboard')
+   440→  const [searchQuery, setSearchQuery] = useState('')
+   441→  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+   442→  const [stockFilter, setStockFilter] = useState<string>('all')
+   443→  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+   444→  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
+   445→  const [adjustmentOpen, setAdjustmentOpen] = useState(false)
+   446→  const [adjustmentItem, setAdjustmentItem] = useState<InventoryItem | null>(null)
+   447→  const [adjustmentQty, setAdjustmentQty] = useState(0)
+   448→  const [adjustmentReason, setAdjustmentReason] = useState('')
+   449→  const [grnOpen, setGrnOpen] = useState(false)
+   450→  const [grnScanInput, setGrnScanInput] = useState('')
+   451→  const [grnItems, setGrnItems] = useState<GRNItem[]>([])
+   452→  const [stocktakeOpen, setStocktakeOpen] = useState(false)
+   453→  const [stocktakeSession, setStocktakeSession] = useState<StocktakeSession | null>(null)
+   454→  const [stocktakeTypeSelect, setStocktakeTypeSelect] = useState(false)
+   455→  const [selectedCategory, setSelectedCategory] = useState<string>('')
+   456→  const [addProductOpen, setAddProductOpen] = useState(false)
+   457→  const [newProduct, setNewProduct] = useState<Partial<InventoryItem>>({ 
+   458→    name: '', category: '', sku: '', barcode: '', price: 0, cost: 0, stock: 0, unit: 'unit',
+   459→    minStock: 5, reorderPoint: 10, reorderQty: 20, location: '', supplier: ''
+   460→  })
+   461→  const [toast, setToast] = useState<{ show: boolean; title: string; message: string; type: 'success' | 'error' } | null>(null)
+   462→  const [orderDialogOpen, setOrderDialogOpen] = useState(false)
+   463→  const [selectedOrderItem, setSelectedOrderItem] = useState<GroSupplySuggestion | null>(null)
+   464→  const [orderQuantity, setOrderQuantity] = useState(0)
+   465→  const [bulkImportOpen, setBulkImportOpen] = useState(false)
+   466→  
+   467→  // New state for enhanced features
+   468→  const [transferOpen, setTransferOpen] = useState(false)
+   469→  const [newTransfer, setNewTransfer] = useState<{ fromLocation: string; toLocation: string; items: { item: InventoryItem; quantity: number }[] }>({
+   470→    fromLocation: '', toLocation: '', items: []
+   471→  })
+   472→  const [batchDetailOpen, setBatchDetailOpen] = useState(false)
+   473→  const [selectedBatchItem, setSelectedBatchItem] = useState<InventoryItem | null>(null)
+   474→  const [snapshotOpen, setSnapshotOpen] = useState(false)
+   475→  const [snapshotName, setSnapshotName] = useState('')
+   476→  const [snapshotNotes, setSnapshotNotes] = useState('')
+   477→
+   478→  // Computed
+   479→  const categories = ['all', ...new Set(inventory.map(i => i.category))]
+   480→  const filteredItems = useMemo(() => inventory.filter(item => {
+   481→    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.sku.toLowerCase().includes(searchQuery.toLowerCase()) || item.barcode?.includes(searchQuery)
+   482→    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter
+   483→    let matchesStock = true
+   484→    if (stockFilter === 'low') matchesStock = item.stock > 0 && item.stock <= item.reorderPoint
+   485→    else if (stockFilter === 'out') matchesStock = item.stock === 0
+   486→    return matchesSearch && matchesCategory && matchesStock
+   487→  }), [inventory, searchQuery, categoryFilter, stockFilter])
+   488→
+   489→  // KPIs
+   490→  const totalSKUs = inventory.length
+   491→  const totalValue = inventory.reduce((sum, i) => sum + i.cost * i.stock, 0)
+   492→  const outOfStock = inventory.filter(i => i.stock === 0).length
+   493→  const lowStock = inventory.filter(i => i.stock > 0 && i.stock <= i.reorderPoint).length
+   494→  const expiringBatches = inventory.filter(i => i.batches?.some(b => b.status === 'expiring_soon')).length
+   495→  const unacknowledgedAlerts = reorderAlerts.filter(a => !a.acknowledged).length
+   496→
+   497→  // Helpers
+   498→  const getStockStatus = (item: InventoryItem) => {
+   499→    if (item.stock === 0) return { label: 'Out of Stock', color: 'bg-red-100 text-red-700' }
+   500→    if (item.stock <= item.reorderPoint) return { label: 'Low Stock', color: 'bg-orange-100 text-orange-700' }
+   501→    return { label: 'In Stock', color: 'bg-green-100 text-green-700' }
+   502→  }
+   503→
+   504→  const showToast = (title: string, message: string, type: 'success' | 'error' = 'success') => {
+   505→    setToast({ show: true, title, message, type })
+   506→    setTimeout(() => setToast(null), 3000)
+   507→  }
+   508→
+   509→  // Handlers
+   510→  const handleAdjustStock = (item: InventoryItem) => {
+   511→    setAdjustmentItem(item)
+   512→    setAdjustmentQty(0)
+   513→    setAdjustmentReason('')
+   514→    setAdjustmentOpen(true)
+   515→  }
+   516→
+   517→  const handleSaveAdjustment = () => {
+   518→    if (!adjustmentItem || adjustmentQty === 0) {
+   519→      showToast('Invalid Adjustment', 'Please enter a quantity adjustment', 'error')
+   520→      return
+   521→    }
+   522→    if (!adjustmentReason) {
+   523→      showToast('Reason Required', 'Please select a reason for the adjustment', 'error')
+   524→      return
+   525→    }
+   526→    
+   527→    // Update inventory
+   528→    setInventory(prev => prev.map(item => 
+   529→      item.id === adjustmentItem.id 
+   530→        ? { ...item, stock: Math.max(0, item.stock + adjustmentQty), lastUpdated: new Date().toISOString().split('T')[0] }
+   531→        : item
+   532→    ))
+   533→    
+   534→    // Add movement record
+   535→    const newMovement: StockMovement = {
+   536→      id: `MOV-${Date.now()}`,
+   537→      type: 'adjustment',
+   538→      direction: adjustmentQty > 0 ? 'in' : 'out',
+   539→      productName: adjustmentItem.name,
+   540→      sku: adjustmentItem.sku,
+   541→      quantity: Math.abs(adjustmentQty),
+   542→      reason: adjustmentReason,
+   543→      user: 'Current User',
+   544→      timestamp: new Date().toISOString(),
+   545→      value: Math.abs(adjustmentQty) * adjustmentItem.cost,
+   546→    }
+   547→    setMovements(prev => [newMovement, ...prev])
+   548→    
+   549→    // Update alerts
+   550→    setReorderAlerts(prev => generateReorderAlerts(inventory.map(i => 
+   551→      i.id === adjustmentItem.id ? { ...i, stock: Math.max(0, i.stock + adjustmentQty) } : i
+   552→    )))
+   553→    
+   554→    showToast('Stock Adjusted', `${adjustmentItem.name} adjusted by ${adjustmentQty > 0 ? '+' : ''}${adjustmentQty}`, 'success')
+   555→    setAdjustmentOpen(false)
+   556→  }
+   557→
+   558→  const handleExport = () => {
+   559→    const csv = ['SKU,Name,Category,Stock,Price,Cost,Location', 
+   560→      ...filteredItems.map(i => `${i.sku},"${i.name}",${i.category},${i.stock},${i.price},${i.cost},"${i.location}"`)].join('\n')
+   561→    const blob = new Blob([csv], { type: 'text/csv' })
+   562→    const url = URL.createObjectURL(blob)
+   563→    const a = document.createElement('a')
+   564→    a.href = url
+   565→    a.download = `inventory-export-${new Date().toISOString().split('T')[0]}.csv`
+   566→    a.click()
+   567→    URL.revokeObjectURL(url)
+   568→    showToast('Export Complete', `${filteredItems.length} items exported to CSV`, 'success')
+   569→  }
+   570→
+   571→  const handleSaveProduct = () => {
+   572→    // Validation
+   573→    if (!newProduct.name?.trim()) {
+   574→      showToast('Name Required', 'Please enter a product name', 'error')
+   575→      return
+   576→    }
+   577→    if (!newProduct.sku?.trim()) {
+   578→      showToast('SKU Required', 'Please enter a SKU', 'error')
+   579→      return
+   580→    }
+   581→    if (inventory.some(i => i.sku === newProduct.sku)) {
+   582→      showToast('Duplicate SKU', 'A product with this SKU already exists', 'error')
+   583→      return
+   584→    }
+   585→    if (!newProduct.category) {
+   586→      showToast('Category Required', 'Please select a category', 'error')
+   587→      return
+   588→    }
+   589→    if (!newProduct.price || newProduct.price <= 0) {
+   590→      showToast('Invalid Price', 'Please enter a valid selling price', 'error')
+   591→      return
+   592→    }
+   593→    
+   594→    // Create new product
+   595→    const newId = `INV-${String(inventory.length + 1).padStart(4, '0')}`
+   596→    const product: InventoryItem = {
+   597→      id: newId,
+   598→      name: newProduct.name.trim(),
+   599→      sku: newProduct.sku.trim(),
+   600→      barcode: newProduct.barcode || '',
+   601→      category: newProduct.category,
+   602→      price: newProduct.price,
+   603→      cost: newProduct.cost || 0,
+   604→      stock: newProduct.stock || 0,
+   605→      minStock: newProduct.minStock || 5,
+   606→      reorderPoint: newProduct.reorderPoint || 10,
+   607→      reorderQty: newProduct.reorderQty || 20,
+   608→      unit: newProduct.unit || 'unit',
+   609→      location: newProduct.location || '',
+   610→      batchTracked: false,
+   611→      expiryTracked: false,
+   612→      lastUpdated: new Date().toISOString().split('T')[0],
+   613→      supplier: newProduct.supplier,
+   614→      velocity: 0,
+   615→      daysOfStock: newProduct.stock && newProduct.stock > 0 ? 999 : 0,
+   616→      forecast7Days: 0,
+   617→    }
+   618→    
+   619→    setInventory(prev => [...prev, product])
+   620→    
+   621→    // Add GRN movement if stock was added
+   622→    if (product.stock > 0) {
+   623→      const movement: StockMovement = {
+   624→        id: `MOV-${Date.now()}`,
+   625→        type: 'grn',
+   626→        direction: 'in',
+   627→        productName: product.name,
+   628→        sku: product.sku,
+   629→        quantity: product.stock,
+   630→        user: 'Current User',
+   631→        timestamp: new Date().toISOString(),
+   632→        value: product.stock * product.cost,
+   633→      }
+   634→      setMovements(prev => [movement, ...prev])
+   635→    }
+   636→    
+   637→    showToast('Product Added', `${product.name} has been added successfully`, 'success')
+   638→    setAddProductOpen(false)
+   639→    setNewProduct({ name: '', category: '', sku: '', barcode: '', price: 0, cost: 0, stock: 0, unit: 'unit', minStock: 5, reorderPoint: 10, reorderQty: 20, location: '', supplier: '' })
+   640→  }
+   641→
+   642→  const handleStartStocktake = (type: 'full' | 'category' | 'low_stock' | 'blind') => {
+   643→    let items: StocktakeSession['items'] = []
+   644→    
+   645→    if (type === 'full') {
+   646→      items = inventory.map(item => ({ item, systemQty: item.stock, countedQty: null, notes: '' }))
+   647→    } else if (type === 'category' && selectedCategory) {
+   648→      items = inventory.filter(i => i.category === selectedCategory).map(item => ({ item, systemQty: item.stock, countedQty: null, notes: '' }))
+   649→    } else if (type === 'low_stock') {
+   650→      items = inventory.filter(i => i.stock <= i.reorderPoint).map(item => ({ item, systemQty: item.stock, countedQty: null, notes: '' }))
+   651→    } else if (type === 'blind') {
+   652→      items = inventory.map(item => ({ item, systemQty: item.stock, countedQty: null, notes: '' }))
+   653→    }
+   654→    
+   655→    if (items.length === 0) {
+   656→      showToast('No Items', 'No items match the selected criteria', 'error')
+   657→      return
+   658→    }
+   659→    
+   660→    const session: StocktakeSession = {
+   661→      id: `ST-${Date.now()}`,
+   662→      type,
+   663→      status: 'in_progress',
+   664→      categoryName: type === 'category' ? selectedCategory : undefined,
+   665→      items,
+   666→      startedAt: new Date().toISOString(),
+   667→    }
+   668→    
+   669→    setStocktakeSession(session)
+   670→    setStocktakeTypeSelect(false)
+   671→    setStocktakeOpen(true)
+   672→  }
+   673→
+   674→  const handleUpdateStocktakeCount = (index: number, countedQty: number, notes: string = '') => {
+   675→    if (!stocktakeSession) return
+   676→    setStocktakeSession(prev => {
+   677→      if (!prev) return prev
+   678→      const newItems = [...prev.items]
+   679→      newItems[index] = { ...newItems[index], countedQty, notes }
+   680→      return { ...prev, items: newItems }
+   681→    })
+   682→  }
+   683→
+   684→  const handleCompleteStocktake = () => {
+   685→    if (!stocktakeSession) return
+   686→    
+   687→    const countedItems = stocktakeSession.items.filter(i => i.countedQty !== null)
+   688→    if (countedItems.length === 0) {
+   689→      showToast('No Counts', 'Please count at least one item', 'error')
+   690→      return
+   691→    }
+   692→    
+   693→    // Process variances
+   694→    const variances: { item: InventoryItem; variance: number }[] = []
+   695→    
+   696→    stocktakeSession.items.forEach(({ item, systemQty, countedQty }) => {
+   697→      if (countedQty !== null && countedQty !== systemQty) {
+   698→        const variance = countedQty - systemQty
+   699→        variances.push({ item, variance })
+   700→        
+   701→        // Update inventory
+   702→        setInventory(prev => prev.map(i => 
+   703→          i.id === item.id ? { ...i, stock: countedQty, lastUpdated: new Date().toISOString().split('T')[0] } : i
+   704→        ))
+   705→        
+   706→        // Add movement
+   707→        const movement: StockMovement = {
+   708→          id: `MOV-${Date.now()}-${item.id}`,
+   709→          type: 'stocktake',
+   710→          direction: variance > 0 ? 'in' : 'out',
+   711→          productName: item.name,
+   712→          sku: item.sku,
+   713→          quantity: Math.abs(variance),
+   714→          reason: `Stocktake variance (${stocktakeSession.type})`,
+   715→          user: 'Current User',
+   716→          timestamp: new Date().toISOString(),
+   717→          value: Math.abs(variance) * item.cost,
+   718→        }
+   719→        setMovements(prev => [movement, ...prev])
+   720→      }
+   721→    })
+   722→    
+   723→    showToast('Stocktake Complete', `${countedItems.length} items counted, ${variances.length} variances found`, 'success')
+   724→    setStocktakeSession(null)
+   725→    setStocktakeOpen(false)
+   726→    setSelectedCategory('')
+   727→  }
+   728→
+   729→  const handleCancelStocktake = () => {
+   730→    setStocktakeSession(null)
+   731→    setStocktakeOpen(false)
+   732→    setStocktakeTypeSelect(false)
+   733→    setSelectedCategory('')
+   734→    showToast('Stocktake Cancelled', 'Stocktake session has been cancelled', 'success')
+   735→  }
+   736→
+   737→  // GRN Handlers
+   738→  const handleGrnScan = () => {
+   739→    const input = grnScanInput.trim()
+   740→    if (!input) return
+   741→    
+   742→    // Find item by barcode or SKU
+   743→    const item = inventory.find(i => i.barcode === input || i.sku === input)
+   744→    if (!item) {
+   745→      showToast('Not Found', `No product found for: ${input}`, 'error')
+   746→      setGrnScanInput('')
+   747→      return
+   748→    }
+   749→    
+   750→    // Check if already in list
+   751→    const existingIndex = grnItems.findIndex(g => g.item.id === item.id)
+   752→    if (existingIndex >= 0) {
+   753→      // Increase quantity
+   754→      setGrnItems(prev => prev.map((g, i) => 
+   755→        i === existingIndex ? { ...g, quantity: g.quantity + 1 } : g
+   756→      ))
+   757→    } else {
+   758→      // Add new
+   759→      setGrnItems(prev => [...prev, { item, quantity: 1, cost: item.cost }])
+   760→    }
+   761→    
+   762→    setGrnScanInput('')
+   763→    showToast('Item Added', `${item.name} added to GRN`, 'success')
+   764→  }
+   765→
+   766→  const handleUpdateGrnItem = (index: number, field: 'quantity' | 'batchNo' | 'expiry' | 'cost', value: string | number) => {
+   767→    setGrnItems(prev => prev.map((g, i) => 
+   768→      i === index ? { ...g, [field]: value } : g
+   769→    ))
+   770→  }
+   771→
+   772→  const handleRemoveGrnItem = (index: number) => {
+   773→    setGrnItems(prev => prev.filter((_, i) => i !== index))
+   774→  }
+   775→
+   776→  const handleCompleteGrn = () => {
+   777→    if (grnItems.length === 0) {
+   778→      showToast('No Items', 'Please add items to the GRN', 'error')
+   779→      return
+   780→    }
+   781→    
+   782→    // Update inventory and create movements
+   783→    grnItems.forEach(({ item, quantity, cost, batchNo, expiry }) => {
+   784→      setInventory(prev => prev.map(i => {
+   785→        if (i.id === item.id) {
+   786→          // Add batch if batch tracking enabled
+   787→          let newBatches = i.batches || []
+   788→          if (i.batchTracked && batchNo) {
+   789→            newBatches = [...newBatches, {
+   790→              batchNo,
+   791→              qty: quantity,
+   792→              expiry: expiry || '',
+   793→              status: 'active' as const,
+   794→              receivedDate: new Date().toISOString().split('T')[0],
+   795→              cost
+   796→            }]
+   797→          }
+   798→          return { 
+   799→            ...i, 
+   800→            stock: i.stock + quantity, 
+   801→            lastUpdated: new Date().toISOString().split('T')[0], 
+   802→            cost,
+   803→            batches: newBatches
+   804→          }
+   805→        }
+   806→        return i
+   807→      }))
+   808→      
+   809→      const movement: StockMovement = {
+   810→        id: `MOV-${Date.now()}-${item.id}`,
+   811→        type: 'grn',
+   812→        direction: 'in',
+   813→        productName: item.name,
+   814→        sku: item.sku,
+   815→        quantity,
+   816→        user: 'Current User',
+   817→        timestamp: new Date().toISOString(),
+   818→        value: quantity * cost,
+   819→        batchNo,
+   820→      }
+   821→      setMovements(prev => [movement, ...prev])
+   822→    })
+   823→    
+   824→    const totalValue = grnItems.reduce((sum, g) => sum + g.quantity * g.cost, 0)
+   825→    showToast('GRN Complete', `${grnItems.length} items received (R${totalValue.toFixed(2)})`, 'success')
+   826→    setGrnItems([])
+   827→    setGrnOpen(false)
+   828→  }
+   829→
+   830→  // GroSupply Order Handlers
+   831→  const handleOpenOrderDialog = (suggestion: GroSupplySuggestion) => {
+   832→    setSelectedOrderItem(suggestion)
+   833→    setOrderQuantity(suggestion.suggestedOrder)
+   834→    setOrderDialogOpen(true)
+   835→  }
+   836→
+   837→  const handleCreateOrder = async () => {
+   838→    if (!selectedOrderItem) return
+   839→    if (orderQuantity <= 0) {
+   840→      showToast('Invalid Quantity', 'Please enter a valid order quantity', 'error')
+   841→      return
+   842→    }
+   843→    
+   844→    try {
+   845→      // Get session for merchant ID
+   846→      const sessionStr = localStorage.getItem('groway_session')
+   847→      const session = sessionStr ? JSON.parse(sessionStr) : null
+   848→      
+   849→      // Find supplier ID from name
+   850→      const suppliers = await fetch('/merchant-os/api/grosupply/suppliers?limit=100').then(r => r.json())
+   851→      const supplier = suppliers.suppliers?.find((s: any) => s.name === selectedOrderItem.supplier)
+   852→      
+   853→      // Create purchase order via API
+   854→      const response = await fetch('/merchant-os/api/grosupply/po', {
+   855→        method: 'POST',
+   856→        headers: { 'Content-Type': 'application/json' },
+   857→        body: JSON.stringify({
+   858→          supplierId: supplier?.id,
+   859→          status: 'draft',
+   860→          items: [{
+   861→            sku: selectedOrderItem.sku,
+   862→            description: selectedOrderItem.productName,
+   863→            quantity: orderQuantity,
+   864→            unitPrice: selectedOrderItem.estimatedCost / orderQuantity,
+   865→            totalPrice: selectedOrderItem.estimatedCost,
+   866→            unit: 'each'
+   867→          }],
+   868→          notes: `Auto-generated from low stock alert - ${selectedOrderItem.reason}`,
+   869→          createdBy: session?.userId
+   870→        })
+   871→      })
+   872→      
+   873→      if (response.ok) {
+   874→        const result = await response.json()
+   875→        
+   876→        // Remove from suggestions
+   877→        setGroSupplySuggestions(prev => prev.filter(s => s.id !== selectedOrderItem.id))
+   878→        
+   879→        showToast('Order Created', `PO ${result.purchaseOrder?.number || 'created'} for ${selectedOrderItem.productName} (${orderQuantity} units)`, 'success')
+   880→      } else {
+   881→        throw new Error('Failed to create PO')
+   882→      }
+   883→    } catch (error) {
+   884→      console.error('Error creating order:', error)
+   885→      showToast('Order Failed', 'Could not create purchase order. Please try again.', 'error')
+   886→    }
+   887→    
+   888→    setOrderDialogOpen(false)
+   889→    setSelectedOrderItem(null)
+   890→  }
+   891→
+   892→  const handleCreateAllOrders = async () => {
+   893→    const totalItems = groSupplySuggestions.length
+   894→    const totalValue = groSupplySuggestions.reduce((sum, s) => sum + s.estimatedCost, 0)
+   895→    
+   896→    try {
+   897→      // Get session for merchant ID
+   898→      const sessionStr = localStorage.getItem('groway_session')
+   899→      const session = sessionStr ? JSON.parse(sessionStr) : null
+   900→      
+   901→      // Group suggestions by supplier
+   902→      const bySupplier: Record<string, GroSupplySuggestion[]> = {}
+   903→      groSupplySuggestions.forEach(s => {
+   904→        if (!bySupplier[s.supplier]) bySupplier[s.supplier] = []
+   905→        bySupplier[s.supplier].push(s)
+   906→      })
+   907→      
+   908→      let successCount = 0
+   909→      
+   910→      // Create one PO per supplier
+   911→      for (const [supplierName, items] of Object.entries(bySupplier)) {
+   912→        const suppliers = await fetch('/merchant-os/api/grosupply/suppliers?limit=100').then(r => r.json())
+   913→        const supplier = suppliers.suppliers?.find((s: any) => s.name === supplierName)
+   914→        
+   915→        const response = await fetch('/merchant-os/api/grosupply/po', {
+   916→          method: 'POST',
+   917→          headers: { 'Content-Type': 'application/json' },
+   918→          body: JSON.stringify({
+   919→            supplierId: supplier?.id,
+   920→            status: 'draft',
+   921→            items: items.map(item => ({
+   922→              sku: item.sku,
+   923→              description: item.productName,
+   924→              quantity: item.suggestedOrder,
+   925→              unitPrice: item.estimatedCost / item.suggestedOrder,
+   926→              totalPrice: item.estimatedCost,
+   927→              unit: 'each'
+   928→            })),
+   929→            notes: 'Bulk reorder from low stock alerts',
+   930→            createdBy: session?.userId
+   931→          })
+   932→        })
+   933→        
+   934→        if (response.ok) successCount++
+   935→      }
+   936→      
+   937→      setGroSupplySuggestions([])
+   938→      showToast('Orders Created', `${successCount} purchase orders created (R${totalValue.toFixed(2)})`, 'success')
+   939→    } catch (error) {
+   940→      console.error('Error creating orders:', error)
+   941→      showToast('Orders Failed', 'Could not create some purchase orders.', 'error')
+   942→    }
+   943→  }
+   944→
+   945→  // Bulk Import Handler
+   946→  const handleBulkImport = (products: any[]) => {
+   947→    products.forEach((product, i) => {
+   948→      const newId = `INV-${String(inventory.length + i + 1).padStart(4, '0')}`
+   949→      const newItem: InventoryItem = {
+   950→        id: newId,
+   951→        name: product.name,
+   952→        sku: product.sku,
+   953→        barcode: product.barcode || '',
+   954→        category: product.category,
+   955→        price: product.sellingPrice,
+   956→        cost: product.costPrice,
+   957→        stock: product.stock || 0,
+   958→        minStock: product.minStock || 5,
+   959→        reorderPoint: (product.minStock || 5) * 2,
+   960→        reorderQty: (product.minStock || 5) * 4,
+   961→        unit: product.unit || 'unit',
+   962→        location: product.location || '',
+   963→        batchTracked: false,
+   964→        expiryTracked: false,
+   965→        lastUpdated: new Date().toISOString().split('T')[0],
+   966→        supplier: product.supplier,
+   967→        velocity: 0,
+   968→        daysOfStock: product.stock && product.stock > 0 ? 999 : 0,
+   969→        forecast7Days: 0,
+   970→      }
+   971→      setInventory(prev => [...prev, newItem])
+   972→    })
+   973→    
+   974→    showToast('Import Complete', `${products.length} products imported successfully`, 'success')
+   975→  }
+   976→
+   977→  // Stock Transfer Handlers
+   978→  const handleAddTransferItem = (item: InventoryItem) => {
+   979→    setNewTransfer(prev => ({
+   980→      ...prev,
+   981→      items: [...prev.items, { item, quantity: 1 }]
+   982→    }))
+   983→  }
+   984→
+   985→  const handleUpdateTransferQty = (index: number, quantity: number) => {
+   986→    setNewTransfer(prev => ({
+   987→      ...prev,
+   988→      items: prev.items.map((it, i) => i === index ? { ...it, quantity } : it)
+   989→    }))
+   990→  }
+   991→
+   992→  const handleRemoveTransferItem = (index: number) => {
+   993→    setNewTransfer(prev => ({
+   994→      ...prev,
+   995→      items: prev.items.filter((_, i) => i !== index)
+   996→    }))
+   997→  }
+   998→
+   999→  const handleCreateTransfer = () => {
+  1000→    if (!newTransfer.fromLocation || !newTransfer.toLocation) {
+  1001→      showToast('Locations Required', 'Please select both from and to locations', 'error')
+  1002→      return
+  1003→    }
+  1004→    if (newTransfer.fromLocation === newTransfer.toLocation) {
+  1005→      showToast('Invalid Transfer', 'Source and destination cannot be the same', 'error')
+  1006→      return
+  1007→    }
+  1008→    if (newTransfer.items.length === 0) {
+  1009→      showToast('No Items', 'Please add items to transfer', 'error')
+  1010→      return
+  1011→    }
+  1012→    
+  1013→    const transfer: StockTransfer = {
+  1014→      id: `TRF-${Date.now()}`,
+  1015→      fromLocation: newTransfer.fromLocation,
+  1016→      toLocation: newTransfer.toLocation,
+  1017→      items: newTransfer.items,
+  1018→      status: 'pending',
+  1019→      requestedBy: 'Current User',
+  1020→      createdAt: new Date().toISOString(),
+  1021→    }
+  1022→    
+  1023→    setStockTransfers(prev => [...prev, transfer])
+  1024→    
+  1025→    // Add movements for transfer
+  1026→    newTransfer.items.forEach(({ item, quantity }) => {
+  1027→      const movement: StockMovement = {
+  1028→        id: `MOV-${Date.now()}-${item.id}`,
+  1029→        type: 'transfer_out',
+  1030→        direction: 'out',
+  1031→        productName: item.name,
+  1032→        sku: item.sku,
+  1033→        quantity,
+  1034→        user: 'Current User',
+  1035→        timestamp: new Date().toISOString(),
+  1036→        value: quantity * item.cost,
+  1037→        fromLocation: newTransfer.fromLocation,
+  1038→        toLocation: newTransfer.toLocation,
+  1039→      }
+  1040→      setMovements(prev => [movement, ...prev])
+  1041→    })
+  1042→    
+  1043→    showToast('Transfer Created', `Stock transfer from ${newTransfer.fromLocation} to ${newTransfer.toLocation}`, 'success')
+  1044→    setNewTransfer({ fromLocation: '', toLocation: '', items: [] })
+  1045→    setTransferOpen(false)
+  1046→  }
+  1047→
+  1048→  // Alert handlers
+  1049→  const handleAcknowledgeAlert = (alertId: string) => {
+  1050→    setReorderAlerts(prev => prev.map(a => 
+  1051→      a.id === alertId ? { ...a, acknowledged: true } : a
+  1052→    ))
+  1053→  }
+  1054→
+  1055→  // Snapshot handler
+  1056→  const handleCreateSnapshot = () => {
+  1057→    if (!snapshotName.trim()) {
+  1058→      showToast('Name Required', 'Please enter a name for the snapshot', 'error')
+  1059→      return
+  1060→    }
+  1061→    showToast('Snapshot Created', `Stock snapshot "${snapshotName}" has been saved`, 'success')
+  1062→    setSnapshotOpen(false)
+  1063→    setSnapshotName('')
+  1064→    setSnapshotNotes('')
+  1065→  }
+  1066→
+  1067→  // Stock Value Trend Graph
+  1068→  const renderStockValueGraph = () => {
+  1069→    const maxValue = Math.max(...stockValueHistory.map(h => h.value))
+  1070→    const minValue = Math.min(...stockValueHistory.map(h => h.value))
+  1071→    const avgValue = stockValueHistory.reduce((s, h) => s + h.value, 0) / stockValueHistory.length
+  1072→    const lastValue = stockValueHistory[stockValueHistory.length - 1].value
+  1073→    const prevValue = stockValueHistory[stockValueHistory.length - 2].value
+  1074→    const changePercent = ((lastValue - prevValue) / prevValue * 100).toFixed(1)
+  1075→    const isUp = lastValue > prevValue
+  1076→
+  1077→    return (
+  1078→      <Card>
+  1079→        <CardHeader className="pb-2">
+  1080→          <div className="flex items-center justify-between">
+  1081→            <CardTitle className="text-sm">Stock Value Trend</CardTitle>
+  1082→            <div className="flex items-center gap-2">
+  1083→              <span className={`text-xs font-medium flex items-center gap-1 ${isUp ? 'text-green-600' : 'text-red-600'}`}>
+  1084→                {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+  1085→                {changePercent}%
+  1086→              </span>
+  1087→            </div>
+  1088→          </div>
+  1089→        </CardHeader>
+  1090→        <CardContent>
+  1091→          <div className="flex items-baseline gap-2 mb-4">
+  1092→            <span className="text-2xl font-bold">R{lastValue.toLocaleString()}</span>
+  1093→            <span className="text-xs text-[#757575]">current value</span>
+  1094→          </div>
+  1095→          
+  1096→          <div className="relative h-40">
+  1097→            <svg className="w-full h-full" preserveAspectRatio="none">
+  1098→              <defs>
+  1099→                <linearGradient id="stockGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+  1100→                  <stop offset="0%" stopColor="#00897B" stopOpacity="0.3" />
+  1101→                  <stop offset="100%" stopColor="#00897B" stopOpacity="0" />
+  1102→                </linearGradient>
+  1103→              </defs>
+  1104→              <path
+  1105→                d={`M 0 ${140 - ((stockValueHistory[0].value - minValue) / (maxValue - minValue)) * 130}
+  1106→                  ${stockValueHistory.map((h, i) => {
+  1107→                    const x = (i / (stockValueHistory.length - 1)) * 100
+  1108→                    const y = 140 - ((h.value - minValue) / (maxValue - minValue)) * 130
+  1109→                    return `L ${x} ${y}`
+  1110→                  }).join(' ')}
+  1111→                  L 100 140 L 0 140 Z`}
+  1112→                fill="url(#stockGradient)"
+  1113→              />
+  1114→              <path
+  1115→                d={`M 0 ${140 - ((stockValueHistory[0].value - minValue) / (maxValue - minValue)) * 130}
+  1116→                  ${stockValueHistory.map((h, i) => {
+  1117→                    const x = (i / (stockValueHistory.length - 1)) * 100
+  1118→                    const y = 140 - ((h.value - minValue) / (maxValue - minValue)) * 130
+  1119→                    return `L ${x} ${y}`
+  1120→                  }).join(' ')}`}
+  1121→                fill="none"
+  1122→                stroke="#00897B"
+  1123→                strokeWidth="2"
+  1124→                vectorEffect="non-scaling-stroke"
+  1125→              />
+  1126→              {stockValueHistory.map((h, i) => {
+  1127→                const x = (i / (stockValueHistory.length - 1)) * 100
+  1128→                const y = 140 - ((h.value - minValue) / (maxValue - minValue)) * 130
+  1129→                return <circle key={i} cx={`${x}%`} cy={y} r="4" fill="#00897B" />
+  1130→              })}
+  1131→            </svg>
+  1132→          </div>
+  1133→          
+  1134→          <div className="flex justify-between mt-2 text-xs text-[#757575]">
+  1135→            {stockValueHistory.map(h => <span key={h.day}>{h.day}</span>)}
+  1136→          </div>
+  1137→          
+  1138→          <div className="flex justify-between mt-4 pt-4 border-t text-center">
+  1139→            <div>
+  1140→              <p className="text-lg font-bold text-[#00897B]">R{avgValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+  1141→              <p className="text-[10px] text-[#757575]">Avg Value</p>
+  1142→            </div>
+  1143→            <div>
+  1144→              <p className="text-lg font-bold">R{minValue.toLocaleString()}</p>
+  1145→              <p className="text-[10px] text-[#757575]">Low</p>
+  1146→            </div>
+  1147→            <div>
+  1148→              <p className="text-lg font-bold">R{maxValue.toLocaleString()}</p>
+  1149→              <p className="text-[10px] text-[#757575]">High</p>
+  1150→            </div>
+  1151→          </div>
+  1152→        </CardContent>
+  1153→      </Card>
+  1154→    )
+  1155→  }
+  1156→
+  1157→  // Render Dashboard
+  1158→  const renderDashboard = () => (
+  1159→    <div className="space-y-6">
+  1160→      {/* KPI Cards */}
+  1161→      <div className="grid grid-cols-2 lg:grid-cols-7 gap-4">
+  1162→        <Card className="border-l-4 border-l-[#00897B]">
+  1163→          <CardContent className="p-4">
+  1164→            <p className="text-xs text-[#757575]">Total SKUs</p>
+  1165→            <p className="text-xl font-bold">{totalSKUs}</p>
+  1166→          </CardContent>
+  1167→        </Card>
+  1168→        <Card>
+  1169→          <CardContent className="p-4">
+  1170→            <p className="text-xs text-[#757575]">Stock Value</p>
+  1171→            <p className="text-xl font-bold">R{totalValue.toLocaleString()}</p>
+  1172→          </CardContent>
+  1173→        </Card>
+  1174→        <Card>
+  1175→          <CardContent className="p-4">
+  1176→            <p className="text-xs text-[#757575]">Out of Stock</p>
+  1177→            <p className="text-xl font-bold text-red-500">{outOfStock}</p>
+  1178→          </CardContent>
+  1179→        </Card>
+  1180→        <Card>
+  1181→          <CardContent className="p-4">
+  1182→            <p className="text-xs text-[#757575]">Low Stock</p>
+  1183→            <p className="text-xl font-bold text-orange-500">{lowStock}</p>
+  1184→          </CardContent>
+  1185→        </Card>
+  1186→        <Card>
+  1187→          <CardContent className="p-4">
+  1188→            <p className="text-xs text-[#757575]">Expiring Soon</p>
+  1189→            <p className="text-xl font-bold text-amber-500">{expiringBatches}</p>
+  1190→          </CardContent>
+  1191→        </Card>
+  1192→        <Card className="cursor-pointer hover:bg-gray-50" onClick={() => setActiveTab('alerts')}>
+  1193→          <CardContent className="p-4">
+  1194→            <div className="flex items-center justify-between">
+  1195→              <div>
+  1196→                <p className="text-xs text-[#757575]">Active Alerts</p>
+  1197→                <p className="text-xl font-bold text-red-600">{unacknowledgedAlerts}</p>
+  1198→              </div>
+  1199→              {unacknowledgedAlerts > 0 && <BellRing className="h-5 w-5 text-red-500 animate-pulse" />}
+  1200→            </div>
+  1201→          </CardContent>
+  1202→        </Card>
+  1203→        <Card>
+  1204→          <CardContent className="p-4">
+  1205→            <p className="text-xs text-[#757575]">Units Out Today</p>
+  1206→            <p className="text-xl font-bold text-blue-600">156</p>
+  1207→          </CardContent>
+  1208→        </Card>
+  1209→      </div>
+  1210→
+  1211→      {/* Quick Actions */}
+  1212→      <div className="flex gap-2 flex-wrap">
+  1213→        <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => setAddProductOpen(true)}>
+  1214→          <Plus className="h-4 w-4 mr-2" />Add Product
+  1215→        </Button>
+  1216→        <Button variant="outline" onClick={() => setBulkImportOpen(true)}>
+  1217→          <Upload className="h-4 w-4 mr-2" />Bulk Import
+  1218→        </Button>
+  1219→        <Button variant="outline" onClick={() => setGrnOpen(true)}>
+  1220→          <Truck className="h-4 w-4 mr-2" />Receive Stock
+  1221→        </Button>
+  1222→        <Button variant="outline" onClick={() => setStocktakeTypeSelect(true)}>
+  1223→          <ClipboardList className="h-4 w-4 mr-2" />New Stocktake
+  1224→        </Button>
+  1225→        <Button variant="outline" onClick={() => setTransferOpen(true)}>
+  1226→          <ArrowLeftRight className="h-4 w-4 mr-2" />Transfer Stock
+  1227→        </Button>
+  1228→        <Button variant="outline" onClick={() => setActiveTab('alerts')}>
+  1229→          <Bell className="h-4 w-4 mr-2" />Alerts {unacknowledgedAlerts > 0 && `(${unacknowledgedAlerts})`}
+  1230→        </Button>
+  1231→        <Button variant="outline" onClick={() => setActiveTab('grosupply')}>
+  1232→          <Store className="h-4 w-4 mr-2" />Order from GroSupply
+  1233→        </Button>
+  1234→        <Button variant="outline" onClick={() => setActiveTab('groai')}>
+  1235→          <Brain className="h-4 w-4 mr-2" />Gro AI
+  1236→        </Button>
+  1237→      </div>
+  1238→
+  1239→      {/* Fast Movers & Needs Attention */}
+  1240→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  1241→        <Card>
+  1242→          <CardHeader className="pb-2">
+  1243→            <CardTitle className="text-sm flex items-center gap-2">
+  1244→              <TrendingUp className="h-4 w-4 text-green-500" />Top Fast Movers
+  1245→            </CardTitle>
+  1246→          </CardHeader>
+  1247→          <CardContent className="space-y-2">
+  1248→            {[...inventory].sort((a, b) => (b.velocity || 0) - (a.velocity || 0)).slice(0, 5).map((item, i) => (
+  1249→              <div key={item.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer" onClick={() => setSelectedItem(item)}>
+  1250→                <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-600">{i + 1}</div>
+  1251→                <div className="flex-1">
+  1252→                  <p className="text-sm font-medium">{item.name}</p>
+  1253→                  <p className="text-xs text-[#757575]">{item.velocity}/day • {item.daysOfStock?.toFixed(1)} days left</p>
+  1254→                </div>
+  1255→                <p className="text-sm font-semibold">{item.stock}</p>
+  1256→              </div>
+  1257→            ))}
+  1258→          </CardContent>
+  1259→        </Card>
+  1260→
+  1261→        <Card>
+  1262→          <CardHeader className="pb-2">
+  1263→            <CardTitle className="text-sm flex items-center gap-2">
+  1264→              <AlertTriangle className="h-4 w-4 text-orange-500" />Needs Attention
+  1265→            </CardTitle>
+  1266→          </CardHeader>
+  1267→          <CardContent className="space-y-2">
+  1268→            {inventory.filter(i => i.stock <= i.reorderPoint).slice(0, 5).map(item => (
+  1269→              <div key={item.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer" onClick={() => setSelectedItem(item)}>
+  1270→                <Badge className={getStockStatus(item).color}>{getStockStatus(item).label}</Badge>
+  1271→                <div className="flex-1">
+  1272→                  <p className="text-sm font-medium">{item.name}</p>
+  1273→                  <p className="text-xs text-[#757575]">{item.stock}/{item.reorderPoint}</p>
+  1274→                </div>
+  1275→                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setActiveTab('grosupply') }}>Order</Button>
+  1276→              </div>
+  1277→            ))}
+  1278→          </CardContent>
+  1279→        </Card>
+  1280→      </div>
+  1281→    </div>
+  1282→  )
+  1283→
+  1284→  // Render Products
+  1285→  const renderProducts = () => (
+  1286→    <div className="space-y-4">
+  1287→      <div className="flex gap-3 flex-wrap">
+  1288→        <div className="relative flex-1 min-w-[200px]">
+  1289→          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#757575]" />
+  1290→          <Input placeholder="Search products..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+  1291→        </div>
+  1292→        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+  1293→          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Category" /></SelectTrigger>
+  1294→          <SelectContent>
+  1295→            {categories.map(c => <SelectItem key={c} value={c}>{c === 'all' ? 'All Categories' : c}</SelectItem>)}
+  1296→          </SelectContent>
+  1297→        </Select>
+  1298→        <Select value={stockFilter} onValueChange={setStockFilter}>
+  1299→          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Stock" /></SelectTrigger>
+  1300→          <SelectContent>
+  1301→            <SelectItem value="all">All Stock</SelectItem>
+  1302→            <SelectItem value="low">Low Stock</SelectItem>
+  1303→            <SelectItem value="out">Out of Stock</SelectItem>
+  1304→          </SelectContent>
+  1305→        </Select>
+  1306→        <Button variant="outline" onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}>
+  1307→          {viewMode === 'grid' ? <List className="h-4 w-4" /> : <Grid className="h-4 w-4" />}
+  1308→        </Button>
+  1309→        <Button variant="outline" onClick={handleExport}><Download className="h-4 w-4 mr-2" />Export</Button>
+  1310→        <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => setAddProductOpen(true)}><Plus className="h-4 w-4 mr-2" />Add Product</Button>
+  1311→      </div>
+  1312→
+  1313→      {viewMode === 'grid' ? (
+  1314→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  1315→          {filteredItems.map(item => (
+  1316→            <Card key={item.id} className="cursor-pointer hover:shadow-md transition-all" onClick={() => setSelectedItem(item)}>
+  1317→              <CardContent className="p-4">
+  1318→                <div className="flex items-start justify-between mb-2">
+  1319→                  <div>
+  1320→                    <p className="font-medium text-sm">{item.name}</p>
+  1321→                    <p className="text-xs text-[#757575]">{item.sku}</p>
+  1322→                  </div>
+  1323→                  <Badge className={getStockStatus(item).color}>{getStockStatus(item).label}</Badge>
+  1324→                </div>
+  1325→                <div className="flex items-center justify-between">
+  1326→                  <div>
+  1327→                    <p className="text-lg font-bold">R{item.price.toFixed(2)}</p>
+  1328→                    <p className="text-xs text-[#757575]">{item.stock} in stock • {item.category}</p>
+  1329→                  </div>
+  1330→                  {item.batchTracked && <Layers className="h-4 w-4 text-blue-500" title="Batch tracked" />}
+  1331→                </div>
+  1332→                {item.batches && item.batches.length > 0 && (
+  1333→                  <div className="mt-2 pt-2 border-t">
+  1334→                    <p className="text-[10px] text-[#757575]">{item.batches.length} batch(es) • Next expiry: {item.batches.sort((a, b) => new Date(a.expiry).getTime() - new Date(b.expiry).getTime())[0]?.expiry}</p>
+  1335→                  </div>
+  1336→                )}
+  1337→              </CardContent>
+  1338→            </Card>
+  1339→          ))}
+  1340→        </div>
+  1341→      ) : (
+  1342→        <Card>
+  1343→          <CardContent className="p-0">
+  1344→            <ScrollArea className="h-[calc(100vh-300px)]">
+  1345→              <table className="w-full">
+  1346→                <thead className="bg-gray-50 sticky top-0">
+  1347→                  <tr>
+  1348→                    <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Product</th>
+  1349→                    <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">SKU</th>
+  1350→                    <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Category</th>
+  1351→                    <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Stock</th>
+  1352→                    <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Price</th>
+  1353→                    <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Status</th>
+  1354→                    <th className="px-4 py-3 text-right text-xs font-medium text-[#757575]">Actions</th>
+  1355→                  </tr>
+  1356→                </thead>
+  1357→                <tbody className="divide-y">
+  1358→                  {filteredItems.map(item => (
+  1359→                    <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedItem(item)}>
+  1360→                      <td className="px-4 py-3">
+  1361→                        <div className="flex items-center gap-2">
+  1362→                          {item.batchTracked && <Layers className="h-4 w-4 text-blue-500" />}
+  1363→                          <span className="font-medium">{item.name}</span>
+  1364→                        </div>
+  1365→                      </td>
+  1366→                      <td className="px-4 py-3 text-sm">{item.sku}</td>
+  1367→                      <td className="px-4 py-3 text-sm">{item.category}</td>
+  1368→                      <td className="px-4 py-3">
+  1369→                        <span className={`font-medium ${item.stock === 0 ? 'text-red-500' : item.stock <= item.reorderPoint ? 'text-orange-500' : ''}`}>
+  1370→                          {item.stock}
+  1371→                        </span>
+  1372→                        <span className="text-xs text-[#757575]"> / {item.reorderPoint}</span>
+  1373→                      </td>
+  1374→                      <td className="px-4 py-3 font-medium">R{item.price.toFixed(2)}</td>
+  1375→                      <td className="px-4 py-3">
+  1376→                        <Badge className={getStockStatus(item).color}>{getStockStatus(item).label}</Badge>
+  1377→                      </td>
+  1378→                      <td className="px-4 py-3 text-right">
+  1379→                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleAdjustStock(item) }}>
+  1380→                          <Edit className="h-4 w-4" />
+  1381→                        </Button>
+  1382→                      </td>
+  1383→                    </tr>
+  1384→                  ))}
+  1385→                </tbody>
+  1386→              </table>
+  1387→            </ScrollArea>
+  1388→          </CardContent>
+  1389→        </Card>
+  1390→      )}
+  1391→    </div>
+  1392→  )
+  1393→
+  1394→  // Render Movements (Stock Adjustment History)
+  1395→  const renderMovements = () => (
+  1396→    <div className="space-y-6">
+  1397→      <div className="flex justify-between items-center">
+  1398→        <h2 className="font-bold">Stock Movement History</h2>
+  1399→        <div className="flex gap-2">
+  1400→          <Select defaultValue="all">
+  1401→            <SelectTrigger className="w-[150px]"><SelectValue placeholder="Type" /></SelectTrigger>
+  1402→            <SelectContent>
+  1403→              <SelectItem value="all">All Types</SelectItem>
+  1404→              <SelectItem value="sale">Sales</SelectItem>
+  1405→              <SelectItem value="grn">GRN</SelectItem>
+  1406→              <SelectItem value="adjustment">Adjustments</SelectItem>
+  1407→              <SelectItem value="transfer">Transfers</SelectItem>
+  1408→              <SelectItem value="stocktake">Stocktake</SelectItem>
+  1409→            </SelectContent>
+  1410→          </Select>
+  1411→          <Button variant="outline" onClick={handleExport}>
+  1412→            <Download className="h-4 w-4 mr-2" />Export
+  1413→          </Button>
+  1414→        </div>
+  1415→      </div>
+  1416→
+  1417→      {/* Movement Stats */}
+  1418→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  1419→        <Card className="bg-green-50">
+  1420→          <CardContent className="p-4 text-center">
+  1421→            <p className="text-2xl font-bold text-green-600">{movements.filter(m => m.direction === 'in').reduce((s, m) => s + m.quantity, 0)}</p>
+  1422→            <p className="text-xs text-green-600">Units In (Today)</p>
+  1423→          </CardContent>
+  1424→        </Card>
+  1425→        <Card className="bg-red-50">
+  1426→          <CardContent className="p-4 text-center">
+  1427→            <p className="text-2xl font-bold text-red-600">{movements.filter(m => m.direction === 'out').reduce((s, m) => s + m.quantity, 0)}</p>
+  1428→            <p className="text-xs text-red-600">Units Out (Today)</p>
+  1429→          </CardContent>
+  1430→        </Card>
+  1431→        <Card className="bg-blue-50">
+  1432→          <CardContent className="p-4 text-center">
+  1433→            <p className="text-2xl font-bold text-blue-600">{movements.filter(m => m.type === 'adjustment').length}</p>
+  1434→            <p className="text-xs text-blue-600">Adjustments</p>
+  1435→          </CardContent>
+  1436→        </Card>
+  1437→        <Card className="bg-purple-50">
+  1438→          <CardContent className="p-4 text-center">
+  1439→            <p className="text-2xl font-bold text-purple-600">{movements.filter(m => m.type === 'transfer_out' || m.type === 'transfer_in').length}</p>
+  1440→            <p className="text-xs text-purple-600">Transfers</p>
+  1441→          </CardContent>
+  1442→        </Card>
+  1443→      </div>
+  1444→
+  1445→      {/* Movement List */}
+  1446→      <Card>
+  1447→        <CardContent className="p-0">
+  1448→          <ScrollArea className="h-[calc(100vh-400px)]">
+  1449→            <div className="divide-y">
+  1450→              {movements.map(movement => {
+  1451→                const typeColors: Record<string, string> = {
+  1452→                  sale: 'text-blue-600',
+  1453→                  return: 'text-green-600',
+  1454→                  grn: 'text-green-600',
+  1455→                  adjustment: 'text-orange-600',
+  1456→                  transfer_in: 'text-purple-600',
+  1457→                  transfer_out: 'text-purple-600',
+  1458→                  stocktake: 'text-cyan-600',
+  1459→                }
+  1460→                const typeIcons: Record<string, React.ReactNode> = {
+  1461→                  sale: <ArrowDownRight className="h-4 w-4" />,
+  1462→                  return: <ArrowUpRight className="h-4 w-4" />,
+  1463→                  grn: <Truck className="h-4 w-4" />,
+  1464→                  adjustment: <Edit className="h-4 w-4" />,
+  1465→                  transfer_in: <ArrowLeftRight className="h-4 w-4" />,
+  1466→                  transfer_out: <ArrowLeftRight className="h-4 w-4" />,
+  1467→                  stocktake: <ClipboardList className="h-4 w-4" />,
+  1468→                }
+  1469→                return (
+  1470→                  <div key={movement.id} className="p-4 hover:bg-gray-50 flex items-center gap-4">
+  1471→                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${movement.direction === 'in' ? 'bg-green-100' : 'bg-red-100'} ${typeColors[movement.type]}`}>
+  1472→                      {typeIcons[movement.type]}
+  1473→                    </div>
+  1474→                    <div className="flex-1">
+  1475→                      <div className="flex items-center gap-2">
+  1476→                        <p className="font-medium">{movement.productName}</p>
+  1477→                        <span className="text-xs text-[#757575]">{movement.sku}</span>
+  1478→                        {movement.batchNo && <Badge variant="outline" className="text-[10px]">{movement.batchNo}</Badge>}
+  1479→                      </div>
+  1480→                      <p className="text-xs text-[#757575]">
+  1481→                        {movement.type.replace('_', ' ').toUpperCase()} • 
+  1482→                        {movement.fromLocation && ` From: ${movement.fromLocation}`}
+  1483→                        {movement.toLocation && ` To: ${movement.toLocation}`}
+  1484→                        {movement.reason && ` • ${movement.reason}`}
+  1485→                      </p>
+  1486→                    </div>
+  1487→                    <div className="text-right">
+  1488→                      <p className={`font-bold ${movement.direction === 'in' ? 'text-green-600' : 'text-red-600'}`}>
+  1489→                        {movement.direction === 'in' ? '+' : '-'}{movement.quantity}
+  1490→                      </p>
+  1491→                      <p className="text-xs text-[#757575]">R{movement.value.toFixed(2)}</p>
+  1492→                    </div>
+  1493→                    <div className="text-right">
+  1494→                      <p className="text-sm">{movement.user}</p>
+  1495→                      <p className="text-xs text-[#757575]">{new Date(movement.timestamp).toLocaleString()}</p>
+  1496→                    </div>
+  1497→                  </div>
+  1498→                )
+  1499→              })}
+  1500→            </div>
+  1501→          </ScrollArea>
+  1502→        </CardContent>
+  1503→      </Card>
+  1504→    </div>
+  1505→  )
+  1506→
+  1507→  // Render Alerts
+  1508→  const renderAlerts = () => (
+  1509→    <div className="space-y-6">
+  1510→      <div className="flex justify-between items-center">
+  1511→        <h2 className="font-bold flex items-center gap-2">
+  1512→          <Bell className="h-5 w-5" />Reorder & Stock Alerts
+  1513→        </h2>
+  1514→        <Button variant="outline" onClick={() => setReorderAlerts(prev => prev.map(a => ({ ...a, acknowledged: true })))}>
+  1515→          <CheckCircle2 className="h-4 w-4 mr-2" />Acknowledge All
+  1516→        </Button>
+  1517→      </div>
+  1518→
+  1519→      {/* Alert Stats */}
+  1520→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  1521→        <Card className="bg-red-50">
+  1522→          <CardContent className="p-4 text-center">
+  1523→            <p className="text-2xl font-bold text-red-600">{reorderAlerts.filter(a => a.type === 'out_of_stock' && !a.acknowledged).length}</p>
+  1524→            <p className="text-xs text-red-600">Out of Stock</p>
+  1525→          </CardContent>
+  1526→        </Card>
+  1527→        <Card className="bg-orange-50">
+  1528→          <CardContent className="p-4 text-center">
+  1529→            <p className="text-2xl font-bold text-orange-600">{reorderAlerts.filter(a => a.type === 'low_stock' && !a.acknowledged).length}</p>
+  1530→            <p className="text-xs text-orange-600">Low Stock</p>
+  1531→          </CardContent>
+  1532→        </Card>
+  1533→        <Card className="bg-amber-50">
+  1534→          <CardContent className="p-4 text-center">
+  1535→            <p className="text-2xl font-bold text-amber-600">{reorderAlerts.filter(a => a.type === 'expiring_soon' && !a.acknowledged).length}</p>
+  1536→            <p className="text-xs text-amber-600">Expiring Soon</p>
+  1537→          </CardContent>
+  1538→        </Card>
+  1539→        <Card className="bg-blue-50">
+  1540→          <CardContent className="p-4 text-center">
+  1541→            <p className="text-2xl font-bold text-blue-600">{reorderAlerts.filter(a => a.type === 'reorder_point' && !a.acknowledged).length}</p>
+  1542→            <p className="text-xs text-blue-600">At Reorder Point</p>
+  1543→          </CardContent>
+  1544→        </Card>
+  1545→      </div>
+  1546→
+  1547→      {/* Alert List */}
+  1548→      <Card>
+  1549→        <CardHeader className="pb-2">
+  1550→          <CardTitle className="text-sm">Active Alerts</CardTitle>
+  1551→        </CardHeader>
+  1552→        <CardContent className="p-0">
+  1553→          <ScrollArea className="h-[calc(100vh-450px)]">
+  1554→            <div className="divide-y">
+  1555→              {reorderAlerts.filter(a => !a.acknowledged).map(alert => {
+  1556→                const alertColors: Record<string, string> = {
+  1557→                  out_of_stock: 'border-red-200 bg-red-50',
+  1558→                  low_stock: 'border-orange-200 bg-orange-50',
+  1559→                  expiring_soon: 'border-amber-200 bg-amber-50',
+  1560→                  reorder_point: 'border-blue-200 bg-blue-50',
+  1561→                }
+  1562→                const alertIcons: Record<string, React.ReactNode> = {
+  1563→                  out_of_stock: <XCircle className="h-5 w-5 text-red-600" />,
+  1564→                  low_stock: <AlertTriangle className="h-5 w-5 text-orange-600" />,
+  1565→                  expiring_soon: <Clock className="h-5 w-5 text-amber-600" />,
+  1566→                  reorder_point: <Target className="h-5 w-5 text-blue-600" />,
+  1567→                }
+  1568→                return (
+  1569→                  <div key={alert.id} className={`p-4 border-l-4 ${alertColors[alert.type]}`}>
+  1570→                    <div className="flex items-start gap-3">
+  1571→                      {alertIcons[alert.type]}
+  1572→                      <div className="flex-1">
+  1573→                        <p className="font-medium text-sm">{alert.message}</p>
+  1574→                        <p className="text-xs text-[#757575] mt-1">
+  1575→                          SKU: {alert.item.sku} • Supplier: {alert.item.supplier} • Lead time: {alert.item.supplierLeadTime} days
+  1576→                        </p>
+  1577→                        <div className="flex gap-2 mt-2">
+  1578→                          <Button size="sm" className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => setActiveTab('grosupply')}>
+  1579→                            <ShoppingCart className="h-3 w-3 mr-1" />Order Now
+  1580→                          </Button>
+  1581→                          <Button size="sm" variant="outline" onClick={() => handleAcknowledgeAlert(alert.id)}>
+  1582→                            <CheckCircle2 className="h-3 w-3 mr-1" />Acknowledge
+  1583→                          </Button>
+  1584→                        </div>
+  1585→                      </div>
+  1586→                      <Badge variant="outline">{alert.item.stock} left</Badge>
+  1587→                    </div>
+  1588→                  </div>
+  1589→                )
+  1590→              })}
+  1591→              {reorderAlerts.filter(a => !a.acknowledged).length === 0 && (
+  1592→                <div className="p-8 text-center text-[#757575]">
+  1593→                  <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-green-500" />
+  1594→                  <p>No active alerts</p>
+  1595→                </div>
+  1596→              )}
+  1597→            </div>
+  1598→          </ScrollArea>
+  1599→        </CardContent>
+  1600→      </Card>
+  1601→    </div>
+  1602→  )
+  1603→
+  1604→  // Render Batch Tracking
+  1605→  const renderBatchTracking = () => (
+  1606→    <div className="space-y-6">
+  1607→      <div className="flex justify-between items-center">
+  1608→        <h2 className="font-bold flex items-center gap-2">
+  1609→          <Layers className="h-5 w-5" />Batch Tracking & Expiry Management
+  1610→        </h2>
+  1611→        <Button variant="outline" onClick={handleExport}>
+  1612→          <Download className="h-4 w-4 mr-2" />Export
+  1613→        </Button>
+  1614→      </div>
+  1615→
+  1616→      {/* Batch Stats */}
+  1617→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  1618→        <Card>
+  1619→          <CardContent className="p-4 text-center">
+  1620→            <p className="text-2xl font-bold">{inventory.filter(i => i.batchTracked).length}</p>
+  1621→            <p className="text-xs text-[#757575]">Batch Tracked Items</p>
+  1622→          </CardContent>
+  1623→        </Card>
+  1624→        <Card>
+  1625→          <CardContent className="p-4 text-center">
+  1626→            <p className="text-2xl font-bold">{inventory.filter(i => i.batches && i.batches.length > 0).reduce((s, i) => s + (i.batches?.length || 0), 0)}</p>
+  1627→            <p className="text-xs text-[#757575]">Active Batches</p>
+  1628→          </CardContent>
+  1629→        </Card>
+  1630→        <Card className="bg-amber-50">
+  1631→          <CardContent className="p-4 text-center">
+  1632→            <p className="text-2xl font-bold text-amber-600">{inventory.reduce((s, i) => s + (i.batches?.filter(b => b.status === 'expiring_soon').length || 0), 0)}</p>
+  1633→            <p className="text-xs text-amber-600">Expiring Soon</p>
+  1634→          </CardContent>
+  1635→        </Card>
+  1636→        <Card className="bg-red-50">
+  1637→          <CardContent className="p-4 text-center">
+  1638→            <p className="text-2xl font-bold text-red-600">{inventory.reduce((s, i) => s + (i.batches?.filter(b => b.status === 'expired').length || 0), 0)}</p>
+  1639→            <p className="text-xs text-red-600">Expired</p>
+  1640→          </CardContent>
+  1641→        </Card>
+  1642→      </div>
+  1643→
+  1644→      {/* Batch List */}
+  1645→      <Card>
+  1646→        <CardHeader className="pb-2">
+  1647→          <CardTitle className="text-sm">Batch Details</CardTitle>
+  1648→        </CardHeader>
+  1649→        <CardContent className="p-0">
+  1650→          <ScrollArea className="h-[calc(100vh-400px)]">
+  1651→            <table className="w-full">
+  1652→              <thead className="bg-gray-50 sticky top-0">
+  1653→                <tr>
+  1654→                  <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Product</th>
+  1655→                  <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Batch No</th>
+  1656→                  <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Quantity</th>
+  1657→                  <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Received</th>
+  1658→                  <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Expiry</th>
+  1659→                  <th className="px-4 py-3 text-left text-xs font-medium text-[#757575]">Status</th>
+  1660→                  <th className="px-4 py-3 text-right text-xs font-medium text-[#757575]">Actions</th>
+  1661→                </tr>
+  1662→              </thead>
+  1663→              <tbody className="divide-y">
+  1664→                {inventory.filter(i => i.batchTracked && i.batches && i.batches.length > 0).map(item => 
+  1665→                  item.batches!.map((batch, idx) => (
+  1666→                    <tr key={`${item.id}-${idx}`} className="hover:bg-gray-50">
+  1667→                      <td className="px-4 py-3">
+  1668→                        <p className="font-medium text-sm">{item.name}</p>
+  1669→                        <p className="text-xs text-[#757575]">{item.sku}</p>
+  1670→                      </td>
+  1671→                      <td className="px-4 py-3 text-sm font-mono">{batch.batchNo}</td>
+  1672→                      <td className="px-4 py-3">
+  1673→                        <span className="font-medium">{batch.qty}</span>
+  1674→                        <span className="text-xs text-[#757575]"> / {item.unit}</span>
+  1675→                      </td>
+  1676→                      <td className="px-4 py-3 text-sm">{batch.receivedDate}</td>
+  1677→                      <td className="px-4 py-3">
+  1678→                        <span className={`text-sm ${batch.status === 'expired' ? 'text-red-600' : batch.status === 'expiring_soon' ? 'text-amber-600' : ''}`}>
+  1679→                          {batch.expiry}
+  1680→                        </span>
+  1681→                      </td>
+  1682→                      <td className="px-4 py-3">
+  1683→                        <Badge className={`${batch.status === 'expired' ? 'bg-red-100 text-red-700' : batch.status === 'expiring_soon' ? 'bg-amber-100 text-amber-700' : batch.status === 'depleted' ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-700'}`}>
+  1684→                          {batch.status.replace('_', ' ')}
+  1685→                        </Badge>
+  1686→                      </td>
+  1687→                      <td className="px-4 py-3 text-right">
+  1688→                        <Button size="sm" variant="ghost" onClick={() => handleAdjustStock(item)}>
+  1689→                          <Edit className="h-4 w-4" />
+  1690→                        </Button>
+  1691→                      </td>
+  1692→                    </tr>
+  1693→                  ))
+  1694→                ).flat()}
+  1695→              </tbody>
+  1696→            </table>
+  1697→          </ScrollArea>
+  1698→        </CardContent>
+  1699→      </Card>
+  1700→    </div>
+  1701→  )
+  1702→
+  1703→  // Render Stock Transfers
+  1704→  const renderTransfers = () => (
+  1705→    <div className="space-y-6">
+  1706→      <div className="flex justify-between items-center">
+  1707→        <h2 className="font-bold flex items-center gap-2">
+  1708→          <ArrowLeftRight className="h-5 w-5" />Stock Transfers
+  1709→        </h2>
+  1710→        <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => setTransferOpen(true)}>
+  1711→          <Plus className="h-4 w-4 mr-2" />New Transfer
+  1712→        </Button>
+  1713→      </div>
+  1714→
+  1715→      {/* Transfer Stats */}
+  1716→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  1717→        <Card>
+  1718→          <CardContent className="p-4 text-center">
+  1719→            <p className="text-2xl font-bold">{stockTransfers.filter(t => t.status === 'pending').length}</p>
+  1720→            <p className="text-xs text-[#757575]">Pending</p>
+  1721→          </CardContent>
+  1722→        </Card>
+  1723→        <Card className="bg-blue-50">
+  1724→          <CardContent className="p-4 text-center">
+  1725→            <p className="text-2xl font-bold text-blue-600">{stockTransfers.filter(t => t.status === 'in_transit').length}</p>
+  1726→            <p className="text-xs text-blue-600">In Transit</p>
+  1727→          </CardContent>
+  1728→        </Card>
+  1729→        <Card className="bg-green-50">
+  1730→          <CardContent className="p-4 text-center">
+  1731→            <p className="text-2xl font-bold text-green-600">{stockTransfers.filter(t => t.status === 'completed').length}</p>
+  1732→            <p className="text-xs text-green-600">Completed</p>
+  1733→          </CardContent>
+  1734→        </Card>
+  1735→        <Card>
+  1736→          <CardContent className="p-4 text-center">
+  1737→            <p className="text-2xl font-bold">{stockTransfers.reduce((s, t) => s + t.items.reduce((is, i) => is + i.quantity, 0), 0)}</p>
+  1738→            <p className="text-xs text-[#757575]">Total Units</p>
+  1739→          </CardContent>
+  1740→        </Card>
+  1741→      </div>
+  1742→
+  1743→      {/* Recent Transfers */}
+  1744→      <Card>
+  1745→        <CardHeader className="pb-2">
+  1746→          <CardTitle className="text-sm">Recent Transfers</CardTitle>
+  1747→        </CardHeader>
+  1748→        <CardContent className="p-0">
+  1749→          {stockTransfers.length === 0 ? (
+  1750→            <div className="p-8 text-center text-[#757575]">
+  1751→              <ArrowLeftRight className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+  1752→              <p>No stock transfers yet</p>
+  1753→              <Button variant="outline" className="mt-4" onClick={() => setTransferOpen(true)}>Create Transfer</Button>
+  1754→            </div>
+  1755→          ) : (
+  1756→            <div className="divide-y">
+  1757→              {stockTransfers.map(transfer => (
+  1758→                <div key={transfer.id} className="p-4 hover:bg-gray-50">
+  1759→                  <div className="flex items-center justify-between">
+  1760→                    <div className="flex items-center gap-3">
+  1761→                      <div className="flex items-center gap-2">
+  1762→                        <Building2 className="h-4 w-4 text-[#757575]" />
+  1763→                        <span className="font-medium">{transfer.fromLocation}</span>
+  1764→                        <ArrowRight className="h-4 w-4 text-[#757575]" />
+  1765→                        <Building2 className="h-4 w-4 text-[#757575]" />
+  1766→                        <span className="font-medium">{transfer.toLocation}</span>
+  1767→                      </div>
+  1768→                    </div>
+  1769→                    <Badge className={`${transfer.status === 'completed' ? 'bg-green-100 text-green-700' : transfer.status === 'in_transit' ? 'bg-blue-100 text-blue-700' : transfer.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>
+  1770→                      {transfer.status}
+  1771→                    </Badge>
+  1772→                  </div>
+  1773→                  <p className="text-sm text-[#757575] mt-1">
+  1774→                    {transfer.items.length} items • {transfer.items.reduce((s, i) => s + i.quantity, 0)} units • {new Date(transfer.createdAt).toLocaleString()}
+  1775→                  </p>
+  1776→                </div>
+  1777→              ))}
+  1778→            </div>
+  1779→          )}
+  1780→        </CardContent>
+  1781→      </Card>
+  1782→    </div>
+  1783→  )
+  1784→
+  1785→  // Render Stock Snapshots
+  1786→  const renderSnapshots = () => (
+  1787→    <div className="space-y-6">
+  1788→      <div className="flex justify-between items-center">
+  1789→        <h2 className="font-bold flex items-center gap-2">
+  1790→          <Camera className="h-5 w-5" />Stock Snapshots
+  1791→        </h2>
+  1792→        <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => setSnapshotOpen(true)}>
+  1793→          <Plus className="h-4 w-4 mr-2" />Create Snapshot
+  1794→        </Button>
+  1795→      </div>
+  1796→
+  1797→      {/* Snapshot List */}
+  1798→      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  1799→        {stockSnapshots.map(snapshot => (
+  1800→          <Card key={snapshot.id} className="cursor-pointer hover:shadow-md">
+  1801→            <CardContent className="p-4">
+  1802→              <div className="flex items-start justify-between mb-2">
+  1803→                <div>
+  1804→                  <p className="font-medium">{snapshot.name}</p>
+  1805→                  <p className="text-xs text-[#757575]">{new Date(snapshot.createdAt).toLocaleDateString()}</p>
+  1806→                </div>
+  1807→                <Badge variant="outline">{snapshot.itemCount} items</Badge>
+  1808→              </div>
+  1809→              <p className="text-lg font-bold">R{snapshot.totalValue.toLocaleString()}</p>
+  1810→              {snapshot.notes && <p className="text-xs text-[#757575] mt-2">{snapshot.notes}</p>}
+  1811→              <div className="flex gap-2 mt-3">
+  1812→                <Button size="sm" variant="outline"><Eye className="h-3 w-3 mr-1" />View</Button>
+  1813→                <Button size="sm" variant="outline"><Download className="h-3 w-3 mr-1" />Export</Button>
+  1814→              </div>
+  1815→            </CardContent>
+  1816→          </Card>
+  1817→        ))}
+  1818→      </div>
+  1819→    </div>
+  1820→  )
+  1821→
+  1822→  // Render GroAI
+  1823→  const renderGroAI = () => (
+  1824→    <div className="space-y-6">
+  1825→      <div className="flex justify-between items-center">
+  1826→        <h2 className="font-bold flex items-center gap-2">
+  1827→          <Brain className="h-5 w-5 text-[#00897B]" />Gro AI - Inventory Intelligence
+  1828→        </h2>
+  1829→      </div>
+  1830→
+  1831→      {/* AI Insights */}
+  1832→      <Card className="border-l-4 border-l-[#00897B]">
+  1833→        <CardHeader className="pb-2">
+  1834→          <CardTitle className="text-sm flex items-center gap-2">
+  1835→            <Sparkles className="h-4 w-4 text-[#00897B]" />AI-Powered Insights
+  1836→          </CardTitle>
+  1837→        </CardHeader>
+  1838→        <CardContent>
+  1839→          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  1840→            {[
+  1841→              { type: 'alert', title: 'Stock-Out Risk', description: '3 items at risk of stock-out within 3 days. Consider emergency orders.', action: 'View Items', icon: AlertTriangle },
+  1842→              { type: 'opportunity', title: 'Slow-Moving Stock', description: '12 items have not sold in 30+ days. Consider markdowns.', action: 'View Report', icon: TrendingDown },
+  1843→              { type: 'optimization', title: 'Order Optimization', description: 'Bulk order from Clover SA could save R2,340 this week.', action: 'Create Order', icon: Target },
+  1844→              { type: 'insight', title: 'Seasonal Trend', description: 'Beverage sales up 23% this month. Increase stock levels.', action: 'Adjust Stock', icon: Lightbulb },
+  1845→            ].map((insight, i) => (
+  1846→              <div key={i} className={`p-4 rounded-lg border ${
+  1847→                insight.type === 'alert' ? 'border-red-200 bg-red-50' :
+  1848→                insight.type === 'opportunity' ? 'border-blue-200 bg-blue-50' :
+  1849→                insight.type === 'optimization' ? 'border-green-200 bg-green-50' :
+  1850→                'border-amber-200 bg-amber-50'
+  1851→              }`}>
+  1852→                <div className="flex items-start gap-3">
+  1853→                  <insight.icon className={`h-5 w-5 ${
+  1854→                    insight.type === 'alert' ? 'text-red-600' :
+  1855→                    insight.type === 'opportunity' ? 'text-blue-600' :
+  1856→                    insight.type === 'optimization' ? 'text-green-600' :
+  1857→                    'text-amber-600'
+  1858→                  }`} />
+  1859→                  <div className="flex-1">
+  1860→                    <h4 className="font-medium text-sm">{insight.title}</h4>
+  1861→                    <p className="text-xs text-[#757575] mt-1">{insight.description}</p>
+  1862→                    <Button size="sm" variant="outline" className="mt-2 h-7 text-xs">
+  1863→                      {insight.action}
+  1864→                      <ChevronRight className="h-3 w-3 ml-1" />
+  1865→                    </Button>
+  1866→                  </div>
+  1867→                </div>
+  1868→              </div>
+  1869→            ))}
+  1870→          </div>
+  1871→        </CardContent>
+  1872→      </Card>
+  1873→    </div>
+  1874→  )
+  1875→
+  1876→  // Render GroSupply
+  1877→  const renderGroSupply = () => (
+  1878→    <div className="space-y-6">
+  1879→      <div className="flex justify-between items-center">
+  1880→        <h2 className="font-bold flex items-center gap-2">
+  1881→          <Store className="h-5 w-5" />GroSupply Order Suggestions
+  1882→        </h2>
+  1883→        {groSupplySuggestions.length > 0 && (
+  1884→          <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={handleCreateAllOrders}>
+  1885→            <ShoppingCart className="h-4 w-4 mr-2" />Order All ({groSupplySuggestions.length})
+  1886→          </Button>
+  1887→        )}
+  1888→      </div>
+  1889→
+  1890→      {groSupplySuggestions.length === 0 ? (
+  1891→        <Card>
+  1892→          <CardContent className="p-8 text-center">
+  1893→            <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-green-500" />
+  1894→            <p className="text-[#757575]">All stock levels are healthy. No reorder suggestions.</p>
+  1895→          </CardContent>
+  1896→        </Card>
+  1897→      ) : (
+  1898→        <div className="space-y-4">
+  1899→          {groSupplySuggestions.map(suggestion => (
+  1900→            <Card key={suggestion.id} className={`${suggestion.urgency === 'critical' ? 'border-red-200' : 'border-orange-200'}`}>
+  1901→              <CardContent className="p-4">
+  1902→                <div className="flex items-center justify-between">
+  1903→                  <div className="flex items-center gap-3">
+  1904→                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${suggestion.urgency === 'critical' ? 'bg-red-100' : 'bg-orange-100'}`}>
+  1905→                      <AlertTriangle className={`h-5 w-5 ${suggestion.urgency === 'critical' ? 'text-red-600' : 'text-orange-600'}`} />
+  1906→                    </div>
+  1907→                    <div>
+  1908→                      <p className="font-medium">{suggestion.productName}</p>
+  1909→                      <p className="text-xs text-[#757575]">{suggestion.sku} • Current: {suggestion.currentStock}</p>
+  1910→                    </div>
+  1911→                  </div>
+  1912→                  <div className="text-right">
+  1913→                    <p className="font-bold">R{suggestion.estimatedCost.toFixed(2)}</p>
+  1914→                    <p className="text-xs text-[#757575]">{suggestion.suggestedOrder} units • {suggestion.leadTime} days</p>
+  1915→                  </div>
+  1916→                  <Button size="sm" className="bg-[#00897B] hover:bg-[#00695C]" onClick={() => handleOpenOrderDialog(suggestion)}>
+  1917→                    Order Now
+  1918→                  </Button>
+  1919→                </div>
+  1920→                <p className="text-xs text-[#757575] mt-2">{suggestion.reason} • Supplier: {suggestion.supplier}</p>
+  1921→              </CardContent>
+  1922→            </Card>
+  1923→          ))}
+  1924→        </div>
+  1925→      )}
+  1926→    </div>
+  1927→  )
+  1928→
+  1929→  // Render Analytics
+  1930→  const renderAnalytics = () => (
+  1931→    <div className="space-y-6">
+  1932→      <div className="flex justify-between items-center">
+  1933→        <h2 className="font-bold">Inventory Analytics</h2>
+  1934→        <Button variant="outline" onClick={handleExport}><Download className="h-4 w-4 mr-2" />Export Report</Button>
+  1935→      </div>
+  1936→
+  1937→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  1938→        {renderStockValueGraph()}
+  1939→        
+  1940→        <Card>
+  1941→          <CardHeader className="pb-2">
+  1942→            <CardTitle className="text-sm">Category Distribution</CardTitle>
+  1943→          </CardHeader>
+  1944→          <CardContent>
+  1945→            <div className="space-y-3">
+  1946→              {Object.entries(
+  1947→                inventory.reduce((acc, item) => {
+  1948→                  acc[item.category] = (acc[item.category] || 0) + 1
+  1949→                  return acc
+  1950→                }, {} as Record<string, number>)
+  1951→              ).map(([category, count]) => (
+  1952→                <div key={category} className="flex items-center gap-3">
+  1953→                  <div className="flex-1">
+  1954→                    <p className="text-sm">{category}</p>
+  1955→                    <Progress value={(count / inventory.length) * 100} className="h-2 mt-1" />
+  1956→                  </div>
+  1957→                  <span className="text-sm font-medium">{count}</span>
+  1958→                </div>
+  1959→              ))}
+  1960→            </div>
+  1961→          </CardContent>
+  1962→        </Card>
+  1963→      </div>
+  1964→    </div>
+  1965→  )
+  1966→
+  1967→  return (
+  1968→    <div className="flex flex-col h-full bg-white">
+  1969→      {/* Header */}
+  1970→      <div className="border-b border-gray-200 px-4 py-3">
+  1971→        <div className="flex items-center justify-between">
+  1972→          <div>
+  1973→            <h1 className="text-lg font-semibold text-[#1A1A1A] flex items-center gap-2">
+  1974→              <Package className="h-5 w-5 text-[#00897B]" />
+  1975→              Inventory Management
+  1976→            </h1>
+  1977→            <p className="text-xs text-[#757575]">Stock control, batch tracking & reorder management</p>
+  1978→          </div>
+  1979→          <div className="flex items-center gap-2">
+  1980→            {unacknowledgedAlerts > 0 && (
+  1981→              <Badge className="bg-red-100 text-red-700 animate-pulse">
+  1982→                <BellRing className="h-3 w-3 mr-1" />{unacknowledgedAlerts} Alerts
+  1983→              </Badge>
+  1984→            )}
+  1985→          </div>
+  1986→        </div>
+  1987→      </div>
+  1988→
+  1989→      {/* Tabs */}
+  1990→      <div className="border-b border-gray-200 px-4">
+  1991→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+  1992→          <TabsList className="h-11 bg-transparent">
+  1993→            <TabsTrigger value="dashboard" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none text-xs">Dashboard</TabsTrigger>
+  1994→            <TabsTrigger value="products" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none text-xs">Products</TabsTrigger>
+  1995→            <TabsTrigger value="movements" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none text-xs">Movements</TabsTrigger>
+  1996→            <TabsTrigger value="alerts" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none text-xs">Alerts {unacknowledgedAlerts > 0 && `(${unacknowledgedAlerts})`}</TabsTrigger>
+  1997→            <TabsTrigger value="batches" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none text-xs">Batches</TabsTrigger>
+  1998→            <TabsTrigger value="transfers" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none text-xs">Transfers</TabsTrigger>
+  1999→            <TabsTrigger value="snapshots" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none text-xs">Snapshots</TabsTrigger>
+  2000→            <TabsTrigger value="grosupply" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none text-xs">GroSupply</TabsTrigger>
+
+[showing lines 1-2000 of 2430; use offset=2001 with limit to continue reading]

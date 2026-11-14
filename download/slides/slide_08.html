@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>08 · SAPE Six-Layer Architecture — Groway Merchant OS</title>
+<link rel="stylesheet" href="global.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  body{margin:0;}
+  .headline{font-family:var(--font-heading);font-size:var(--fs-h1);font-weight:700;letter-spacing:-0.015em;line-height:1.12;color:var(--ink);}
+  .layer-title{font-family:var(--font-heading);font-size:var(--fs-h3);font-weight:600;color:var(--ink);margin-top:10px;}
+  .layer-desc{font-size:var(--fs-small);line-height:1.55;color:var(--ink-soft);margin-top:6px;}
+  .layer-badge{font-family:var(--font-num);font-size:var(--fs-small);font-weight:600;color:var(--primary);background:var(--primary-soft);padding:3px 10px;border-radius:7px;}
+  .ai-code{font-family:var(--font-num);font-weight:600;color:var(--primary);}
+</style>
+</head>
+<body>
+<div class="slide flex flex-col" style="padding:52px 64px 0;">
+
+  <header>
+    <div class="kicker">Sape · Architecture</div>
+    <h1 class="headline" style="margin-top:12px;">Six layers, one provenance chain</h1>
+  </header>
+
+  <div class="flex-1 flex flex-col justify-center">
+
+    <!-- Row 1: L1–L3 -->
+    <div class="grid grid-cols-3" style="gap:18px;">
+      <div class="card" style="padding:18px 20px;min-height:170px;">
+        <div class="flex items-center justify-between">
+          <span class="layer-badge">L1</span>
+          <i class="material-icons" aria-hidden="true" style="font-size:21px;color:var(--primary);opacity:0.55;">fact_check</i>
+        </div>
+        <h3 class="layer-title">Supplier verification</h3>
+        <p class="layer-desc">credentialed registry with risk scoring (CIPC registration, SAHPRA licences, NCC accreditation)</p>
+      </div>
+      <div class="card" style="padding:18px 20px;min-height:170px;">
+        <div class="flex items-center justify-between">
+          <span class="layer-badge">L2</span>
+          <i class="material-icons" aria-hidden="true" style="font-size:21px;color:var(--primary);opacity:0.55;">qr_code_2</i>
+        </div>
+        <h3 class="layer-title">GS1 DataMatrix serialisation</h3>
+        <p class="layer-desc"><span class="ai-code">AI(01)</span> GTIN, <span class="ai-code">AI(10)</span> batch, <span class="ai-code">AI(17)</span> expiry, <span class="ai-code">AI(21)</span> serial; HMAC-signed payloads</p>
+      </div>
+      <div class="card" style="padding:18px 20px;min-height:170px;">
+        <div class="flex items-center justify-between">
+          <span class="layer-badge">L3</span>
+          <i class="material-icons" aria-hidden="true" style="font-size:21px;color:var(--primary);opacity:0.55;">link</i>
+        </div>
+        <h3 class="layer-title">Blockchain-anchored custody</h3>
+        <p class="layer-desc">every handover hash-chained and merkle-anchored to an append-only block chain</p>
+      </div>
+    </div>
+
+    <!-- Chain motif connecting the two rows -->
+    <div class="flex items-center" data-decor aria-hidden="true" style="margin:13px 4px;">
+      <span class="chain-dot" style="flex:none;"></span>
+      <span style="flex:1;height:2px;background:var(--line);"></span>
+      <span class="chain-dot" style="flex:none;"></span>
+      <span style="flex:1;height:2px;background:var(--line);"></span>
+      <span class="chain-dot" style="flex:none;"></span>
+      <span style="flex:1;height:2px;background:var(--line);"></span>
+      <span class="chain-dot" style="flex:none;"></span>
+      <span style="flex:1;height:2px;background:var(--line);"></span>
+      <span class="chain-dot" style="flex:none;"></span>
+      <span style="flex:1;height:2px;background:var(--line);"></span>
+      <span class="chain-dot" style="flex:none;"></span>
+    </div>
+
+    <!-- Row 2: L4–L6 -->
+    <div class="grid grid-cols-3" style="gap:18px;">
+      <div class="card" style="padding:18px 20px;min-height:170px;">
+        <div class="flex items-center justify-between">
+          <span class="layer-badge">L4</span>
+          <i class="material-icons" aria-hidden="true" style="font-size:21px;color:var(--primary);opacity:0.55;">point_of_sale</i>
+        </div>
+        <h3 class="layer-title">POS verification &lt; 500ms</h3>
+        <p class="layer-desc">cashier scans at the till; registry, signature and anomaly checks (duplicate sale, scan velocity, recalled batch) fire inline</p>
+      </div>
+      <div class="card" style="padding:18px 20px;min-height:170px;">
+        <div class="flex items-center justify-between">
+          <span class="layer-badge">L5</span>
+          <i class="material-icons" aria-hidden="true" style="font-size:21px;color:var(--primary);opacity:0.55;">qr_code_scanner</i>
+        </div>
+        <h3 class="layer-title">Consumer QR verification</h3>
+        <p class="layer-desc">any customer can check authenticity, see origin and custody journey, and report fakes anonymously</p>
+      </div>
+      <div class="card" style="padding:18px 20px;min-height:170px;">
+        <div class="flex items-center justify-between">
+          <span class="layer-badge">L6</span>
+          <i class="material-icons" aria-hidden="true" style="font-size:21px;color:var(--primary);opacity:0.55;">campaign</i>
+        </div>
+        <h3 class="layer-title">Authority feeds</h3>
+        <p class="layer-desc">structured notifications to SAHPRA, NCC, SARS and SAPS on a 1-hour SLA, plus an anonymous tip-off line</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer note strip -->
+  <div class="bg-primary-soft flex items-center" style="gap:14px;padding:14px 22px;border-radius:14px;margin-bottom:56px;">
+    <i class="material-icons" aria-hidden="true" style="font-size:24px;color:var(--primary);">verified</i>
+    <p style="font-size:var(--fs-body);line-height:1.5;color:var(--ink);">
+      <strong style="color:var(--primary);">Live in production today:</strong>
+      <span class="num" style="font-weight:600;">16-model</span> provenance database, <span class="num" style="font-weight:600;">9</span> API endpoints, merchant console and public verify page.
+    </p>
+  </div>
+
+  <footer class="deck-foot" style="color:var(--ink-soft);">
+    <span>Groway Merchant OS — Investor &amp; Partner Proposal</span>
+    <span class="num">08 / 13</span>
+  </footer>
+</div>
+</body>
+</html>

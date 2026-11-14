@@ -1,0 +1,1050 @@
+     1→import { hash, compare } from 'bcryptjs'
+     2→import { nanoid } from 'nanoid'
+     3→
+     4→// ============================================
+     5→// Hybrid Authentication System
+     6→// Works with Prisma/SQLite for local development
+     7→// Falls back to in-memory storage for Netlify production
+     8→// ============================================
+     9→
+    10→// Types
+    11→export interface HybridUser {
+    12→  id: string
+    13→  email: string
+    14→  name: string | null
+    15→  phone: string | null
+    16→  passwordHash: string
+    17→  pinHash: string | null
+    18→  role: string
+    19→  emailVerified: Date | null
+    20→  phoneVerified: Date | null
+    21→  lastLoginAt: Date | null
+    22→  loginAttempts: number
+    23→  lockedUntil: Date | null
+    24→  createdAt: Date
+    25→  updatedAt: Date
+    26→}
+    27→
+    28→export interface HybridMerchant {
+    29→  id: string
+    30→  code: string
+    31→  name: string
+    32→  tradingName: string | null
+    33→  vertical: string
+    34→  subVertical: string | null
+    35→  logo: string | null
+    36→  phone: string | null
+    37→  email: string | null
+    38→  addressLine1: string | null
+    39→  city: string | null
+    40→  province: string | null
+    41→  postalCode: string | null
+    42→  country: string
+    43→  currency: string
+    44→  vatRegistered: boolean
+    45→  vatNumber: string | null
+    46→  registrationNumber: string | null
+    47→  status: string
+    48→  onboardingComplete: boolean
+    49→  onboardingStep: string | null
+    50→  plan: string
+    51→  planStatus: string
+    52→  trialEndsAt: Date | null
+    53→  lastLoginAt: Date | null
+    54→  createdAt: Date
+    55→  updatedAt: Date
+    56→}
+    57→
+    58→export interface HybridMerchantUser {
+    59→  id: string
+    60→  merchantId: string
+    61→  userId: string
+    62→  role: string
+    63→  branchId: string | null
+    64→  permissions: string | null
+    65→  invitedBy: string | null
+    66→  invitedAt: Date | null
+    67→  acceptedAt: Date | null
+    68→  isActive: boolean
+    69→  lastAccessAt: Date | null
+    70→  createdAt: Date
+    71→  updatedAt: Date
+    72→}
+    73→
+    74→export interface HybridBranch {
+    75→  id: string
+    76→  merchantId: string
+    77→  code: string
+    78→  name: string
+    79→  type: string
+    80→  isDefault: boolean
+    81→  isActive: boolean
+    82→  createdAt: Date
+    83→  updatedAt: Date
+    84→}
+    85→
+    86→export interface HybridSession {
+    87→  id: string
+    88→  userId: string
+    89→  token: string
+    90→  expiresAt: Date
+    91→  userAgent: string | null
+    92→  ipAddress: string | null
+    93→  createdAt: Date
+    94→}
+    95→
+    96→// Pre-hashed password for demo users (hash of "demo1234")
+    97→// Generated with: await hash("demo1234", 10)
+    98→const DEMO_PASSWORD_HASH = '$2b$10$D865SOzfaJ1wrC6RDkV2MeNjU7Izxkpdp8gSFqRfGnPizcrVcat0y'
+    99→const DEMO_PIN_HASH = '$2b$10$i.dXPWNVIsk.rYJ4OfP1buSZh26FOwHeFq1eE9oTzefWb0eERe7XW' // Hash of "1234" for Quick PIN login
+   100→
+   101→// Demo users configuration
+   102→const DEMO_USERS_CONFIG = [
+   103→  {
+   104→    email: 'demo@groway.co.za',
+   105→    password: 'demo1234',
+   106→    pin: '1234',
+   107→    name: 'Coffee Shop Demo',
+   108→    merchantName: 'The Coffee Corner',
+   109→    tradingName: 'The Coffee Corner',
+   110→    vertical: 'fnb',
+   111→    subVertical: 'coffee_shop',
+   112→    role: 'owner'
+   113→  },
+   114→  {
+   115→    email: 'salon@groway.co.za',
+   116→    password: 'demo1234',
+   117→    pin: '1234',
+   118→    name: 'Hair Salon Demo',
+   119→    merchantName: 'Glamour Hair Studio',
+   120→    tradingName: 'Glamour Hair Studio',
+   121→    vertical: 'health-beauty',
+   122→    subVertical: 'hair_salon',
+   123→    role: 'owner'
+   124→  },
+   125→  {
+   126→    email: 'restaurant@groway.co.za',
+   127→    password: 'demo1234',
+   128→    pin: '1234',
+   129→    name: 'Restaurant Demo',
+   130→    merchantName: 'The Hungry Fork',
+   131→    tradingName: 'The Hungry Fork Restaurant',
+   132→    vertical: 'fnb',
+   133→    subVertical: 'restaurant',
+   134→    role: 'owner'
+   135→  },
+   136→  {
+   137→    email: 'spaza@groway.co.za',
+   138→    password: 'demo1234',
+   139→    pin: '1234',
+   140→    name: 'Spaza Shop Demo',
+   141→    merchantName: 'Mama Thandi Spaza',
+   142→    tradingName: 'Mama Thandi Spaza Shop',
+   143→    vertical: 'grocery',
+   144→    subVertical: 'spaza',
+   145→    role: 'owner'
+   146→  },
+   147→  {
+   148→    email: 'barber@groway.co.za',
+   149→    password: 'demo1234',
+   150→    pin: '1234',
+   151→    name: 'Barber Demo',
+   152→    merchantName: 'Fresh Cuts Barbershop',
+   153→    tradingName: 'Fresh Cuts Barbershop',
+   154→    vertical: 'health-beauty',
+   155→    subVertical: 'barber',
+   156→    role: 'owner'
+   157→  }
+   158→]
+   159→
+   160→// Initialize demo users with proper IDs and dates
+   161→function initializeDemoUsers(): Map<string, HybridUser> {
+   162→  const users = new Map<string, HybridUser>()
+   163→  const now = new Date()
+   164→  
+   165→  DEMO_USERS_CONFIG.forEach((config, index) => {
+   166→    const userId = `demo_user_${index + 1}`
+   167→    users.set(config.email, {
+   168→      id: userId,
+   169→      email: config.email,
+   170→      name: config.name,
+   171→      phone: null,
+   172→      passwordHash: DEMO_PASSWORD_HASH,
+   173→      pinHash: DEMO_PIN_HASH,
+   174→      role: config.role,
+   175→      emailVerified: now,
+   176→      phoneVerified: null,
+   177→      lastLoginAt: null,
+   178→      loginAttempts: 0,
+   179→      lockedUntil: null,
+   180→      createdAt: now,
+   181→      updatedAt: now
+   182→    })
+   183→  })
+   184→  
+   185→  return users
+   186→}
+   187→
+   188→function initializeDemoMerchants(): Map<string, HybridMerchant> {
+   189→  const merchants = new Map<string, HybridMerchant>()
+   190→  const now = new Date()
+   191→  
+   192→  DEMO_USERS_CONFIG.forEach((config, index) => {
+   193→    const merchantId = `demo_merchant_${index + 1}`
+   194→    merchants.set(config.email, {
+   195→      id: merchantId,
+   196→      code: `MCH-${String(1001 + index).padStart(6, '0')}`,
+   197→      name: config.merchantName,
+   198→      tradingName: config.tradingName,
+   199→      vertical: config.vertical,
+   200→      subVertical: config.subVertical,
+   201→      logo: null,
+   202→      phone: null,
+   203→      email: config.email,
+   204→      addressLine1: null,
+   205→      city: null,
+   206→      province: null,
+   207→      postalCode: null,
+   208→      country: 'South Africa',
+   209→      currency: 'ZAR',
+   210→      vatRegistered: false,
+   211→      vatNumber: null,
+   212→      registrationNumber: null,
+   213→      status: 'active',
+   214→      onboardingComplete: true,
+   215→      onboardingStep: null,
+   216→      plan: 'starter',
+   217→      planStatus: 'trial',
+   218→      trialEndsAt: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+   219→      lastLoginAt: null,
+   220→      createdAt: now,
+   221→      updatedAt: now
+   222→    })
+   223→  })
+   224→  
+   225→  return merchants
+   226→}
+   227→
+   228→function initializeDemoMerchantUsers(): Map<string, HybridMerchantUser[]> {
+   229→  const merchantUsers = new Map<string, HybridMerchantUser[]>()
+   230→  const now = new Date()
+   231→  
+   232→  DEMO_USERS_CONFIG.forEach((config, index) => {
+   233→    const userId = `demo_user_${index + 1}`
+   234→    const merchantId = `demo_merchant_${index + 1}`
+   235→    
+   236→    merchantUsers.set(config.email, [{
+   237→      id: `demo_mu_${index + 1}`,
+   238→      merchantId,
+   239→      userId,
+   240→      role: config.role,
+   241→      branchId: `demo_branch_${index + 1}`,
+   242→      permissions: null,
+   243→      invitedBy: null,
+   244→      invitedAt: null,
+   245→      acceptedAt: now,
+   246→      isActive: true,
+   247→      lastAccessAt: null,
+   248→      createdAt: now,
+   249→      updatedAt: now
+   250→    }])
+   251→  })
+   252→  
+   253→  return merchantUsers
+   254→}
+   255→
+   256→function initializeDemoBranches(): Map<string, HybridBranch> {
+   257→  const branches = new Map<string, HybridBranch>()
+   258→  const now = new Date()
+   259→  
+   260→  DEMO_USERS_CONFIG.forEach((config, index) => {
+   261→    const branchId = `demo_branch_${index + 1}`
+   262→    const merchantId = `demo_merchant_${index + 1}`
+   263→    
+   264→    branches.set(config.email, {
+   265→      id: branchId,
+   266→      merchantId,
+   267→      code: 'MAIN',
+   268→      name: 'Main Branch',
+   269→      type: 'headquarters',
+   270→      isDefault: true,
+   271→      isActive: true,
+   272→      createdAt: now,
+   273→      updatedAt: now
+   274→    })
+   275→  })
+   276→  
+   277→  return branches
+   278→}
+   279→
+   280→// In-memory stores for production (Netlify)
+   281→let memoryUsers: Map<string, HybridUser> | null = null
+   282→let memoryMerchants: Map<string, HybridMerchant> | null = null
+   283→let memoryMerchantUsers: Map<string, HybridMerchantUser[]> | null = null
+   284→let memoryBranches: Map<string, HybridBranch> | null = null
+   285→let memorySessions: Map<string, HybridSession> | null = null
+   286→
+   287→// Initialize in-memory stores if not already done
+   288→function initializeMemoryStores() {
+   289→  if (!memoryUsers) {
+   290→    memoryUsers = initializeDemoUsers()
+   291→  }
+   292→  if (!memoryMerchants) {
+   293→    memoryMerchants = initializeDemoMerchants()
+   294→  }
+   295→  if (!memoryMerchantUsers) {
+   296→    memoryMerchantUsers = initializeDemoMerchantUsers()
+   297→  }
+   298→  if (!memoryBranches) {
+   299→    memoryBranches = initializeDemoBranches()
+   300→  }
+   301→  if (!memorySessions) {
+   302→    memorySessions = new Map<string, HybridSession>()
+   303→  }
+   304→}
+   305→
+   306→// Check if we're in production mode (Netlify)
+   307→export function isProduction(): boolean {
+   308→  return process.env.NODE_ENV === 'production' || process.env.NETLIFY === 'true'
+   309→}
+   310→
+   311→// Hash password
+   312→export async function hashPassword(password: string): Promise<string> {
+   313→  return hash(password, 10)
+   314→}
+   315→
+   316→// Verify password
+   317→export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+   318→  try {
+   319→    return compare(password, hashedPassword)
+   320→  } catch {
+   321→    return false
+   322→  }
+   323→}
+   324→
+   325→// Get user by email - hybrid approach
+   326→export async function getUserByEmail(email: string): Promise<HybridUser | null> {
+   327→  const lowerEmail = email.toLowerCase()
+   328→  
+   329→  if (isProduction()) {
+   330→    // Use in-memory storage for production
+   331→    initializeMemoryStores()
+   332→    return memoryUsers!.get(lowerEmail) || null
+   333→  } else {
+   334→    // Try database first for development
+   335→    try {
+   336→      const { db } = await import('@/lib/db')
+   337→      const user = await db.user.findUnique({
+   338→        where: { email: lowerEmail }
+   339→      })
+   340→      
+   341→      if (user) {
+   342→        return {
+   343→          id: user.id,
+   344→          email: user.email,
+   345→          name: user.name,
+   346→          phone: user.phone,
+   347→          passwordHash: user.passwordHash || '',
+   348→          pinHash: user.pinHash,
+   349→          role: user.role,
+   350→          emailVerified: user.emailVerified,
+   351→          phoneVerified: user.phoneVerified,
+   352→          lastLoginAt: user.lastLoginAt,
+   353→          loginAttempts: user.loginAttempts,
+   354→          lockedUntil: user.lockedUntil,
+   355→          createdAt: user.createdAt,
+   356→          updatedAt: user.updatedAt
+   357→        }
+   358→      }
+   359→      
+   360→      // Fallback to demo users if not in database
+   361→      initializeMemoryStores()
+   362→      return memoryUsers!.get(lowerEmail) || null
+   363→    } catch {
+   364→      // Database error, fallback to memory
+   365→      initializeMemoryStores()
+   366→      return memoryUsers!.get(lowerEmail) || null
+   367→    }
+   368→  }
+   369→}
+   370→
+   371→// Get merchant with user relation - hybrid approach
+   372→export async function getMerchantWithUser(email: string): Promise<{
+   373→  user: HybridUser
+   374→  merchantUser: HybridMerchantUser
+   375→  merchant: HybridMerchant
+   376→  branch: HybridBranch | null
+   377→} | null> {
+   378→  const lowerEmail = email.toLowerCase()
+   379→  
+   380→  if (isProduction()) {
+   381→    // Use in-memory storage for production
+   382→    initializeMemoryStores()
+   383→    
+   384→    const user = memoryUsers!.get(lowerEmail)
+   385→    if (!user) return null
+   386→    
+   387→    const merchantUsers = memoryMerchantUsers!.get(lowerEmail)
+   388→    if (!merchantUsers || merchantUsers.length === 0) return null
+   389→    
+   390→    const merchantUser = merchantUsers[0]
+   391→    const merchant = memoryMerchants!.get(lowerEmail)
+   392→    if (!merchant) return null
+   393→    
+   394→    const branch = memoryBranches!.get(lowerEmail) || null
+   395→    
+   396→    return { user, merchantUser, merchant, branch }
+   397→  } else {
+   398→    // Try database first for development
+   399→    try {
+   400→      const { db } = await import('@/lib/db')
+   401→      
+   402→      const dbUser = await db.user.findUnique({
+   403→        where: { email: lowerEmail },
+   404→        include: {
+   405→          merchantUsers: {
+   406→            where: { isActive: true },
+   407→            include: {
+   408→              merchant: {
+   409→                include: {
+   410→                  branches: {
+   411→                    where: { isActive: true },
+   412→                    take: 1
+   413→                  }
+   414→                }
+   415→              }
+   416→            }
+   417→          }
+   418→        }
+   419→      })
+   420→      
+   421→      if (dbUser && dbUser.merchantUsers && dbUser.merchantUsers.length > 0) {
+   422→        const mu = dbUser.merchantUsers[0]
+   423→        const m = mu.merchant
+   424→        const b = m.branches?.[0]
+   425→        
+   426→        return {
+   427→          user: {
+   428→            id: dbUser.id,
+   429→            email: dbUser.email,
+   430→            name: dbUser.name,
+   431→            phone: dbUser.phone,
+   432→            passwordHash: dbUser.passwordHash || '',
+   433→            pinHash: dbUser.pinHash,
+   434→            role: dbUser.role,
+   435→            emailVerified: dbUser.emailVerified,
+   436→            phoneVerified: dbUser.phoneVerified,
+   437→            lastLoginAt: dbUser.lastLoginAt,
+   438→            loginAttempts: dbUser.loginAttempts,
+   439→            lockedUntil: dbUser.lockedUntil,
+   440→            createdAt: dbUser.createdAt,
+   441→            updatedAt: dbUser.updatedAt
+   442→          },
+   443→          merchantUser: {
+   444→            id: mu.id,
+   445→            merchantId: mu.merchantId,
+   446→            userId: mu.userId,
+   447→            role: mu.role,
+   448→            branchId: mu.branchId,
+   449→            permissions: mu.permissions,
+   450→            invitedBy: mu.invitedBy,
+   451→            invitedAt: mu.invitedAt,
+   452→            acceptedAt: mu.acceptedAt,
+   453→            isActive: mu.isActive,
+   454→            lastAccessAt: mu.lastAccessAt,
+   455→            createdAt: mu.createdAt,
+   456→            updatedAt: mu.updatedAt
+   457→          },
+   458→          merchant: {
+   459→            id: m.id,
+   460→            code: m.code,
+   461→            name: m.name,
+   462→            tradingName: m.tradingName,
+   463→            vertical: m.vertical,
+   464→            subVertical: m.subVertical,
+   465→            logo: m.logo,
+   466→            phone: m.phone,
+   467→            email: m.email,
+   468→            addressLine1: m.addressLine1,
+   469→            city: m.city,
+   470→            province: m.province,
+   471→            postalCode: m.postalCode,
+   472→            country: m.country,
+   473→            currency: m.currency,
+   474→            vatRegistered: m.vatRegistered,
+   475→            vatNumber: m.vatNumber,
+   476→            registrationNumber: m.registrationNumber,
+   477→            status: m.status,
+   478→            onboardingComplete: m.onboardingComplete,
+   479→            onboardingStep: m.onboardingStep,
+   480→            plan: m.plan,
+   481→            planStatus: m.planStatus,
+   482→            trialEndsAt: m.trialEndsAt,
+   483→            lastLoginAt: m.lastLoginAt,
+   484→            createdAt: m.createdAt,
+   485→            updatedAt: m.updatedAt
+   486→          },
+   487→          branch: b ? {
+   488→            id: b.id,
+   489→            merchantId: b.merchantId,
+   490→            code: b.code,
+   491→            name: b.name,
+   492→            type: b.type,
+   493→            isDefault: b.isDefault,
+   494→            isActive: b.isActive,
+   495→            createdAt: b.createdAt,
+   496→            updatedAt: b.updatedAt
+   497→          } : null
+   498→        }
+   499→      }
+   500→      
+   501→      // Fallback to demo users
+   502→      initializeMemoryStores()
+   503→      
+   504→      const user = memoryUsers!.get(lowerEmail)
+   505→      if (!user) return null
+   506→      
+   507→      const merchantUsers = memoryMerchantUsers!.get(lowerEmail)
+   508→      if (!merchantUsers || merchantUsers.length === 0) return null
+   509→      
+   510→      const merchantUser = merchantUsers[0]
+   511→      const merchant = memoryMerchants!.get(lowerEmail)
+   512→      if (!merchant) return null
+   513→      
+   514→      const branch = memoryBranches!.get(lowerEmail) || null
+   515→      
+   516→      return { user, merchantUser, merchant, branch }
+   517→    } catch {
+   518→      // Database error, fallback to memory
+   519→      initializeMemoryStores()
+   520→      
+   521→      const user = memoryUsers!.get(lowerEmail)
+   522→      if (!user) return null
+   523→      
+   524→      const merchantUsers = memoryMerchantUsers!.get(lowerEmail)
+   525→      if (!merchantUsers || merchantUsers.length === 0) return null
+   526→      
+   527→      const merchantUser = merchantUsers[0]
+   528→      const merchant = memoryMerchants!.get(lowerEmail)
+   529→      if (!merchant) return null
+   530→      
+   531→      const branch = memoryBranches!.get(lowerEmail) || null
+   532→      
+   533→      return { user, merchantUser, merchant, branch }
+   534→    }
+   535→  }
+   536→}
+   537→
+   538→// Create session - hybrid approach
+   539→export async function createSession(
+   540→  userId: string,
+   541→  token: string,
+   542→  userAgent?: string,
+   543→  ipAddress?: string
+   544→): Promise<HybridSession> {
+   545→  const session: HybridSession = {
+   546→    id: `sess_${nanoid(12)}`,
+   547→    userId,
+   548→    token,
+   549→    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+   550→    userAgent: userAgent || null,
+   551→    ipAddress: ipAddress || null,
+   552→    createdAt: new Date()
+   553→  }
+   554→  
+   555→  if (isProduction()) {
+   556→    // Use in-memory storage for production
+   557→    initializeMemoryStores()
+   558→    memorySessions!.set(token, session)
+   559→    return session
+   560→  } else {
+   561→    // Try database first for development
+   562→    try {
+   563→      const { db } = await import('@/lib/db')
+   564→      
+   565→      await db.session.create({
+   566→        data: {
+   567→          id: session.id,
+   568→          userId,
+   569→          token,
+   570→          expiresAt: session.expiresAt,
+   571→          userAgent,
+   572→          ipAddress
+   573→        }
+   574→      })
+   575→      
+   576→      return session
+   577→    } catch {
+   578→      // Database error, use memory
+   579→      initializeMemoryStores()
+   580→      memorySessions!.set(token, session)
+   581→      return session
+   582→    }
+   583→  }
+   584→}
+   585→
+   586→// Update user login info - hybrid approach
+   587→export async function updateUserLoginInfo(userId: string): Promise<void> {
+   588→  if (isProduction()) {
+   589→    // Use in-memory storage for production
+   590→    initializeMemoryStores()
+   591→    
+   592→    // Find and update user in memory
+   593→    for (const [email, user] of memoryUsers!.entries()) {
+   594→      if (user.id === userId) {
+   595→        user.lastLoginAt = new Date()
+   596→        user.loginAttempts = 0
+   597→        user.lockedUntil = null
+   598→        user.updatedAt = new Date()
+   599→        memoryUsers!.set(email, user)
+   600→        break
+   601→      }
+   602→    }
+   603→  } else {
+   604→    // Try database first for development
+   605→    try {
+   606→      const { db } = await import('@/lib/db')
+   607→      
+   608→      await db.user.update({
+   609→        where: { id: userId },
+   610→        data: {
+   611→          loginAttempts: 0,
+   612→          lockedUntil: null,
+   613→          lastLoginAt: new Date()
+   614→        }
+   615→      })
+   616→    } catch {
+   617→      // Database error, update in memory
+   618→      initializeMemoryStores()
+   619→      
+   620→      for (const [email, user] of memoryUsers!.entries()) {
+   621→        if (user.id === userId) {
+   622→          user.lastLoginAt = new Date()
+   623→          user.loginAttempts = 0
+   624→          user.lockedUntil = null
+   625→          user.updatedAt = new Date()
+   626→          memoryUsers!.set(email, user)
+   627→          break
+   628→        }
+   629→      }
+   630→    }
+   631→  }
+   632→}
+   633→
+   634→// Update merchant last login - hybrid approach
+   635→export async function updateMerchantLastLogin(merchantId: string): Promise<void> {
+   636→  if (isProduction()) {
+   637→    // Use in-memory storage for production
+   638→    initializeMemoryStores()
+   639→    
+   640→    // Find and update merchant in memory
+   641→    for (const [email, merchant] of memoryMerchants!.entries()) {
+   642→      if (merchant.id === merchantId) {
+   643→        merchant.lastLoginAt = new Date()
+   644→        merchant.updatedAt = new Date()
+   645→        memoryMerchants!.set(email, merchant)
+   646→        break
+   647→      }
+   648→    }
+   649→  } else {
+   650→    // Try database first for development
+   651→    try {
+   652→      const { db } = await import('@/lib/db')
+   653→      
+   654→      await db.merchant.update({
+   655→        where: { id: merchantId },
+   656→        data: { lastLoginAt: new Date() }
+   657→      })
+   658→    } catch {
+   659→      // Database error, update in memory
+   660→      initializeMemoryStores()
+   661→      
+   662→      for (const [email, merchant] of memoryMerchants!.entries()) {
+   663→        if (merchant.id === merchantId) {
+   664→          merchant.lastLoginAt = new Date()
+   665→          merchant.updatedAt = new Date()
+   666→          memoryMerchants!.set(email, merchant)
+   667→          break
+   668→        }
+   669→      }
+   670→    }
+   671→  }
+   672→}
+   673→
+   674→// Update failed login attempts - hybrid approach
+   675→export async function updateFailedLoginAttempts(
+   676→  userId: string,
+   677→  attempts: number,
+   678→  lockedUntil?: Date
+   679→): Promise<void> {
+   680→  if (isProduction()) {
+   681→    // Use in-memory storage for production
+   682→    initializeMemoryStores()
+   683→    
+   684→    for (const [email, user] of memoryUsers!.entries()) {
+   685→      if (user.id === userId) {
+   686→        user.loginAttempts = attempts
+   687→        user.lockedUntil = lockedUntil || null
+   688→        user.updatedAt = new Date()
+   689→        memoryUsers!.set(email, user)
+   690→        break
+   691→      }
+   692→    }
+   693→  } else {
+   694→    // Try database first for development
+   695→    try {
+   696→      const { db } = await import('@/lib/db')
+   697→      
+   698→      await db.user.update({
+   699→        where: { id: userId },
+   700→        data: {
+   701→          loginAttempts: attempts,
+   702→          lockedUntil: lockedUntil || null
+   703→        }
+   704→      })
+   705→    } catch {
+   706→      // Database error, update in memory
+   707→      initializeMemoryStores()
+   708→      
+   709→      for (const [email, user] of memoryUsers!.entries()) {
+   710→        if (user.id === userId) {
+   711→          user.loginAttempts = attempts
+   712→          user.lockedUntil = lockedUntil || null
+   713→          user.updatedAt = new Date()
+   714→          memoryUsers!.set(email, user)
+   715→          break
+   716→        }
+   717→      }
+   718→    }
+   719→  }
+   720→}
+   721→
+   722→// Check if user exists - hybrid approach
+   723→export async function checkUserExists(email: string): Promise<boolean> {
+   724→  const lowerEmail = email.toLowerCase()
+   725→  
+   726→  if (isProduction()) {
+   727→    initializeMemoryStores()
+   728→    return memoryUsers!.has(lowerEmail)
+   729→  } else {
+   730→    try {
+   731→      const { db } = await import('@/lib/db')
+   732→      const user = await db.user.findUnique({
+   733→        where: { email: lowerEmail }
+   734→      })
+   735→      return !!user
+   736→    } catch {
+   737→      initializeMemoryStores()
+   738→      return memoryUsers!.has(lowerEmail)
+   739→    }
+   740→  }
+   741→}
+   742→
+   743→// Create new user - hybrid approach
+   744→export async function createNewUser(userData: {
+   745→  email: string
+   746→  passwordHash: string
+   747→  name?: string
+   748→  phone?: string
+   749→}): Promise<HybridUser> {
+   750→  const now = new Date()
+   751→  const userId = `user_${nanoid(12)}`
+   752→  const lowerEmail = userData.email.toLowerCase()
+   753→  
+   754→  const user: HybridUser = {
+   755→    id: userId,
+   756→    email: lowerEmail,
+   757→    name: userData.name || null,
+   758→    phone: userData.phone || null,
+   759→    passwordHash: userData.passwordHash,
+   760→    pinHash: null,
+   761→    role: 'user',
+   762→    emailVerified: now, // Auto-verify for now
+   763→    phoneVerified: null,
+   764→    lastLoginAt: null,
+   765→    loginAttempts: 0,
+   766→    lockedUntil: null,
+   767→    createdAt: now,
+   768→    updatedAt: now
+   769→  }
+   770→  
+   771→  if (isProduction()) {
+   772→    // Use in-memory storage for production
+   773→    initializeMemoryStores()
+   774→    memoryUsers!.set(lowerEmail, user)
+   775→    return user
+   776→  } else {
+   777→    // Try database first for development
+   778→    try {
+   779→      const { db } = await import('@/lib/db')
+   780→      
+   781→      const dbUser = await db.user.create({
+   782→        data: {
+   783→          id: userId,
+   784→          email: lowerEmail,
+   785→          name: userData.name,
+   786→          phone: userData.phone,
+   787→          passwordHash: userData.passwordHash,
+   788→          emailVerified: now
+   789→        }
+   790→      })
+   791→      
+   792→      return {
+   793→        id: dbUser.id,
+   794→        email: dbUser.email,
+   795→        name: dbUser.name,
+   796→        phone: dbUser.phone,
+   797→        passwordHash: dbUser.passwordHash || '',
+   798→        pinHash: dbUser.pinHash,
+   799→        role: dbUser.role,
+   800→        emailVerified: dbUser.emailVerified,
+   801→        phoneVerified: dbUser.phoneVerified,
+   802→        lastLoginAt: dbUser.lastLoginAt,
+   803→        loginAttempts: dbUser.loginAttempts,
+   804→        lockedUntil: dbUser.lockedUntil,
+   805→        createdAt: dbUser.createdAt,
+   806→        updatedAt: dbUser.updatedAt
+   807→      }
+   808→    } catch {
+   809→      // Database error, use memory
+   810→      initializeMemoryStores()
+   811→      memoryUsers!.set(lowerEmail, user)
+   812→      return user
+   813→    }
+   814→  }
+   815→}
+   816→
+   817→// Create new merchant - hybrid approach
+   818→export async function createNewMerchant(merchantData: {
+   819→  userId: string
+   820→  name: string
+   821→  tradingName?: string
+   822→  vertical: string
+   823→  subVertical?: string
+   824→  phone?: string
+   825→  email?: string
+   826→  addressLine1?: string
+   827→  city?: string
+   828→  province?: string
+   829→  postalCode?: string
+   830→  vatRegistered?: boolean
+   831→  vatNumber?: string
+   832→  registrationNumber?: string
+   833→}): Promise<{ merchant: HybridMerchant; branch: HybridBranch; merchantUser: HybridMerchantUser }> {
+   834→  const now = new Date()
+   835→  const merchantId = `merchant_${nanoid(12)}`
+   836→  const branchId = `branch_${nanoid(12)}`
+   837→  const merchantUserId = `mu_${nanoid(12)}`
+   838→  
+   839→  // Generate unique merchant code
+   840→  const merchantCode = `MCH-${String(Math.floor(Math.random() * 900000) + 100000).padStart(6, '0')}`
+   841→  
+   842→  const merchant: HybridMerchant = {
+   843→    id: merchantId,
+   844→    code: merchantCode,
+   845→    name: merchantData.name,
+   846→    tradingName: merchantData.tradingName || merchantData.name,
+   847→    vertical: merchantData.vertical,
+   848→    subVertical: merchantData.subVertical || null,
+   849→    logo: null,
+   850→    phone: merchantData.phone || null,
+   851→    email: merchantData.email || null,
+   852→    addressLine1: merchantData.addressLine1 || null,
+   853→    city: merchantData.city || null,
+   854→    province: merchantData.province || null,
+   855→    postalCode: merchantData.postalCode || null,
+   856→    country: 'South Africa',
+   857→    currency: 'ZAR',
+   858→    vatRegistered: merchantData.vatRegistered || false,
+   859→    vatNumber: merchantData.vatNumber || null,
+   860→    registrationNumber: merchantData.registrationNumber || null,
+   861→    status: 'active',
+   862→    onboardingComplete: false,
+   863→    onboardingStep: 'vertical_select',
+   864→    plan: 'starter',
+   865→    planStatus: 'trial',
+   866→    trialEndsAt: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+   867→    lastLoginAt: null,
+   868→    createdAt: now,
+   869→    updatedAt: now
+   870→  }
+   871→  
+   872→  const branch: HybridBranch = {
+   873→    id: branchId,
+   874→    merchantId,
+   875→    code: 'MAIN',
+   876→    name: 'Main Branch',
+   877→    type: 'headquarters',
+   878→    isDefault: true,
+   879→    isActive: true,
+   880→    createdAt: now,
+   881→    updatedAt: now
+   882→  }
+   883→  
+   884→  const merchantUser: HybridMerchantUser = {
+   885→    id: merchantUserId,
+   886→    merchantId,
+   887→    userId: merchantData.userId,
+   888→    role: 'owner',
+   889→    branchId,
+   890→    permissions: null,
+   891→    invitedBy: null,
+   892→    invitedAt: null,
+   893→    acceptedAt: now,
+   894→    isActive: true,
+   895→    lastAccessAt: null,
+   896→    createdAt: now,
+   897→    updatedAt: now
+   898→  }
+   899→  
+   900→  if (isProduction()) {
+   901→    // Use in-memory storage for production
+   902→    initializeMemoryStores()
+   903→    
+   904→    // Store merchant by email
+   905→    const email = merchantData.email?.toLowerCase() || ''
+   906→    if (email) {
+   907→      memoryMerchants!.set(email, merchant)
+   908→      memoryMerchantUsers!.set(email, [merchantUser])
+   909→      memoryBranches!.set(email, branch)
+   910→    }
+   911→    
+   912→    return { merchant, branch, merchantUser }
+   913→  } else {
+   914→    // Try database first for development
+   915→    try {
+   916→      const { db } = await import('@/lib/db')
+   917→      
+   918→      const result = await db.$transaction(async (tx: any) => {
+   919→        // Create merchant
+   920→        const dbMerchant = await tx.merchant.create({
+   921→          data: {
+   922→            id: merchantId,
+   923→            code: merchantCode,
+   924→            name: merchantData.name,
+   925→            tradingName: merchantData.tradingName || merchantData.name,
+   926→            vertical: merchantData.vertical,
+   927→            subVertical: merchantData.subVertical,
+   928→            phone: merchantData.phone,
+   929→            email: merchantData.email,
+   930→            addressLine1: merchantData.addressLine1,
+   931→            city: merchantData.city,
+   932→            province: merchantData.province,
+   933→            postalCode: merchantData.postalCode,
+   934→            vatRegistered: merchantData.vatRegistered || false,
+   935→            vatNumber: merchantData.vatNumber,
+   936→            registrationNumber: merchantData.registrationNumber,
+   937→            status: 'active',
+   938→            onboardingComplete: false,
+   939→            onboardingStep: 'vertical_select',
+   940→            plan: 'starter',
+   941→            planStatus: 'trial',
+   942→            trialEndsAt: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+   943→          }
+   944→        })
+   945→        
+   946→        // Create branch
+   947→        const dbBranch = await tx.branch.create({
+   948→          data: {
+   949→            id: branchId,
+   950→            merchantId,
+   951→            name: 'Main Branch',
+   952→            code: 'MAIN',
+   953→            type: 'headquarters',
+   954→            isDefault: true,
+   955→            isActive: true
+   956→          }
+   957→        })
+   958→        
+   959→        // Create merchant-user relationship
+   960→        const dbMerchantUser = await tx.merchantUser.create({
+   961→          data: {
+   962→            id: merchantUserId,
+   963→            merchantId,
+   964→            userId: merchantData.userId,
+   965→            role: 'owner',
+   966→            branchId,
+   967→            isActive: true,
+   968→            acceptedAt: now
+   969→          }
+   970→        })
+   971→        
+   972→        return { dbMerchant, dbBranch, dbMerchantUser }
+   973→      })
+   974→      
+   975→      return {
+   976→        merchant: {
+   977→          id: result.dbMerchant.id,
+   978→          code: result.dbMerchant.code,
+   979→          name: result.dbMerchant.name,
+   980→          tradingName: result.dbMerchant.tradingName,
+   981→          vertical: result.dbMerchant.vertical,
+   982→          subVertical: result.dbMerchant.subVertical,
+   983→          logo: result.dbMerchant.logo,
+   984→          phone: result.dbMerchant.phone,
+   985→          email: result.dbMerchant.email,
+   986→          addressLine1: result.dbMerchant.addressLine1,
+   987→          city: result.dbMerchant.city,
+   988→          province: result.dbMerchant.province,
+   989→          postalCode: result.dbMerchant.postalCode,
+   990→          country: result.dbMerchant.country,
+   991→          currency: result.dbMerchant.currency,
+   992→          vatRegistered: result.dbMerchant.vatRegistered,
+   993→          vatNumber: result.dbMerchant.vatNumber,
+   994→          registrationNumber: result.dbMerchant.registrationNumber,
+   995→          status: result.dbMerchant.status,
+   996→          onboardingComplete: result.dbMerchant.onboardingComplete,
+   997→          onboardingStep: result.dbMerchant.onboardingStep,
+   998→          plan: result.dbMerchant.plan,
+   999→          planStatus: result.dbMerchant.planStatus,
+  1000→          trialEndsAt: result.dbMerchant.trialEndsAt,
+  1001→          lastLoginAt: result.dbMerchant.lastLoginAt,
+  1002→          createdAt: result.dbMerchant.createdAt,
+  1003→          updatedAt: result.dbMerchant.updatedAt
+  1004→        },
+  1005→        branch: {
+  1006→          id: result.dbBranch.id,
+  1007→          merchantId: result.dbBranch.merchantId,
+  1008→          code: result.dbBranch.code,
+  1009→          name: result.dbBranch.name,
+  1010→          type: result.dbBranch.type,
+  1011→          isDefault: result.dbBranch.isDefault,
+  1012→          isActive: result.dbBranch.isActive,
+  1013→          createdAt: result.dbBranch.createdAt,
+  1014→          updatedAt: result.dbBranch.updatedAt
+  1015→        },
+  1016→        merchantUser: {
+  1017→          id: result.dbMerchantUser.id,
+  1018→          merchantId: result.dbMerchantUser.merchantId,
+  1019→          userId: result.dbMerchantUser.userId,
+  1020→          role: result.dbMerchantUser.role,
+  1021→          branchId: result.dbMerchantUser.branchId,
+  1022→          permissions: result.dbMerchantUser.permissions,
+  1023→          invitedBy: result.dbMerchantUser.invitedBy,
+  1024→          invitedAt: result.dbMerchantUser.invitedAt,
+  1025→          acceptedAt: result.dbMerchantUser.acceptedAt,
+  1026→          isActive: result.dbMerchantUser.isActive,
+  1027→          lastAccessAt: result.dbMerchantUser.lastAccessAt,
+  1028→          createdAt: result.dbMerchantUser.createdAt,
+  1029→          updatedAt: result.dbMerchantUser.updatedAt
+  1030→        }
+  1031→      }
+  1032→    } catch {
+  1033→      // Database error, use memory
+  1034→      initializeMemoryStores()
+  1035→      
+  1036→      const email = merchantData.email?.toLowerCase() || ''
+  1037→      if (email) {
+  1038→        memoryMerchants!.set(email, merchant)
+  1039→        memoryMerchantUsers!.set(email, [merchantUser])
+  1040→        memoryBranches!.set(email, branch)
+  1041→      }
+  1042→      
+  1043→      return { merchant, branch, merchantUser }
+  1044→    }
+  1045→  }
+  1046→}
+  1047→
+  1048→// Export demo users config for reference
+  1049→export { DEMO_USERS_CONFIG }
+  1050→

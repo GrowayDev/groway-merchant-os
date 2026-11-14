@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { width:1920px; height:1080px; background:#0F172A; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'Inter','Helvetica',sans-serif; gap:40px; }
+  .stat { text-align:center; }
+  .num { color:#10B981; font-size:120px; font-weight:700; line-height:1; letter-spacing:-3px; }
+  .num.amber { color:#F59E0B; }
+  .num.rose { color:#EF4444; }
+  .label { color:#94A3B8; font-size:26px; margin-top:16px; font-weight:400; }
+  .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:80px 140px; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="stat">
+      <div class="num">6</div>
+      <div class="label">children in Naledi, Soweto<br>youngest just 6 years old</div>
+    </div>
+    <div class="stat">
+      <div class="num">Terbufos</div>
+      <div class="label">street pesticide sold<br>through spaza shops</div>
+    </div>
+    <div class="stat">
+      <div class="num amber">150,000</div>
+      <div class="label">spaza shops across South Africa<br>5.2% of GDP · 2.6M jobs</div>
+    </div>
+    <div class="stat">
+      <div class="num amber">R100bn</div>
+      <div class="label">illicit trade per year<br>Counterfeit Goods Act 37 of 1997</div>
+    </div>
+  </div>
+  <div class="stat" style="margin-top:20px;">
+    <div class="num rose">0</div>
+    <div class="label">prosecutions, 12 months later</div>
+  </div>
+</body>
+</html>

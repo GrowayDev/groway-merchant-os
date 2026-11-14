@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>05 · Market Opportunity — Groway Merchant OS</title>
+<link rel="stylesheet" href="global.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;width:1280px;height:720px;overflow:hidden;background:var(--bg);-webkit-font-smoothing:antialiased;}
+  .headline{font-family:var(--font-heading);font-weight:700;font-size:calc(var(--fs-h1) * 1.16);line-height:1.12;letter-spacing:-0.015em;color:var(--ink);}
+  .mchip{font-family:var(--font-num);font-size:var(--fs-small);font-weight:600;letter-spacing:0.1em;padding:3px 10px;border-radius:7px;flex-shrink:0;}
+  .nested-caption{font-size:var(--fs-small);line-height:1.4;color:var(--ink-soft);}
+  .row-country{font-size:var(--fs-h3);font-weight:700;color:var(--ink);}
+  .row-value{font-family:var(--font-num);font-size:var(--fs-small);color:var(--ink-soft);white-space:nowrap;}
+  .phase-chip{font-size:var(--fs-small);padding:4px 12px;border-radius:9999px;white-space:nowrap;}
+</style>
+</head>
+<body>
+<div class="slide flex flex-col" style="padding:52px 64px 34px;">
+
+  <!-- header -->
+  <div>
+    <div class="flex items-center gap-4">
+      <span class="rule" style="width:34px;"></span>
+      <span class="kicker">MARKET</span>
+    </div>
+    <h1 class="headline" style="margin-top:14px;">Market opportunity</h1>
+  </div>
+
+  <!-- body -->
+  <div class="grid flex-1" style="grid-template-columns:620px 1fr;column-gap:40px;margin-top:26px;">
+
+    <!-- LEFT · nested TAM / SAM / SOM -->
+    <div class="card-soft flex flex-col h-full" style="padding:30px 32px;">
+      <div class="flex items-center gap-3">
+        <span class="mchip" style="background:var(--primary);color:var(--white);">TAM</span>
+        <span class="nested-caption">total African informal retail market</span>
+      </div>
+      <div class="num" style="margin-top:10px;font-weight:600;font-size:var(--fs-display);line-height:1.05;color:var(--primary);">$240B</div>
+
+      <div class="card" style="margin-top:20px;width:88%;padding:24px 26px;">
+        <div class="flex items-center gap-3">
+          <span class="mchip" style="background:var(--primary-soft);color:var(--primary);">SAM</span>
+          <span class="nested-caption">addressable digital commerce</span>
+        </div>
+        <div class="num" style="margin-top:8px;font-weight:600;font-size:var(--fs-h1);line-height:1.15;color:var(--primary);">$48B</div>
+
+        <div style="margin-top:18px;width:76%;padding:22px 24px;background:var(--primary);border-radius:14px;">
+          <div class="flex items-center gap-3">
+            <span class="mchip" style="background:rgba(255,255,255,0.16);color:var(--white);">SOM</span>
+            <span class="nested-caption" style="color:rgba(255,255,255,0.85);">initial target markets (5 years)</span>
+          </div>
+          <div class="num" style="margin-top:8px;font-weight:600;font-size:var(--fs-h1);line-height:1.15;color:var(--white);">$4.8B</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT · beachhead markets -->
+    <div class="flex flex-col h-full">
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:var(--fs-h2);color:var(--ink);">Beachhead markets</div>
+      <div class="flex-1 flex flex-col justify-center gap-4" style="margin-top:8px;">
+
+        <div class="flex items-center gap-3" style="padding:0 20px;height:76px;background:var(--primary-soft);border:1px solid rgba(11,107,93,0.25);border-radius:14px;">
+          <i class="material-icons" style="font-size:20px;color:var(--primary);">location_on</i>
+          <span class="row-country">South Africa</span>
+          <span class="row-value" style="margin-left:auto;">$18B retail market</span>
+          <span class="phase-chip" style="background:var(--primary);color:var(--white);">launch market</span>
+        </div>
+
+        <div class="card flex items-center gap-3" style="padding:0 20px;height:76px;">
+          <i class="material-icons" style="font-size:20px;color:var(--primary);">location_on</i>
+          <span class="row-country">Nigeria</span>
+          <span class="row-value" style="margin-left:auto;">$52B retail market</span>
+          <span class="phase-chip" style="background:var(--bg-soft);border:1px solid var(--line);color:var(--ink-soft);">phase 2</span>
+        </div>
+
+        <div class="card flex items-center gap-3" style="padding:0 20px;height:76px;">
+          <i class="material-icons" style="font-size:20px;color:var(--primary);">location_on</i>
+          <span class="row-country">Kenya</span>
+          <span class="row-value" style="margin-left:auto;">$22B retail market</span>
+          <span class="phase-chip" style="background:var(--bg-soft);border:1px solid var(--line);color:var(--ink-soft);">phase 2</span>
+        </div>
+
+        <div class="card flex items-center gap-3" style="padding:0 20px;height:76px;">
+          <i class="material-icons" style="font-size:20px;color:var(--primary);">location_on</i>
+          <span class="row-country">Ghana</span>
+          <span class="row-value" style="margin-left:auto;">$12B retail market</span>
+          <span class="phase-chip" style="background:var(--bg-soft);border:1px solid var(--line);color:var(--ink-soft);">phase 3</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- footnote -->
+  <div class="flex items-center gap-2" style="margin-top:16px;">
+    <i class="material-icons" style="font-size:15px;color:var(--ink-soft);">info_outline</i>
+    <span style="font-size:var(--fs-small);color:var(--ink-soft);">Figures are top-down industry estimates for sizing context only.</span>
+  </div>
+
+</div>
+</body>
+</html>

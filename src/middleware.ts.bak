@@ -1,0 +1,267 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+// Routes that don't require authentication
+const publicRoutes = [
+  '/',
+  '/landing',
+  '/merchant-os/login',
+  '/merchant-os/signup',
+  '/gopay',
+  '/grosupply',
+  '/grocredit',
+  '/consumer-wallet',
+  '/admin-console/login',
+  '/enterprise/login',
+  '/agent-network',
+  '/myappoint',
+  '/download',
+  '/salesforce',
+]
+
+// Routes that require authentication but not onboarding
+const authOnlyRoutes = [
+  '/merchant-os/onboarding',
+]
+
+// API routes that don't require authentication
+const publicApiRoutes = [
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/qr-status',
+  '/api/auth/oauth/', // Google/Apple OAuth routes
+  '/api/public/',
+  '/api/contact',
+  '/api/docs', // API documentation
+  '/api/wallet', // Consumer wallet API
+  '/api/loyalty', // Consumer loyalty API
+  '/api/send-money', // P2P transfers
+  '/api/airtime', // Airtime purchases
+  '/api/bills', // Bill payments
+  '/api/electricity', // Electricity tokens
+  '/api/water', // Water payments
+  '/api/transfers', // Money transfers
+  '/api/insurance', // Insurance
+  '/api/credit', // Credit services
+  '/api/bnpl', // Buy Now Pay Later
+  '/api/sassa', // SASSA/Grant services
+  '/api/payplus', // Pay+ early wage access
+  '/api/laybye', // Laybye services
+  '/api/savings', // Savings
+  '/api/transport', // Transport bookings
+  '/api/vouchers', // Voucher purchases
+  '/api/qr', // QR code services
+  '/api/card', // Card services
+  '/api/fraud', // Fraud detection API
+  '/api/admin/fraud', // Fraud management API
+  '/api/admin/documents', // Document management API
+  '/api/admin/compliance', // Compliance API
+  '/api/kyc', // KYC verification API (Consumer)
+  '/api/kyb', // KYB verification API (Merchant)
+  '/api/notifications/whatsapp', // WhatsApp notifications (Grosell)
+  '/merchant-os/api/auth/', // Merchant OS auth routes (login, register, session, etc.)
+  '/merchant-os/api/auto-seed', // Auto-seed for demo data
+  '/merchant-os/api/pos/', // POS API (WaiterPad, orders, payments - has own PIN auth)
+  '/merchant-os/api/floorplan/', // Floor plan API (tables, sections - used by WaiterPad)
+  '/merchant-os/api/kitchen/', // Kitchen Display API
+  '/merchant-os/api/recipe-engine/', // Recipe Engine API (F&B recipes, ingredients, deductions)
+  '/merchant-os/api/inventory/', // Inventory API (stock, movements, adjustments)
+  '/merchant-os/api/products/', // Products API (merchant products, POS items)
+  '/merchant-os/api/accounting/', // Accounting API (chart of accounts, invoices, bills)
+  '/merchant-os/api/grosupply/', // Grosupply API (purchase orders, suppliers, intelligence)
+  '/merchant-os/api/customers/', // Customers API
+  '/merchant-os/api/reports/', // Reports API (sales, inventory reports)
+  '/merchant-os/api/dashboard/', // Dashboard API (stats, metrics)
+  '/api/platform/', // Platform API (tenant management, auth, health, stats)
+]
+
+// Role-based route access
+const roleRoutes: Record<string, string[]> = {
+  'owner': ['/merchant-os', '/admin-console', '/enterprise'],
+  'admin': ['/merchant-os', '/admin-console'],
+  'manager': ['/merchant-os'],
+  'staff': ['/merchant-os'],
+}
+
+// Rate limiting configuration
+const rateLimitConfig = {
+  windowMs: 60 * 1000, // 1 minute
+  maxRequests: 100, // 100 requests per minute per IP
+  authMaxRequests: 10, // Stricter limit for auth endpoints
+}
+
+// In-memory rate limit store (for production, use Redis)
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
+
+// Cleanup rate limit entries every 5 minutes
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, value] of rateLimitStore.entries()) {
+    if (value.resetAt < now) {
+      rateLimitStore.delete(key)
+    }
+  }
+}, 5 * 60 * 1000)
+
+function checkRateLimit(
+  identifier: string,
+  maxRequests: number = rateLimitConfig.maxRequests
+): { allowed: boolean; remaining: number; resetAt: number } {
+  const now = Date.now()
+  const resetAt = now + rateLimitConfig.windowMs
+  const stored = rateLimitStore.get(identifier)
+
+  if (!stored || stored.resetAt < now) {
+    rateLimitStore.set(identifier, { count: 1, resetAt })
+    return { allowed: true, remaining: maxRequests - 1, resetAt }
+  }
+
+  stored.count++
+  return {
+    allowed: stored.count <= maxRequests,
+    remaining: Math.max(0, maxRequests - stored.count),
+    resetAt: stored.resetAt,
+  }
+}
+
+// Security headers - Note: X-Frame-Options and HSTS removed for Preview Panel compatibility
+const securityHeaders: Record<string, string> = {
+  'X-DNS-Prefetch-Control': 'on',
+  'X-XSS-Protection': '1; mode=block',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(geolocation=())',
+}
+
+export default function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const response = NextResponse.next()
+  
+  // Apply security headers
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value)
+  })
+  
+  // Allow Preview Panel iframe embedding - use permissive frame-ancestors
+  response.headers.delete('Content-Security-Policy')
+  response.headers.set(
+    'Content-Security-Policy',
+    "frame-ancestors *;"
+  )
+  
+  // Get client IP for rate limiting
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown'
+  
+  // Apply rate limiting to API routes
+  if (pathname.startsWith('/api/')) {
+    // Stricter rate limit for auth endpoints
+    const isAuthEndpoint = pathname.includes('/auth/login') || pathname.includes('/auth/register')
+    const maxRequests = isAuthEndpoint ? rateLimitConfig.authMaxRequests : rateLimitConfig.maxRequests
+    
+    const rateLimitKey = `${clientIp}:${pathname.split('/').slice(0, 4).join('/')}`
+    const rateLimit = checkRateLimit(rateLimitKey, maxRequests)
+    
+    // Add rate limit headers
+    response.headers.set('X-RateLimit-Limit', maxRequests.toString())
+    response.headers.set('X-RateLimit-Remaining', rateLimit.remaining.toString())
+    response.headers.set('X-RateLimit-Reset', rateLimit.resetAt.toString())
+    
+    if (!rateLimit.allowed) {
+      return new NextResponse(
+        JSON.stringify({
+          success: false,
+          error: 'Too many requests. Please try again later.',
+          code: 'RATE_LIMITED',
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '60',
+            ...securityHeaders,
+          },
+        }
+      )
+    }
+  }
+  
+  // Allow public routes
+  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))) {
+    // Check if trying to access protected sub-route
+    const isProtectedSubRoute = publicRoutes.some(route => 
+      pathname.startsWith(route + '/app') || 
+      pathname.startsWith(route + '/portal')
+    )
+    
+    if (!isProtectedSubRoute) {
+      return response
+    }
+  }
+  
+  // Allow public API routes
+  if (publicApiRoutes.some(route => pathname.startsWith(route))) {
+    return response
+  }
+  
+  // Allow static files and Next.js internals
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname.startsWith('/images') ||
+    pathname.includes('.') // Static files
+  ) {
+    return response
+  }
+  
+  // Check for session token
+  const sessionToken = request.cookies.get('groway_session')?.value
+  
+  // If no session, redirect to appropriate login
+  if (!sessionToken) {
+    const loginUrl = getLoginUrl(pathname, request)
+    return NextResponse.redirect(loginUrl)
+  }
+  
+  // For protected routes, let the request through
+  // Actual session validation happens in API route handlers
+  return response
+}
+
+function getLoginUrl(pathname: string, request: NextRequest) {
+  const url = request.nextUrl.clone()
+  
+  // Determine which login page to redirect to
+  if (pathname.startsWith('/admin-console')) {
+    url.pathname = '/admin-console/login'
+  } else if (pathname.startsWith('/enterprise')) {
+    url.pathname = '/enterprise/login'
+  } else if (pathname.startsWith('/consumer-wallet')) {
+    url.pathname = '/consumer-wallet'
+  } else if (pathname.startsWith('/merchant-os') || pathname.startsWith('/api/merchant-os')) {
+    url.pathname = '/merchant-os/login'
+  } else {
+    url.pathname = '/merchant-os/login'
+  }
+  
+  // Add redirect URL for post-login redirect
+  if (pathname !== url.pathname) {
+    url.searchParams.set('redirect', pathname)
+  }
+  
+  return url
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+  ],
+}

@@ -1,0 +1,800 @@
+     1→import { NextRequest, NextResponse } from 'next/server';
+     2→import { db } from '@/lib/db';
+     3→import { performFraudCheck, recordVelocity } from '@/lib/fraud-detection-service';
+     4→
+     5→// Demo user ID - in production this would come from authentication
+     6→const DEMO_USER_ID = 'demo-consumer-user-001';
+     7→
+     8→// Transaction categories with icons and colors
+     9→export const TRANSACTION_CATEGORIES = [
+    10→  { id: 'airtime', name: 'Airtime & Data', icon: 'Smartphone', color: '#E91E63' },
+    11→  { id: 'electricity', name: 'Electricity', icon: 'Zap', color: '#FF9800' },
+    12→  { id: 'water', name: 'Water', icon: 'Droplets', color: '#2196F3' },
+    13→  { id: 'transfer', name: 'Transfers (P2P)', icon: 'ArrowLeftRight', color: '#9C27B0' },
+    14→  { id: 'bills', name: 'Bill Payments', icon: 'FileText', color: '#00BCD4' },
+    15→  { id: 'bnpl', name: 'BNPL Payments', icon: 'CreditCard', color: '#E91E63' },
+    16→  { id: 'payplus', name: 'Pay+ Advances', icon: 'TrendingUp', color: '#FF9800' },
+    17→  { id: 'card', name: 'Card Transactions', icon: 'CreditCard', color: '#607D8B' },
+    18→  { id: 'voucher', name: 'Vouchers', icon: 'Ticket', color: '#FF5722' },
+    19→  { id: 'insurance', name: 'Insurance', icon: 'Shield', color: '#4CAF50' },
+    20→  { id: 'topup', name: 'Top Up', icon: 'Plus', color: '#009688' },
+    21→  { id: 'other', name: 'Other', icon: 'MoreHorizontal', color: '#9E9E9E' },
+    22→];
+    23→
+    24→// Helper to ensure demo user exists
+    25→async function ensureDemoUser() {
+    26→  let user = await db.consumerUser.findUnique({
+    27→    where: { id: DEMO_USER_ID }
+    28→  });
+    29→  
+    30→  if (!user) {
+    31→    // Create demo user
+    32→    const now = new Date();
+    33→    user = await db.consumerUser.create({
+    34→      data: {
+    35→        id: DEMO_USER_ID,
+    36→        phone: '+27821234567',
+    37→        email: 'thabo.molefe@example.com',
+    38→        firstName: 'Thabo',
+    39→        lastName: 'Molefe',
+    40→        kycLevel: 2,
+    41→        kycStatus: 'verified',
+    42→        kycVerifiedAt: now,
+    43→        accountStatus: 'active',
+    44→        createdAt: now,
+    45→        updatedAt: now,
+    46→      }
+    47→    });
+    48→    
+    49→    // Create wallet for user
+    50→    const walletNow = new Date();
+    51→    await db.consumerWallet.create({
+    52→      data: {
+    53→        id: 'demo-wallet-001',
+    54→        userId: DEMO_USER_ID,
+    55→        balanceCents: BigInt(1245000), // R12,450.00
+    56→        currency: 'ZAR',
+    57→        dailySpendLimit: BigInt(500000), // R5,000
+    58→        monthlySpendLimit: BigInt(50000000), // R500,000
+    59→        totalReceivedCents: BigInt(15000000),
+    60→        totalSentCents: BigInt(3550000),
+    61→        totalTopupsCents: BigInt(20000000),
+    62→        createdAt: walletNow,
+    63→        updatedAt: walletNow,
+    64→      }
+    65→    });
+    66→    
+    67→    // Create loyalty for user
+    68→    const loyaltyNow = new Date();
+    69→    await db.consumerLoyalty.create({
+    70→      data: {
+    71→        id: 'demo-loyalty-001',
+    72→        userId: DEMO_USER_ID,
+    73→        tier: 'silver',
+    74→        points: 2450,
+    75→        totalEarned: 12500,
+    76→        totalRedeemed: 10050,
+    77→        pointsToNextTier: 550,
+    78→        tierProgress: 0.82,
+    79→        tierAchievedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+    80→        createdAt: loyaltyNow,
+    81→        updatedAt: loyaltyNow,
+    82→      }
+    83→    });
+    84→
+    85→    // Create sample transactions for demo
+    86→    await createSampleTransactions();
+    87→  }
+    88→  
+    89→  // Ensure wallet exists
+    90→  let wallet = await db.consumerWallet.findUnique({
+    91→    where: { userId: DEMO_USER_ID }
+    92→  });
+    93→  
+    94→  if (!wallet) {
+    95→    const fallbackNow = new Date();
+    96→    wallet = await db.consumerWallet.create({
+    97→      data: {
+    98→        id: `wallet-${DEMO_USER_ID}`,
+    99→        userId: DEMO_USER_ID,
+   100→        balanceCents: BigInt(1245000),
+   101→        currency: 'ZAR',
+   102→        createdAt: fallbackNow,
+   103→        updatedAt: fallbackNow,
+   104→      }
+   105→    });
+   106→  }
+   107→  
+   108→  return user;
+   109→}
+   110→
+   111→// Create sample transactions for demo
+   112→async function createSampleTransactions() {
+   113→  const sampleTransactions = [
+   114→    { type: 'airtime', merchant: 'Vodacom', amount: -5000, category: 'Airtime & Data', desc: 'Vodacom Airtime R50' },
+   115→    { type: 'electricity', merchant: 'Eskom', amount: -35000, category: 'Electricity', desc: 'Electricity Token - 350 kWh' },
+   116→    { type: 'transfer', merchant: 'Lerato Mokoena', amount: -150000, category: 'Transfer', desc: 'P2P Payment' },
+   117→    { type: 'topup', merchant: 'FNB', amount: 500000, category: 'Top Up', desc: 'Wallet Top-up via EFT' },
+   118→    { type: 'bills', merchant: 'City of Johannesburg', amount: -125000, category: 'Bill Payments', desc: 'Water & Rates' },
+   119→    { type: 'airtime', merchant: 'MTN', amount: -10000, category: 'Airtime & Data', desc: 'MTN Data Bundle 1GB' },
+   120→    { type: 'transfer', merchant: 'Sipho Khumalo', amount: -75000, category: 'Transfer', desc: 'P2P Payment' },
+   121→    { type: 'card', merchant: 'Shoprite', amount: -45000, category: 'Card Transactions', desc: 'Groceries' },
+   122→    { type: 'bnpl', merchant: 'Game', amount: -12000, category: 'BNPL Payments', desc: 'BNPL Installment - TV' },
+   123→    { type: 'voucher', merchant: 'Netflix', amount: -15900, category: 'Vouchers', desc: 'Netflix Subscription' },
+   124→    { type: 'payplus', merchant: 'Pay+', amount: -250000, category: 'Pay+ Advances', desc: 'Early Wage Access Repayment' },
+   125→    { type: 'insurance', merchant: 'Hollard', amount: -35000, category: 'Insurance', desc: 'Funeral Cover Premium' },
+   126→    { type: 'water', merchant: 'Rand Water', amount: -18000, category: 'Water', desc: 'Water Bill Payment' },
+   127→    { type: 'transfer', merchant: 'Nomsa Dlamini', amount: 200000, category: 'Transfer', desc: 'Payment Received' },
+   128→    { type: 'airtime', merchant: 'Cell C', amount: -2500, category: 'Airtime & Data', desc: 'Cell C Airtime R25' },
+   129→    { type: 'bills', merchant: 'DStv', amount: -89900, category: 'Bill Payments', desc: 'DStv Premium' },
+   130→    { type: 'card', merchant: 'Spar', amount: -32000, category: 'Card Transactions', desc: 'Groceries' },
+   131→    { type: 'transfer', merchant: 'John Smith', amount: -50000, category: 'Transfer', desc: 'P2P Payment' },
+   132→    { type: 'electricity', merchant: 'City Power', amount: -50000, category: 'Electricity', desc: 'Prepaid Electricity' },
+   133→    { type: 'topup', merchant: 'Capitec', amount: 300000, category: 'Top Up', desc: 'Wallet Top-up' },
+   134→  ];
+   135→
+   136→  for (let i = 0; i < sampleTransactions.length; i++) {
+   137→    const tx = sampleTransactions[i];
+   138→    const daysAgo = i + 1;
+   139→    const txDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+   140→    const direction = tx.amount >= 0 ? 'credit' : 'debit';
+   141→    
+   142→    await db.consumerTransaction.create({
+   143→      data: {
+   144→        id: `TXN${Date.now()}-${i}`,
+   145→        idempotencyKey: `IDM${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
+   146→        userId: DEMO_USER_ID,
+   147→        transactionType: tx.type,
+   148→        direction,
+   149→        amountCents: BigInt(Math.abs(tx.amount)),
+   150→        feeCents: BigInt(0),
+   151→        netAmountCents: BigInt(tx.amount),
+   152→        currency: 'ZAR',
+   153→        status: 'completed',
+   154→        description: tx.desc,
+   155→        reference: `REF${Date.now()}-${i}`,
+   156→        category: tx.category,
+   157→        counterpartyName: tx.merchant,
+   158→        merchantName: tx.merchant,
+   159→        paymentMethod: tx.type === 'topup' ? 'bank_transfer' : tx.type === 'card' ? 'card' : 'wallet',
+   160→        processedAt: txDate,
+   161→        completedAt: txDate,
+   162→        createdAt: txDate,
+   163→        updatedAt: txDate,
+   164→      }
+   165→    });
+   166→  }
+   167→}
+   168→
+   169→// GET - Retrieve wallet balance and transactions with filtering, search, and pagination
+   170→export async function GET(request: NextRequest) {
+   171→  try {
+   172→    await ensureDemoUser();
+   173→    
+   174→    const searchParams = request.nextUrl.searchParams;
+   175→    const action = searchParams.get('action');
+   176→    
+   177→    const wallet = await db.consumerWallet.findUnique({
+   178→      where: { userId: DEMO_USER_ID }
+   179→    });
+   180→    
+   181→    if (!wallet) {
+   182→      return NextResponse.json({ success: false, error: 'Wallet not found' }, { status: 404 });
+   183→    }
+   184→    
+   185→    if (action === 'balance') {
+   186→      return NextResponse.json({
+   187→        success: true,
+   188→        data: {
+   189→          balance: Number(wallet.balanceCents) / 100,
+   190→          currency: wallet.currency,
+   191→          lastUpdated: wallet.updatedAt.toISOString(),
+   192→        },
+   193→      });
+   194→    }
+   195→    
+   196→    if (action === 'categories') {
+   197→      return NextResponse.json({
+   198→        success: true,
+   199→        data: TRANSACTION_CATEGORIES,
+   200→      });
+   201→    }
+   202→    
+   203→    if (action === 'transactions' || action === 'history') {
+   204→      // Pagination parameters
+   205→      const limit = parseInt(searchParams.get('limit') || '20');
+   206→      const cursor = searchParams.get('cursor'); // Cursor-based pagination
+   207→      const offset = parseInt(searchParams.get('offset') || '0');
+   208→      
+   209→      // Search and filter parameters
+   210→      const search = searchParams.get('search')?.toLowerCase() || '';
+   211→      const category = searchParams.get('category') || '';
+   212→      const status = searchParams.get('status') || '';
+   213→      const dateFrom = searchParams.get('dateFrom');
+   214→      const dateTo = searchParams.get('dateTo');
+   215→      const minAmount = searchParams.get('minAmount');
+   216→      const maxAmount = searchParams.get('maxAmount');
+   217→      const direction = searchParams.get('direction'); // 'credit' or 'debit'
+   218→      
+   219→      // Build where clause
+   220→      const where: any = { userId: DEMO_USER_ID };
+   221→      
+   222→      // Category filter (SQLite is case-insensitive by default)
+   223→      if (category && category !== 'all') {
+   224→        where.category = category;
+   225→      }
+   226→      
+   227→      // Status filter
+   228→      if (status && status !== 'all') {
+   229→        where.status = status;
+   230→      }
+   231→      
+   232→      // Direction filter
+   233→      if (direction && direction !== 'all') {
+   234→        where.direction = direction;
+   235→      }
+   236→      
+   237→      // Date range filter
+   238→      if (dateFrom || dateTo) {
+   239→        where.createdAt = {};
+   240→        if (dateFrom) {
+   241→          where.createdAt.gte = new Date(dateFrom);
+   242→        }
+   243→        if (dateTo) {
+   244→          where.createdAt.lte = new Date(dateTo + 'T23:59:59.999Z');
+   245→        }
+   246→      }
+   247→      
+   248→      // Amount range filter (convert to cents)
+   249→      if (minAmount || maxAmount) {
+   250→        const minCents = minAmount ? BigInt(Math.round(parseFloat(minAmount) * 100)) : null;
+   251→        const maxCents = maxAmount ? BigInt(Math.round(parseFloat(maxAmount) * 100)) : null;
+   252→        
+   253→        if (minCents || maxCents) {
+   254→          where.netAmountCents = {};
+   255→          if (minCents) {
+   256→            where.netAmountCents.gte = minCents;
+   257→          }
+   258→          if (maxCents) {
+   259→            where.netAmountCents.lte = maxCents;
+   260→          }
+   261→        }
+   262→      }
+   263→      
+   264→      // Get total count
+   265→      const total = await db.consumerTransaction.count({ where });
+   266→      
+   267→      // Build query
+   268→      let query: any = {
+   269→        where,
+   270→        orderBy: { createdAt: 'desc' },
+   271→        take: limit + 1, // Take one extra to determine if there's more
+   272→      };
+   273→      
+   274→      // Cursor-based pagination
+   275→      if (cursor) {
+   276→        query.cursor = { id: cursor };
+   277→        query.skip = 1; // Skip the cursor
+   278→      } else if (action === 'history') {
+   279→        // Use offset for history view
+   280→        query.skip = offset;
+   281→      }
+   282→      
+   283→      const transactions = await db.consumerTransaction.findMany(query);
+   284→      
+   285→      // Apply search filter in-memory (since Prisma doesn't support full-text search on all fields)
+   286→      let filteredTransactions = transactions;
+   287→      if (search) {
+   288→        filteredTransactions = transactions.filter((tx: any) => {
+   289→          const searchFields = [
+   290→            tx.description,
+   291→            tx.counterpartyName,
+   292→            tx.merchantName,
+   293→            tx.reference,
+   294→            tx.category,
+   295→          ].filter(Boolean).map(f => f.toLowerCase());
+   296→          
+   297→          return searchFields.some(f => f.includes(search)) ||
+   298→            (Math.abs(Number(tx.netAmountCents)) / 100).toString().includes(search);
+   299→        });
+   300→      }
+   301→      
+   302→      // Determine if there's more data
+   303→      const hasMore = filteredTransactions.length > limit;
+   304→      const results = hasMore ? filteredTransactions.slice(0, limit) : filteredTransactions;
+   305→      
+   306→      // Get next cursor
+   307→      const nextCursor = hasMore && results.length > 0 ? results[results.length - 1].id : null;
+   308→      
+   309→      return NextResponse.json({
+   310→        success: true,
+   311→        data: {
+   312→          transactions: results.map((tx: any) => ({
+   313→            id: tx.id,
+   314→            type: tx.direction,
+   315→            transactionType: tx.transactionType,
+   316→            amount: Number(tx.netAmountCents) / 100,
+   317→            absoluteAmount: Math.abs(Number(tx.netAmountCents)) / 100,
+   318→            fee: Number(tx.feeCents) / 100,
+   319→            category: tx.category || 'Other',
+   320→            description: tx.description,
+   321→            merchant: tx.counterpartyName || tx.merchantName || 'Unknown',
+   322→            merchantName: tx.merchantName,
+   323→            counterpartyName: tx.counterpartyName,
+   324→            counterpartyPhone: tx.counterpartyPhone,
+   325→            timestamp: tx.createdAt.toISOString(),
+   326→            date: tx.createdAt.toISOString().split('T')[0],
+   327→            time: tx.createdAt.toISOString().split('T')[1]?.substring(0, 5),
+   328→            status: tx.status,
+   329→            reference: tx.reference,
+   330→            paymentMethod: tx.paymentMethod,
+   331→            cardLastFour: tx.cardLastFour,
+   332→            // Voucher/Token information for traceability
+   333→            voucherToken: tx.voucherToken,
+   334→            voucherExpiry: tx.voucherExpiry,
+   335→            meterNumber: tx.meterNumber,
+   336→            unitsPurchased: tx.unitsPurchased,
+   337→          })),
+   338→          pagination: {
+   339→            total,
+   340→            limit,
+   341→            offset: cursor ? 0 : offset,
+   342→            hasMore,
+   343→            nextCursor,
+   344→          },
+   345→          filters: {
+   346→            search,
+   347→            category,
+   348→            status,
+   349→            dateFrom,
+   350→            dateTo,
+   351→            minAmount,
+   352→            maxAmount,
+   353→            direction,
+   354→          },
+   355→        },
+   356→      });
+   357→    }
+   358→    
+   359→    // Get recent transactions
+   360→    const recentTransactions = await db.consumerTransaction.findMany({
+   361→      where: { userId: DEMO_USER_ID },
+   362→      orderBy: { createdAt: 'desc' },
+   363→      take: 5,
+   364→    });
+   365→    
+   366→    // Return full wallet data
+   367→    return NextResponse.json({
+   368→      success: true,
+   369→      data: {
+   370→        balance: Number(wallet.balanceCents) / 100,
+   371→        currency: wallet.currency,
+   372→        lastUpdated: wallet.updatedAt.toISOString(),
+   373→        dailySpent: Number(wallet.dailySpentCents || 0) / 100,
+   374→        monthlySpent: Number(wallet.monthlySpentCents || 0) / 100,
+   375→        recentTransactions: recentTransactions.map(tx => ({
+   376→          id: tx.id,
+   377→          type: tx.direction,
+   378→          transactionType: tx.transactionType,
+   379→          amount: Number(tx.netAmountCents) / 100,
+   380→          absoluteAmount: Math.abs(Number(tx.netAmountCents)) / 100,
+   381→          category: tx.category || 'Other',
+   382→          description: tx.description,
+   383→          merchant: tx.counterpartyName || tx.merchantName || 'Unknown',
+   384→          timestamp: tx.createdAt.toISOString(),
+   385→          status: tx.status,
+   386→          reference: tx.reference,
+   387→          // Voucher/Token information for traceability
+   388→          voucherToken: tx.voucherToken,
+   389→          voucherExpiry: tx.voucherExpiry,
+   390→          meterNumber: tx.meterNumber,
+   391→          unitsPurchased: tx.unitsPurchased,
+   392→        })),
+   393→      },
+   394→    });
+   395→  } catch (error) {
+   396→    console.error('Wallet GET error:', error);
+   397→    return NextResponse.json({ success: false, error: 'Failed to fetch wallet data' }, { status: 500 });
+   398→  }
+   399→}
+   400→
+   401→// POST - Perform wallet actions
+   402→export async function POST(request: NextRequest) {
+   403→  try {
+   404→    await ensureDemoUser();
+   405→    
+   406→    const body = await request.json();
+   407→    const { action, amount, recipient, reference, paymentMethod, counterpartyPhone, deviceId, ipAddress, location } = body;
+   408→    
+   409→    const wallet = await db.consumerWallet.findUnique({
+   410→      where: { userId: DEMO_USER_ID }
+   411→    });
+   412→    
+   413→    if (!wallet) {
+   414→      return NextResponse.json({ success: false, error: 'Wallet not found' }, { status: 404 });
+   415→    }
+   416→    
+   417→    switch (action) {
+   418→      case 'topup': {
+   419→        if (!amount || amount <= 0) {
+   420→          return NextResponse.json({ success: false, error: 'Invalid amount' }, { status: 400 });
+   421→        }
+   422→        
+   423→        const amountCents = BigInt(Math.round(amount * 100));
+   424→        
+   425→        // Create transaction
+   426→        const txnNow = new Date();
+   427→        const txn = await db.consumerTransaction.create({
+   428→          data: {
+   429→            id: `TXN${Date.now()}`,
+   430→            idempotencyKey: `IDM${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+   431→            userId: DEMO_USER_ID,
+   432→            transactionType: 'topup',
+   433→            direction: 'credit',
+   434→            amountCents,
+   435→            feeCents: BigInt(0),
+   436→            netAmountCents: amountCents,
+   437→            currency: 'ZAR',
+   438→            status: 'completed',
+   439→            description: 'Wallet Top-up',
+   440→            reference: reference || `TOP${Date.now()}`,
+   441→            category: 'Top Up',
+   442→            counterpartyName: paymentMethod || 'Bank Transfer',
+   443→            paymentMethod: paymentMethod || 'bank_transfer',
+   444→            processedAt: txnNow,
+   445→            completedAt: txnNow,
+   446→            createdAt: txnNow,
+   447→            updatedAt: txnNow,
+   448→          }
+   449→        });
+   450→        
+   451→        // Update wallet balance
+   452→        await db.consumerWallet.update({
+   453→          where: { userId: DEMO_USER_ID },
+   454→          data: {
+   455→            balanceCents: wallet.balanceCents + amountCents,
+   456→            totalTopupsCents: wallet.totalTopupsCents + amountCents,
+   457→            updatedAt: new Date(),
+   458→          }
+   459→        });
+   460→        
+   461→        return NextResponse.json({
+   462→          success: true,
+   463→          data: {
+   464→            transaction: {
+   465→              id: txn.id,
+   466→              type: txn.direction,
+   467→              amount: Number(txn.netAmountCents) / 100,
+   468→              description: txn.description,
+   469→              timestamp: txn.createdAt.toISOString(),
+   470→              status: txn.status,
+   471→            },
+   472→            newBalance: Number(wallet.balanceCents + amountCents) / 100,
+   473→          },
+   474→          message: `Successfully topped up R ${amount.toFixed(2)}`,
+   475→        });
+   476→      }
+   477→      
+   478→      case 'send': {
+   479→        if (!amount || amount <= 0) {
+   480→          return NextResponse.json({ success: false, error: 'Invalid amount' }, { status: 400 });
+   481→        }
+   482→        if (!recipient && !counterpartyPhone) {
+   483→          return NextResponse.json({ success: false, error: 'Recipient required' }, { status: 400 });
+   484→        }
+   485→        
+   486→        const amountCents = BigInt(Math.round(amount * 100));
+   487→        
+   488→        if (wallet.balanceCents < amountCents) {
+   489→          return NextResponse.json({ success: false, error: 'Insufficient funds' }, { status: 400 });
+   490→        }
+   491→        
+   492→        // === FRAUD DETECTION CHECK ===
+   493→        const fraudCheckResult = await performFraudCheck({
+   494→          entityType: 'consumer',
+   495→          entityId: DEMO_USER_ID,
+   496→          amount: amount,
+   497→          currency: 'ZAR',
+   498→          userId: DEMO_USER_ID,
+   499→          deviceId: deviceId,
+   500→          ipAddress: ipAddress,
+   501→          location: location,
+   502→          sourceApp: 'consumer_wallet',
+   503→          metadata: {
+   504→            transactionType: 'p2p_send',
+   505→            recipient: recipient || counterpartyPhone,
+   506→          }
+   507→        });
+   508→        
+   509→        // Block transaction if fraud check fails
+   510→        if (fraudCheckResult.blocked || fraudCheckResult.recommendation === 'block') {
+   511→          return NextResponse.json({ 
+   512→            success: false, 
+   513→            error: 'Transaction blocked due to security concerns',
+   514→            fraudCheck: {
+   515→              riskScore: fraudCheckResult.riskScore,
+   516→              alerts: fraudCheckResult.alerts.map(a => ({
+   517→                type: a.type,
+   518→                severity: a.severity,
+   519→                description: a.description
+   520→              }))
+   521→            }
+   522→          }, { status: 403 });
+   523→        }
+   524→        
+   525→        // Flag for review but allow
+   526→        const requiresReview = fraudCheckResult.recommendation === 'review';
+   527→        
+   528→        // Create transaction
+   529→        const sendNow = new Date();
+   530→        const txn = await db.consumerTransaction.create({
+   531→          data: {
+   532→            id: `TXN${Date.now()}`,
+   533→            idempotencyKey: `IDM${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+   534→            userId: DEMO_USER_ID,
+   535→            transactionType: 'p2p_send',
+   536→            direction: 'debit',
+   537→            amountCents: -amountCents,
+   538→            feeCents: BigInt(0),
+   539→            netAmountCents: -amountCents,
+   540→            currency: 'ZAR',
+   541→            status: 'completed',
+   542→            description: `Payment to ${recipient || counterpartyPhone}`,
+   543→            reference: reference || `P2P${Date.now()}`,
+   544→            category: 'Transfer',
+   545→            counterpartyName: recipient,
+   546→            counterpartyPhone: counterpartyPhone,
+   547→            paymentMethod: paymentMethod || 'wallet',
+   548→            processedAt: sendNow,
+   549→            completedAt: sendNow,
+   550→            createdAt: sendNow,
+   551→            updatedAt: sendNow,
+   552→          }
+   553→        });
+   554→        
+   555→        // Update wallet balance
+   556→        await db.consumerWallet.update({
+   557→          where: { userId: DEMO_USER_ID },
+   558→          data: {
+   559→            balanceCents: wallet.balanceCents - amountCents,
+   560→            totalSentCents: wallet.totalSentCents + amountCents,
+   561→            dailySpentCents: wallet.dailySpentCents + amountCents,
+   562→            monthlySpentCents: wallet.monthlySpentCents + amountCents,
+   563→            updatedAt: new Date(),
+   564→          }
+   565→        });
+   566→        
+   567→        // Record velocity for fraud detection
+   568→        await recordVelocity({
+   569→          entityType: 'consumer',
+   570→          entityId: DEMO_USER_ID,
+   571→          amount: amount,
+   572→          transactionId: txn.id,
+   573→          sourceApp: 'consumer_wallet'
+   574→        });
+   575→        
+   576→        // Award loyalty points (10 points per R1)
+   577→        await awardLoyaltyPoints(amount);
+   578→        
+   579→        return NextResponse.json({
+   580→          success: true,
+   581→          data: {
+   582→            transaction: {
+   583→              id: txn.id,
+   584→              type: txn.direction,
+   585→              amount: Math.abs(Number(txn.netAmountCents)) / 100,
+   586→              description: txn.description,
+   587→              timestamp: txn.createdAt.toISOString(),
+   588→              status: txn.status,
+   589→              reference: txn.reference,
+   590→            },
+   591→            newBalance: Number(wallet.balanceCents - amountCents) / 100,
+   592→            securityWarning: requiresReview ? 'Transaction flagged for review due to unusual activity' : undefined,
+   593→            riskScore: fraudCheckResult.riskScore,
+   594→          },
+   595→          message: `Successfully sent R ${amount.toFixed(2)} to ${recipient || counterpartyPhone}`,
+   596→        });
+   597→      }
+   598→      
+   599→      case 'receive': {
+   600→        if (!amount || amount <= 0) {
+   601→          return NextResponse.json({ success: false, error: 'Invalid amount' }, { status: 400 });
+   602→        }
+   603→        
+   604→        const amountCents = BigInt(Math.round(amount * 100));
+   605→        const sender = body.sender || 'Unknown';
+   606→        
+   607→        // Create transaction
+   608→        const receiveNow = new Date();
+   609→        const txn = await db.consumerTransaction.create({
+   610→          data: {
+   611→            id: `TXN${Date.now()}`,
+   612→            idempotencyKey: `IDM${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+   613→            userId: DEMO_USER_ID,
+   614→            transactionType: 'p2p_receive',
+   615→            direction: 'credit',
+   616→            amountCents,
+   617→            feeCents: BigInt(0),
+   618→            netAmountCents: amountCents,
+   619→            currency: 'ZAR',
+   620→            status: 'completed',
+   621→            description: 'Payment Received',
+   622→            reference: reference || `RCV${Date.now()}`,
+   623→            category: 'Transfer',
+   624→            counterpartyName: sender,
+   625→            paymentMethod: 'wallet',
+   626→            processedAt: receiveNow,
+   627→            completedAt: receiveNow,
+   628→            createdAt: receiveNow,
+   629→            updatedAt: receiveNow,
+   630→          }
+   631→        });
+   632→        
+   633→        // Update wallet balance
+   634→        await db.consumerWallet.update({
+   635→          where: { userId: DEMO_USER_ID },
+   636→          data: {
+   637→            balanceCents: wallet.balanceCents + amountCents,
+   638→            totalReceivedCents: wallet.totalReceivedCents + amountCents,
+   639→            updatedAt: new Date(),
+   640→          }
+   641→        });
+   642→        
+   643→        return NextResponse.json({
+   644→          success: true,
+   645→          data: {
+   646→            transaction: {
+   647→              id: txn.id,
+   648→              type: txn.direction,
+   649→              amount: Number(txn.netAmountCents) / 100,
+   650→              description: txn.description,
+   651→              timestamp: txn.createdAt.toISOString(),
+   652→              status: txn.status,
+   653→              reference: txn.reference,
+   654→            },
+   655→            newBalance: Number(wallet.balanceCents + amountCents) / 100,
+   656→          },
+   657→          message: `Successfully received R ${amount.toFixed(2)}`,
+   658→        });
+   659→      }
+   660→      
+   661→      case 'dispute': {
+   662→        const { transactionId, reason } = body;
+   663→        
+   664→        if (!transactionId) {
+   665→          return NextResponse.json({ success: false, error: 'Transaction ID required' }, { status: 400 });
+   666→        }
+   667→        
+   668→        // Update transaction with dispute info
+   669→        const disputedTx = await db.consumerTransaction.update({
+   670→          where: { id: transactionId },
+   671→          data: {
+   672→            disputedAt: new Date(),
+   673→            disputeReason: reason || 'Customer dispute',
+   674→            disputeStatus: 'pending',
+   675→            updatedAt: new Date(),
+   676→          }
+   677→        });
+   678→        
+   679→        return NextResponse.json({
+   680→          success: true,
+   681→          data: {
+   682→            transaction: {
+   683→              id: disputedTx.id,
+   684→              disputeStatus: disputedTx.disputeStatus,
+   685→            }
+   686→          },
+   687→          message: 'Dispute submitted successfully. Our team will review within 48 hours.',
+   688→        });
+   689→      }
+   690→      
+   691→      case 'export': {
+   692→        const { format, filters } = body;
+   693→        
+   694→        // Get all transactions matching filters
+   695→        const where: any = { userId: DEMO_USER_ID };
+   696→        
+   697→        if (filters?.category && filters.category !== 'all') {
+   698→          where.category = filters.category;
+   699→        }
+   700→        if (filters?.dateFrom || filters?.dateTo) {
+   701→          where.createdAt = {};
+   702→          if (filters.dateFrom) {
+   703→            where.createdAt.gte = new Date(filters.dateFrom);
+   704→          }
+   705→          if (filters.dateTo) {
+   706→            where.createdAt.lte = new Date(filters.dateTo + 'T23:59:59.999Z');
+   707→          }
+   708→        }
+   709→        
+   710→        const exportTransactions = await db.consumerTransaction.findMany({
+   711→          where,
+   712→          orderBy: { createdAt: 'desc' },
+   713→          take: 1000, // Limit exports to 1000 transactions
+   714→        });
+   715→        
+   716→        if (format === 'csv') {
+   717→          // Generate CSV
+   718→          const headers = ['Date', 'Time', 'Reference', 'Description', 'Category', 'Merchant', 'Amount', 'Fee', 'Status'];
+   719→          const rows = exportTransactions.map((tx: any) => [
+   720→            tx.createdAt.toISOString().split('T')[0],
+   721→            tx.createdAt.toISOString().split('T')[1]?.substring(0, 8),
+   722→            tx.reference || '',
+   723→            tx.description || '',
+   724→            tx.category || 'Other',
+   725→            tx.counterpartyName || tx.merchantName || 'Unknown',
+   726→            (Number(tx.netAmountCents) / 100).toFixed(2),
+   727→            (Number(tx.feeCents) / 100).toFixed(2),
+   728→            tx.status,
+   729→          ]);
+   730→          
+   731→          const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+   732→          
+   733→          return NextResponse.json({
+   734→            success: true,
+   735→            data: {
+   736→              csv,
+   737→              filename: `transactions_${new Date().toISOString().split('T')[0]}.csv`,
+   738→              count: exportTransactions.length,
+   739→            }
+   740→          });
+   741→        }
+   742→        
+   743→        if (format === 'pdf') {
+   744→          // Return PDF data for frontend generation
+   745→          return NextResponse.json({
+   746→            success: true,
+   747→            data: {
+   748→              transactions: exportTransactions.map((tx: any) => ({
+   749→                date: tx.createdAt.toISOString().split('T')[0],
+   750→                time: tx.createdAt.toISOString().split('T')[1]?.substring(0, 5),
+   751→                reference: tx.reference,
+   752→                description: tx.description,
+   753→                category: tx.category || 'Other',
+   754→                merchant: tx.counterpartyName || tx.merchantName || 'Unknown',
+   755→                amount: Number(tx.netAmountCents) / 100,
+   756→                fee: Number(tx.feeCents) / 100,
+   757→                status: tx.status,
+   758→              })),
+   759→              filename: `transactions_${new Date().toISOString().split('T')[0]}.pdf`,
+   760→              count: exportTransactions.length,
+   761→              generatedAt: new Date().toISOString(),
+   762→            }
+   763→          });
+   764→        }
+   765→        
+   766→        return NextResponse.json({ success: false, error: 'Invalid export format' }, { status: 400 });
+   767→      }
+   768→      
+   769→      default:
+   770→        return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
+   771→    }
+   772→  } catch (error) {
+   773→    console.error('Wallet POST error:', error);
+   774→    return NextResponse.json({ success: false, error: 'Failed to process request' }, { status: 500 });
+   775→  }
+   776→}
+   777→
+   778→// Helper function to award loyalty points
+   779→async function awardLoyaltyPoints(amount: number) {
+   780→  const loyalty = await db.consumerLoyalty.findUnique({
+   781→    where: { userId: DEMO_USER_ID }
+   782→  });
+   783→  
+   784→  if (!loyalty) return;
+   785→  
+   786→  // Calculate points based on tier multiplier
+   787→  const multiplier = loyalty.tier === 'platinum' ? 3 : loyalty.tier === 'gold' ? 2 : loyalty.tier === 'silver' ? 1.5 : 1;
+   788→  const points = Math.round(amount * multiplier * 10); // 10 points per R1 base
+   789→  
+   790→  // Update loyalty
+   791→  await db.consumerLoyalty.update({
+   792→    where: { userId: DEMO_USER_ID },
+   793→    data: {
+   794→      points: loyalty.points + points,
+   795→      totalEarned: loyalty.totalEarned + points,
+   796→      updatedAt: new Date(),
+   797→    }
+   798→  });
+   799→}
+   800→

@@ -1,0 +1,2002 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo } from 'react';
+     4→import Link from 'next/link';
+     5→import { 
+     6→  Home, CreditCard, ShoppingBag, Diamond, User, QrCode, Send, 
+     7→  Download, Plus, Smartphone, Zap, Droplets, Globe, Ticket, 
+     8→  Shield, TrendingUp, ChevronRight, Bell, Eye, EyeOff, 
+     9→  Settings, HelpCircle, FileText, Lock, LogOut,
+    10→  Plane, Train, Bus, Coffee, ShoppingCart, Gift, Percent,
+    11→  Wallet, Building, Phone, Mail, Users, Clock, Star, Award,
+    12→  Check, AlertCircle, MoreHorizontal, X, Search, ArrowLeft,
+    13→  Copy, Share2, CheckCircle, Loader2, Minus, PlusCircle,
+    14→  RefreshCw, CreditCard as CardIcon, Landmark, Bus as BusIcon,
+    15→  Utensils, Sparkles, Heart, Baby, Car, Home as HomeIcon,
+    16→  Briefcase, GraduationCap, Stethoscope, PlaneTakeoff, WalletCards,
+    17→  Menu, MessageCircle, PiggyBank, BadgeCheck, HandCoins,
+    18→  Calendar, Filter, ArrowUpRight, ArrowDownLeft, FileDown, FileSpreadsheet,
+    19→  AlertTriangle, ChevronDown, ChevronUp, Receipt, Unlock, Camera, Fingerprint
+    20→} from 'lucide-react';
+    21→import { Button } from '@/components/ui/button';
+    22→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    23→import { Badge } from '@/components/ui/badge';
+    24→import { Input } from '@/components/ui/input';
+    25→import { Label } from '@/components/ui/label';
+    26→import { Textarea } from '@/components/ui/textarea';
+    27→import { Switch } from '@/components/ui/switch';
+    28→import {
+    29→  Dialog,
+    30→  DialogContent,
+    31→  DialogDescription,
+    32→  DialogFooter,
+    33→  DialogHeader,
+    34→  DialogTitle,
+    35→  VisuallyHidden,
+    36→} from '@/components/ui/dialog';
+    37→import {
+    38→  Select,
+    39→  SelectContent,
+    40→  SelectItem,
+    41→  SelectTrigger,
+    42→  SelectValue,
+    43→} from '@/components/ui/select';
+    44→import { toast } from 'sonner';
+    45→
+    46→// Design Tokens
+    47→const colors = {
+    48→  teal: '#00897B',
+    49→  tealDark: '#00695C',
+    50→  tealLight: '#4DB6AC',
+    51→  green: '#43A047',
+    52→  greenDark: '#2E7D32',
+    53→  greenLight: '#81C784',
+    54→  cardText: '#0A3D30',
+    55→  cardBgWhite: '#FFFFFF',
+    56→  cardBgMid: '#E8F8F0',
+    57→  cardBgEnd: '#C0EDDA',
+    58→  amber: '#FF9800',
+    59→  purple: '#9C27B0',
+    60→  blue: '#1565C0',
+    61→  red: '#D32F2F',
+    62→};
+    63→
+    64→// Format currency as South African Rand
+    65→const formatCurrency = (amount: number): string => {
+    66→  return `R ${amount.toLocaleString('en-ZA', { 
+    67→    minimumFractionDigits: 2, 
+    68→    maximumFractionDigits: 2 
+    69→  }).replace(/,/g, ' ')}`;
+    70→};
+    71→
+    72→// Simple QR Code component for tickets
+    73→function TicketQRCode({ data, size = 120 }: { data: string; size?: number }) {
+    74→  // Generate a deterministic pattern based on the data string
+    75→  const generatePattern = (str: string) => {
+    76→    const pattern: boolean[][] = [];
+    77→    let hash = 0;
+    78→    for (let i = 0; i < str.length; i++) {
+    79→      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    80→      hash = hash & hash;
+    81→    }
+    82→    
+    83→    // Create a 21x21 grid (small QR code)
+    84→    const gridSize = 21;
+    85→    for (let row = 0; row < gridSize; row++) {
+    86→      pattern[row] = [];
+    87→      for (let col = 0; col < gridSize; col++) {
+    88→        // Add position patterns (corners)
+    89→        const isCorner = 
+    90→          (row < 7 && col < 7) || 
+    91→          (row < 7 && col >= gridSize - 7) || 
+    92→          (row >= gridSize - 7 && col < 7);
+    93→        
+    94→        if (isCorner) {
+    95→          // Position pattern
+    96→          const inCornerOuter = row < 7 && col < 7;
+    97→          const inCornerTR = row < 7 && col >= gridSize - 7;
+    98→          const inCornerBL = row >= gridSize - 7 && col < 7;
+    99→          
+   100→          let r = row, c = col;
+   101→          if (inCornerTR) { r = row; c = col - (gridSize - 7); }
+   102→          if (inCornerBL) { r = row - (gridSize - 7); c = col; }
+   103→          
+   104→          if (r === 0 || r === 6 || c === 0 || c === 6) {
+   105→            pattern[row][col] = true;
+   106→          } else if (r >= 2 && r <= 4 && c >= 2 && c <= 4) {
+   107→            pattern[row][col] = true;
+   108→          } else {
+   109→            pattern[row][col] = false;
+   110→          }
+   111→        } else {
+   112→          // Data area - use hash to determine
+   113→          const seed = (hash + row * gridSize + col) % 100;
+   114→          pattern[row][col] = seed < 45;
+   115→        }
+   116→      }
+   117→    }
+   118→    return pattern;
+   119→  };
+   120→
+   121→  const pattern = generatePattern(data || 'default');
+   122→  const cellSize = size / 21;
+   123→
+   124→  return (
+   125→    <div className="bg-white p-2 rounded-lg inline-block">
+   126→      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+   127→        {pattern.map((row, rowIndex) =>
+   128→          row.map((cell, colIndex) => (
+   129→            <rect
+   130→              key={`${rowIndex}-${colIndex}`}
+   131→              x={colIndex * cellSize}
+   132→              y={rowIndex * cellSize}
+   133→              width={cellSize}
+   134→              height={cellSize}
+   135→              fill={cell ? '#000000' : '#ffffff'}
+   136→            />
+   137→          ))
+   138→        )}
+   139→      </svg>
+   140→    </div>
+   141→  );
+   142→}
+   143→
+   144→// IATA Aztec Barcode Component for Boarding Passes
+   145→function AztecBarcode({ 
+   146→  data, 
+   147→  size = 150 
+   148→}: { 
+   149→  data: {
+   150→    passengerName: string;
+   151→    pnr: string;
+   152→    from: string;
+   153→    to: string;
+   154→    flightNumber: string;
+   155→    date: string;
+   156→    seat?: string;
+   157→    class: string;
+   158→    seq?: string;
+   159→  }; 
+   160→  size?: number;
+   161→}) {
+   162→  // Generate Aztec-style pattern (IATA BCBP standard)
+   163→  // Aztec has a central finder pattern (bullseye) and data layers around it
+   164→  const generateAztecPattern = () => {
+   165→    const gridSize = 23; // Standard Aztec compact
+   166→    const pattern: boolean[][] = [];
+   167→    const center = Math.floor(gridSize / 2);
+   168→    
+   169→    // Create hash from data
+   170→    let hash = 0;
+   171→    const dataStr = `${data.passengerName}${data.pnr}${data.flightNumber}${data.from}${data.to}${data.date}`;
+   172→    for (let i = 0; i < dataStr.length; i++) {
+   173→      hash = ((hash << 5) - hash) + dataStr.charCodeAt(i);
+   174→      hash = hash & hash;
+   175→    }
+   176→
+   177→    for (let row = 0; row < gridSize; row++) {
+   178→      pattern[row] = [];
+   179→      for (let col = 0; col < gridSize; col++) {
+   180→        const distFromCenter = Math.max(Math.abs(row - center), Math.abs(col - center));
+   181→        
+   182→        // Central bullseye finder pattern (Aztec style)
+   183→        if (distFromCenter <= 4) {
+   184→          // Concentric rings
+   185→          if (distFromCenter <= 1) {
+   186→            pattern[row][col] = true; // Center solid
+   187→          } else if (distFromCenter === 2) {
+   188→            pattern[row][col] = false; // White ring
+   189→          } else if (distFromCenter === 3) {
+   190→            pattern[row][col] = true; // Black ring
+   191→          } else {
+   192→            pattern[row][col] = false; // White ring
+   193→          }
+   194→        } else {
+   195→          // Data area - deterministic based on position and hash
+   196→          const seed = (hash + row * gridSize + col + distFromCenter * 7) % 100;
+   197→          pattern[row][col] = seed < 48;
+   198→        }
+   199→      }
+   200→    }
+   201→    return pattern;
+   202→  };
+   203→
+   204→  const pattern = generateAztecPattern();
+   205→  const cellSize = size / 23;
+   206→
+   207→  // Generate IATA BCBP data string
+   208→  const bcbpData = `M${data.passengerName.toUpperCase().substring(0, 20).padEnd(20)}${data.pnr.padEnd(7)}${data.from}${data.to}${data.flightNumber.padEnd(6)}${data.date}${data.class}${data.seat || '000'}${data.seq || '001'}`;
+   209→
+   210→  return (
+   211→    <div className="bg-white p-3 rounded-lg inline-block">
+   212→      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+   213→        {pattern.map((row, rowIndex) =>
+   214→          row.map((cell, colIndex) => (
+   215→            <rect
+   216→              key={`${rowIndex}-${colIndex}`}
+   217→              x={colIndex * cellSize}
+   218→              y={rowIndex * cellSize}
+   219→              width={cellSize}
+   220→              height={cellSize}
+   221→              fill={cell ? '#000000' : '#ffffff'}
+   222→            />
+   223→          ))
+   224→        )}
+   225→      </svg>
+   226→      <p className="text-[6px] text-gray-400 mt-1 font-mono text-center break-all max-w-[150px]">{bcbpData.substring(0, 40)}...</p>
+   227→    </div>
+   228→  );
+   229→}
+   230→
+   231→// Types
+   232→type TabType = 'home' | 'pay' | 'services' | 'offers' | 'profile';
+   233→
+   234→interface Transaction {
+   235→  id: string;
+   236→  type: string;
+   237→  amount: number;
+   238→  absoluteAmount?: number;
+   239→  category: string;
+   240→  description: string;
+   241→  merchant: string;
+   242→  merchantName?: string;
+   243→  counterpartyName?: string;
+   244→  timestamp: string;
+   245→  date?: string;
+   246→  time?: string;
+   247→  status: string;
+   248→  reference?: string;
+   249→  transactionType?: string;
+   250→  fee?: number;
+   251→  paymentMethod?: string;
+   252→  cardLastFour?: string;
+   253→  // Voucher/Token information for traceability
+   254→  voucherToken?: string;
+   255→  voucherExpiry?: string;
+   256→  meterNumber?: string;
+   257→  unitsPurchased?: string;
+   258→}
+   259→
+   260→interface WalletData {
+   261→  balance: number;
+   262→  currency: string;
+   263→  lastUpdated: string;
+   264→  recentTransactions?: Transaction[];
+   265→  dailySpent?: number;
+   266→  monthlySpent?: number;
+   267→}
+   268→
+   269→interface LoyaltyInfo {
+   270→  points: number;
+   271→  tier: string;
+   272→  tierName: string;
+   273→  pointsToNextTier: number;
+   274→  nextTier: string;
+   275→}
+   276→
+   277→interface LoyaltyData {
+   278→  loyalty: LoyaltyInfo;
+   279→  offers: Offer[];
+   280→  flashSales: FlashSale[];
+   281→  tiers: any[];
+   282→}
+   283→
+   284→interface Offer {
+   285→  id: string;
+   286→  title: string;
+   287→  description: string;
+   288→  discount: number;
+   289→  merchant: string;
+   290→  clipped: boolean;
+   291→}
+   292→
+   293→interface FlashSale {
+   294→  id: string;
+   295→  title: string;
+   296→  discount: string;
+   297→  timeLeft: number;
+   298→  merchant: string;
+   299→}
+   300→
+   301→// Apple Phone Wrapper Component
+   302→function ApplePhoneWrapper({ children }: { children: React.ReactNode }) {
+   303→  return (
+   304→    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-2 sm:p-4">
+   305→      {/* Phone Frame */}
+   306→      <div className="relative w-full max-w-[375px] h-[812px] bg-[#1A1A1A] rounded-[3rem] p-2 shadow-2xl">
+   307→        {/* Dynamic Island / Notch */}
+   308→        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-20 flex items-center justify-center">
+   309→          <div className="w-3 h-3 rounded-full bg-gray-800 mr-2"></div>
+   310→          <div className="w-2 h-2 rounded-full bg-gray-700"></div>
+   311→        </div>
+   312→        
+   313→        {/* Screen */}
+   314→        <div className="bg-white rounded-[2.25rem] overflow-hidden h-full relative">
+   315→          {/* Status Bar */}
+   316→          <div className="h-11 flex items-end justify-between px-6 pb-1 text-xs font-semibold bg-white">
+   317→            <span>9:41</span>
+   318→            <div className="flex items-center gap-1">
+   319→              <Smartphone className="w-3.5 h-3.5" />
+   320→              <span className="text-[10px] font-normal">5G</span>
+   321→              <div className="flex items-center gap-0.5 ml-1">
+   322→                <div className="w-5 h-2.5 border border-current rounded-sm relative">
+   323→                  <div className="absolute inset-0.5 right-1 bg-current rounded-sm"></div>
+   324→                </div>
+   325→              </div>
+   326→            </div>
+   327→          </div>
+   328→          
+   329→          {/* App Content */}
+   330→          <div className="h-[calc(100%-44px)] overflow-hidden">
+   331→            {children}
+   332→          </div>
+   333→        </div>
+   334→        
+   335→        {/* Side Buttons (visual only) */}
+   336→        <div className="absolute left-0 top-28 w-1 h-7 bg-gray-700 rounded-l-sm"></div>
+   337→        <div className="absolute left-0 top-40 w-1 h-14 bg-gray-700 rounded-l-sm"></div>
+   338→        <div className="absolute left-0 top-60 w-1 h-14 bg-gray-700 rounded-l-sm"></div>
+   339→        <div className="absolute right-0 top-40 w-1 h-16 bg-gray-700 rounded-r-sm"></div>
+   340→      </div>
+   341→    </div>
+   342→  );
+   343→}
+   344→
+   345→// Main Consumer Wallet Component
+   346→export default function ConsumerWallet() {
+   347→  const [activeTab, setActiveTab] = useState<TabType>('home');
+   348→  const [showBalance, setShowBalance] = useState(true);
+   349→  const [walletData, setWalletData] = useState<WalletData | null>(null);
+   350→  const [transactions, setTransactions] = useState<Transaction[]>([]);
+   351→  const [loyaltyData, setLoyaltyData] = useState<LoyaltyData | null>(null);
+   352→  const [loading, setLoading] = useState(true);
+   353→
+   354→  // Fetch wallet data from real API
+   355→  useEffect(() => {
+   356→    const fetchWalletData = async () => {
+   357→      try {
+   358→        setLoading(true);
+   359→        const [walletRes, loyaltyRes] = await Promise.all([
+   360→          fetch('/api/wallet'),
+   361→          fetch('/api/loyalty')
+   362→        ]);
+   363→        
+   364→        const walletJson = await walletRes.json();
+   365→        const loyaltyJson = await loyaltyRes.json();
+   366→        
+   367→        if (walletJson.success) {
+   368→          setWalletData(walletJson.data);
+   369→          setTransactions(walletJson.data.recentTransactions || []);
+   370→        }
+   371→        if (loyaltyJson.success) {
+   372→          setLoyaltyData(loyaltyJson.data);
+   373→        }
+   374→      } catch (error) {
+   375→        console.error('Failed to fetch wallet data:', error);
+   376→        toast.error('Failed to load wallet data');
+   377→      } finally {
+   378→        setLoading(false);
+   379→      }
+   380→    };
+   381→
+   382→    fetchWalletData();
+   383→  }, []);
+   384→
+   385→  // Refresh wallet data
+   386→  const refreshWallet = useCallback(async () => {
+   387→    try {
+   388→      const res = await fetch('/api/wallet');
+   389→      const json = await res.json();
+   390→      if (json.success) {
+   391→        setWalletData(json.data);
+   392→        setTransactions(json.data.recentTransactions || []);
+   393→        toast.success('Wallet refreshed');
+   394→      }
+   395→    } catch (error) {
+   396→      console.error('Failed to refresh wallet:', error);
+   397→      toast.error('Failed to refresh wallet');
+   398→    }
+   399→  }, []);
+   400→
+   401→  // Tab content renderer
+   402→  const renderTabContent = () => {
+   403→    switch (activeTab) {
+   404→      case 'home':
+   405→        return (
+   406→          <HomeTab 
+   407→            showBalance={showBalance} 
+   408→            setShowBalance={setShowBalance} 
+   409→            walletData={walletData}
+   410→            transactions={transactions}
+   411→            loyaltyData={loyaltyData}
+   412→            loading={loading}
+   413→            refreshWallet={refreshWallet}
+   414→            setActiveTab={setActiveTab}
+   415→          />
+   416→        );
+   417→      case 'pay':
+   418→        return <PayTab walletData={walletData} refreshWallet={refreshWallet} />;
+   419→      case 'services':
+   420→        return <ServicesTab />;
+   421→      case 'offers':
+   422→        return <OffersTab loyaltyData={loyaltyData} />;
+   423→      case 'profile':
+   424→        return <ProfileTab />;
+   425→      default:
+   426→        return <HomeTab showBalance={showBalance} setShowBalance={setShowBalance} walletData={walletData} transactions={transactions} loyaltyData={loyaltyData} loading={loading} refreshWallet={refreshWallet} setActiveTab={setActiveTab} />;
+   427→    }
+   428→  };
+   429→
+   430→  return (
+   431→    <ApplePhoneWrapper>
+   432→      <div className="flex flex-col h-full bg-gray-50">
+   433→        {/* Header */}
+   434→        <header className="sticky top-0 z-50 bg-white border-b border-gray-100 px-4 py-2.5">
+   435→          <div className="flex items-center justify-between">
+   436→            <Link href="/" className="flex items-center gap-2.5 group">
+   437→              {/* Clean Logo Circle with GRW */}
+   438→              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#00897B] to-[#43A047] flex items-center justify-center shadow-md shadow-[#00897B]/20 group-hover:shadow-lg group-hover:shadow-[#00897B]/30 transition-all duration-300 group-hover:scale-105">
+   439→                <span className="text-white font-bold text-xs tracking-tight">GRW</span>
+   440→              </div>
+   441→              {/* Wallet Text */}
+   442→              <div className="flex items-baseline gap-1">
+   443→                <span className="text-sm font-bold text-gray-900">Groway</span>
+   444→                <span className="text-sm font-normal text-[#00897B]">Wallet</span>
+   445→              </div>
+   446→            </Link>
+   447→            <div className="flex items-center gap-1">
+   448→              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#00897B]/10" onClick={refreshWallet}>
+   449→                <RefreshCw className="w-4 h-4 text-[#00897B]" />
+   450→              </Button>
+   451→              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#00897B]/10 relative">
+   452→                <Bell className="w-4 h-4 text-[#00897B]" />
+   453→                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+   454→              </Button>
+   455→            </div>
+   456→          </div>
+   457→        </header>
+   458→
+   459→        {/* Main Content */}
+   460→        <main className="flex-1 overflow-y-auto pb-16">
+   461→          {renderTabContent()}
+   462→        </main>
+   463→
+   464→        {/* Bottom Tab Bar */}
+   465→        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around px-1 pb-5 pt-2">
+   466→          <TabButton icon={Home} label="Home" isActive={activeTab === 'home'} onClick={() => setActiveTab('home')} />
+   467→          <TabButton icon={CreditCard} label="Pay" isActive={activeTab === 'pay'} onClick={() => setActiveTab('pay')} />
+   468→          <TabButton icon={ShoppingBag} label="Services" isActive={activeTab === 'services'} onClick={() => setActiveTab('services')} />
+   469→          <TabButton icon={Diamond} label="Offers" isActive={activeTab === 'offers'} onClick={() => setActiveTab('offers')} />
+   470→          <TabButton icon={User} label="Profile" isActive={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
+   471→        </div>
+   472→      </div>
+   473→    </ApplePhoneWrapper>
+   474→  );
+   475→}
+   476→
+   477→// Tab Button Component
+   478→function TabButton({ icon: Icon, label, isActive, onClick }: { 
+   479→  icon: React.ElementType; 
+   480→  label: string; 
+   481→  isActive: boolean; 
+   482→  onClick: () => void;
+   483→}) {
+   484→  return (
+   485→    <button 
+   486→      onClick={onClick}
+   487→      className={`flex flex-col items-center justify-center w-14 py-1 transition-all ${
+   488→        isActive 
+   489→          ? 'text-[#00897B]' 
+   490→          : 'text-gray-400 hover:text-gray-600'
+   491→      }`}
+   492→    >
+   493→      <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : ''}`} />
+   494→      <span className={`text-[10px] mt-0.5 ${isActive ? 'font-semibold' : ''}`}>{label}</span>
+   495→    </button>
+   496→  );
+   497→}
+   498→
+   499→// ==================== HOME TAB ====================
+   500→function HomeTab({ showBalance, setShowBalance, walletData, transactions, loyaltyData, loading, refreshWallet, setActiveTab }: {
+   501→  showBalance: boolean;
+   502→  setShowBalance: (show: boolean) => void;
+   503→  walletData: WalletData | null;
+   504→  transactions: Transaction[];
+   505→  loyaltyData: LoyaltyData | null;
+   506→  loading: boolean;
+   507→  refreshWallet: () => void;
+   508→  setActiveTab: (tab: TabType) => void;
+   509→}) {
+   510→  const [showSendModal, setShowSendModal] = useState(false);
+   511→  const [showTopupModal, setShowTopupModal] = useState(false);
+   512→  const [showQRModal, setShowQRModal] = useState(false);
+   513→  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+   514→  const [showCardModal, setShowCardModal] = useState(false);
+   515→
+   516→  const quickActions = [
+   517→    { icon: Send, label: 'Send', color: colors.teal, action: () => setShowSendModal(true) },
+   518→    { icon: Download, label: 'Receive', color: colors.green, action: () => setShowQRModal(true) },
+   519→    { icon: QrCode, label: 'Scan', color: colors.purple, action: () => setShowQRModal(true) },
+   520→    { icon: Plus, label: 'Top Up', color: colors.blue, action: () => setShowTopupModal(true) },
+   521→  ];
+   522→
+   523→  // Envelope pocket services - Grant+ and Pay+ get special treatment
+   524→  const envelopePockets = [
+   525→    { 
+   526→      icon: HandCoins, 
+   527→      label: 'Grant+', 
+   528→      subtitle: 'SASSA Advance',
+   529→      color: '#00897B', 
+   530→      service: 'sassa',
+   531→      description: 'Get an advance on your grant',
+   532→      badge: 'NCA Compliant'
+   533→    },
+   534→    { 
+   535→      icon: Zap, 
+   536→      label: 'Pay+', 
+   537→      subtitle: 'Early Wage Access',
+   538→      color: '#FF9800', 
+   539→      service: 'payplus',
+   540→      description: 'Access your earned wages early',
+   541→      badge: 'Instant'
+   542→    },
+   543→  ];
+   544→
+   545→  // COMPREHENSIVE services list - all features (excluding envelope pockets)
+   546→  const services = [
+   547→    { icon: Smartphone, label: 'Airtime', color: '#E91E63', service: 'airtime' },
+   548→    { icon: Zap, label: 'Power', color: '#FF9800', service: 'electricity' },
+   549→    { icon: Droplets, label: 'Water', color: '#2196F3', service: 'water' },
+   550→    { icon: Globe, label: 'Transfer', color: '#9C27B0', service: 'transfers' },
+   551→    { icon: Ticket, label: 'Bills', color: '#00BCD4', service: 'bills' },
+   552→    { icon: Shield, label: 'Insurance', color: '#4CAF50', service: 'insurance' },
+   553→    { icon: TrendingUp, label: 'Credit', color: '#FF5722', service: 'credit' },
+   554→    { icon: CreditCard, label: 'BNPL', color: '#E91E63', service: 'bnpl' },
+   555→    { icon: PiggyBank, label: 'Laybye', color: '#009688', service: 'laybye' },
+   556→    { icon: Wallet, label: 'Savings', color: '#3F51B5', service: 'savings' },
+   557→  ];
+   558→
+   559→  const getCategoryIcon = (category: string) => {
+   560→    const icons: Record<string, React.ElementType> = {
+   561→      'Airtime & Data': Smartphone,
+   562→      'Groceries': ShoppingCart,
+   563→      'Transfer': Wallet,
+   564→      'Electricity': Zap,
+   565→      'default': Wallet
+   566→    };
+   567→    return icons[category] || icons['default'];
+   568→  };
+   569→
+   570→  if (loading) {
+   571→    return (
+   572→      <div className="flex items-center justify-center h-64">
+   573→        <Loader2 className="w-8 h-8 animate-spin text-[#00897B]" />
+   574→      </div>
+   575→    );
+   576→  }
+   577→
+   578→  return (
+   579→    <div className="px-3 py-3">
+   580→      {/* User Header */}
+   581→      <div className="flex items-center justify-between mb-3">
+   582→        <div className="flex items-center gap-2">
+   583→          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#00897B] to-[#43A047] flex items-center justify-center text-white font-bold text-sm">
+   584→            TM
+   585→          </div>
+   586→          <div>
+   587→            <p className="text-gray-500 text-[10px]">Good morning,</p>
+   588→            <p className="text-gray-900 font-semibold text-sm">Thabo Molefe</p>
+   589→          </div>
+   590→        </div>
+   591→      </div>
+   592→
+   593→      {/* Envelope Balance Card - All Green with Tier Status */}
+   594→      <Card className="mb-3 overflow-hidden border-0 shadow-xl rounded-2xl">
+   595→        <div 
+   596→          className="relative text-white"
+   597→          style={{ 
+   598→            background: `linear-gradient(145deg, #00897B 0%, #43A047 50%, #2E7D32 100%)`,
+   599→          }}
+   600→        >
+   601→          {/* Envelope Flap Effect */}
+   602→          <div className="absolute top-0 left-0 right-0 h-12 overflow-hidden">
+   603→            <div 
+   604→              className="absolute top-0 left-1/2 -translate-x-1/2 w-[110%] h-16 bg-[#00695C] rounded-b-[50%]"
+   605→              style={{ transform: 'translateX(-50%)' }}
+   606→            />
+   607→          </div>
+   608→          
+   609→          {/* Background Pattern */}
+   610→          <div className="absolute inset-0 opacity-10">
+   611→            <div className="absolute top-4 right-4 w-24 h-24 rounded-full bg-white transform"></div>
+   612→            <div className="absolute bottom-12 left-4 w-16 h-16 rounded-full bg-white transform"></div>
+   613→            <div className="absolute bottom-4 right-8 w-12 h-12 rounded-full bg-white transform"></div>
+   614→          </div>
+   615→
+   616→          {/* Main Content */}
+   617→          <div className="relative z-10 p-4 pt-6">
+   618→            {/* Balance Row */}
+   619→            <div className="flex items-center justify-between mb-3">
+   620→              <div>
+   621→                <span className="text-white/70 text-[10px] uppercase tracking-wide">Available Balance</span>
+   622→                <div className="flex items-center gap-2 mt-0.5">
+   623→                  <p className="text-2xl font-bold tracking-tight">
+   624→                    {showBalance ? formatCurrency(walletData?.balance || 0) : 'R •••• ••'}
+   625→                  </p>
+   626→                  <button 
+   627→                    onClick={() => setShowBalance(!showBalance)} 
+   628→                    className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+   629→                  >
+   630→                    {showBalance ? <Eye className="w-3.5 h-3.5 text-white/80" /> : <EyeOff className="w-3.5 h-3.5 text-white/80" />}
+   631→                  </button>
+   632→                </div>
+   633→              </div>
+   634→            </div>
+   635→
+   636→            {/* Tier Status Section */}
+   637→            {loyaltyData && (
+   638→              <div className="bg-white/15 rounded-xl p-2.5 mb-3 backdrop-blur-sm border border-white/10">
+   639→                <div className="flex items-center justify-between">
+   640→                  <div className="flex items-center gap-2">
+   641→                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center shadow-lg">
+   642→                      <Award className="w-4 h-4 text-white" />
+   643→                    </div>
+   644→                    <div>
+   645→                      <div className="flex items-center gap-1.5">
+   646→                        <span className="text-xs font-semibold text-white">{loyaltyData.loyalty.tierName}</span>
+   647→                        <span className="text-[9px] text-white/60">Member</span>
+   648→                      </div>
+   649→                      <div className="flex items-center gap-1 mt-0.5">
+   650→                        <Star className="w-3 h-3 text-amber-300 fill-amber-300" />
+   651→                        <span className="text-[10px] font-bold text-white">{loyaltyData.loyalty.points.toLocaleString()} pts</span>
+   652→                        <span className="text-[9px] text-white/60">• {loyaltyData.loyalty.pointsToNextTier} to {loyaltyData.loyalty.nextTier}</span>
+   653→                      </div>
+   654→                    </div>
+   655→                  </div>
+   656→                  <div className="text-right">
+   657→                    <div className="w-12 h-1.5 bg-white/20 rounded-full overflow-hidden">
+   658→                      <div 
+   659→                        className="h-full bg-amber-400 rounded-full"
+   660→                        style={{ width: `${Math.min(100, ((3000 - loyaltyData.loyalty.pointsToNextTier) / 3000) * 100)}%` }}
+   661→                      />
+   662→                    </div>
+   663→                  </div>
+   664→                </div>
+   665→              </div>
+   666→            )}
+   667→
+   668→            {/* Quick Actions */}
+   669→            <div className="grid grid-cols-4 gap-2">
+   670→              {quickActions.map((action, idx) => (
+   671→                <button key={idx} className="flex flex-col items-center group" onClick={action.action}>
+   672→                  <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-1 group-hover:bg-white/25 transition-all shadow-lg backdrop-blur-sm border border-white/10">
+   673→                    <action.icon className="w-4.5 h-4.5 text-white" />
+   674→                  </div>
+   675→                  <span className="text-[9px] text-white font-medium">{action.label}</span>
+   676→                </button>
+   677→              ))}
+   678→            </div>
+   679→          </div>
+   680→
+   681→          {/* Envelope Bottom Fold Effect */}
+   682→          <div className="h-3 bg-gradient-to-b from-transparent to-[#00695C]/30" />
+   683→        </div>
+   684→      </Card>
+   685→
+   686→      {/* Virtual Card Section */}
+   687→      <Card className="mb-3 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowCardModal(true)}>
+   688→        <CardContent className="py-2.5 px-3">
+   689→          <div className="flex items-center justify-between">
+   690→            <div className="flex items-center gap-2">
+   691→              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
+   692→                <WalletCards className="w-4 h-4 text-white" />
+   693→              </div>
+   694→              <div>
+   695→                <p className="text-xs font-medium text-gray-700">Virtual Card</p>
+   696→                <p className="text-[10px] text-gray-500">Visa •••• 4567</p>
+   697→              </div>
+   698→            </div>
+   699→            <div className="flex items-center gap-1.5">
+   700→              <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">Active</Badge>
+   701→              <ChevronRight className="w-4 h-4 text-gray-400" />
+   702→            </div>
+   703→          </div>
+   704→        </CardContent>
+   705→      </Card>
+   706→
+   707→      {/* Services Grid - COMPREHENSIVE */}
+   708→      <div className="mb-3">
+   709→        <div className="flex items-center justify-between mb-2">
+   710→          <h3 className="font-semibold text-gray-900 text-sm">Services</h3>
+   711→          <button className="text-xs text-[#00897B] font-medium" onClick={() => setActiveTab('services')}>See all</button>
+   712→        </div>
+   713→        
+   714→        {/* Envelope Pockets - Grant+ and Pay+ */}
+   715→        <div className="grid grid-cols-2 gap-2 mb-2">
+   716→          {envelopePockets.map((pocket, idx) => (
+   717→            <ServiceModalWrapper key={idx} service={pocket.service}>
+   718→              <div className="relative overflow-hidden rounded-xl cursor-pointer group">
+   719→                <div 
+   720→                  className="p-3 text-white"
+   721→                  style={{ 
+   722→                    background: pocket.service === 'sassa' 
+   723→                      ? 'linear-gradient(145deg, #00897B 0%, #43A047 100%)'
+   724→                      : 'linear-gradient(145deg, #FF9800 0%, #F57C00 100%)'
+   725→                  }}
+   726→                >
+   727→                  {/* Envelope flap effect */}
+   728→                  <div className="absolute top-0 left-0 right-0 h-6 overflow-hidden opacity-30">
+   729→                    <div 
+   730→                      className="absolute top-0 left-1/2 -translate-x-1/2 w-[120%] h-8 rounded-b-[50%]"
+   731→                      style={{ backgroundColor: pocket.service === 'sassa' ? '#00695C' : '#E65100' }}
+   732→                    />
+   733→                  </div>
+   734→                  
+   735→                  <div className="relative z-10">
+   736→                    <div className="flex items-start justify-between mb-2">
+   737→                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+   738→                        pocket.service === 'sassa' ? 'bg-white/20' : 'bg-white/20'
+   739→                      }`}>
+   740→                        <pocket.icon className="w-4 h-4 text-white" />
+   741→                      </div>
+   742→                      <Badge className="bg-white/20 text-white text-[8px] px-1.5 py-0">{pocket.badge}</Badge>
+   743→                    </div>
+   744→                    <p className="font-semibold text-white text-xs">{pocket.label}</p>
+   745→                    <p className="text-white/80 text-[10px]">{pocket.subtitle}</p>
+   746→                  </div>
+   747→                  
+   748→                  {/* Hover overlay */}
+   749→                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+   750→                    <ChevronRight className="w-5 h-5 text-white" />
+   751→                  </div>
+   752→                </div>
+   753→              </div>
+   754→            </ServiceModalWrapper>
+   755→          ))}
+   756→        </div>
+   757→        
+   758→        {/* Regular Services Grid */}
+   759→        <div className="grid grid-cols-5 gap-1.5">
+   760→          {services.map((service, idx) => (
+   761→            <ServiceModalWrapper key={idx} service={service.service}>
+   762→              <div className="flex flex-col items-center p-1.5 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
+   763→                <div 
+   764→                  className="w-9 h-9 rounded-xl flex items-center justify-center mb-0.5"
+   765→                  style={{ backgroundColor: `${service.color}15` }}
+   766→                >
+   767→                  <service.icon className="w-4 h-4" style={{ color: service.color }} />
+   768→                </div>
+   769→                <span className="text-[9px] text-gray-600 text-center font-medium">{service.label}</span>
+   770→              </div>
+   771→            </ServiceModalWrapper>
+   772→          ))}
+   773→        </div>
+   774→      </div>
+   775→
+   776→      {/* Recent Transactions */}
+   777→      <div>
+   778→        <div className="flex items-center justify-between mb-2">
+   779→          <h3 className="font-semibold text-gray-900 text-sm">Recent Transactions</h3>
+   780→          <button className="text-xs text-[#00897B] font-medium" onClick={() => setShowTransactionHistory(true)}>See all</button>
+   781→        </div>
+   782→        {transactions.length > 0 ? (
+   783→          <div className="space-y-1.5">
+   784→            {transactions.slice(0, 5).map((tx, idx) => {
+   785→              const Icon = getCategoryIcon(tx.category);
+   786→              return (
+   787→                <Card key={idx} className="hover:shadow-md transition-shadow">
+   788→                  <CardContent className="py-2 px-2.5">
+   789→                    <div className="flex items-center gap-2">
+   790→                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+   791→                        <Icon className="w-4 h-4 text-gray-500" />
+   792→                      </div>
+   793→                      <div className="flex-1 min-w-0">
+   794→                        <p className="font-medium text-gray-900 text-xs truncate">{tx.description}</p>
+   795→                        <p className="text-[10px] text-gray-500">{tx.category}</p>
+   796→                      </div>
+   797→                      <div className="text-right">
+   798→                        <p className={`font-semibold text-xs ${tx.amount >= 0 ? 'text-green-600' : 'text-gray-900'}`}>
+   799→                          {tx.amount >= 0 ? '+' : ''}{formatCurrency(Math.abs(tx.amount))}
+   800→                        </p>
+   801→                        <p className="text-[10px] text-gray-400">{new Date(tx.timestamp).toLocaleDateString('en-ZA')}</p>
+   802→                      </div>
+   803→                    </div>
+   804→                  </CardContent>
+   805→                </Card>
+   806→              );
+   807→            })}
+   808→          </div>
+   809→        ) : (
+   810→          <Card>
+   811→            <CardContent className="py-6 text-center">
+   812→              <Wallet className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+   813→              <p className="text-sm text-gray-500">No recent transactions</p>
+   814→            </CardContent>
+   815→          </Card>
+   816→        )}
+   817→      </div>
+   818→
+   819→      {/* Modals */}
+   820→      {showSendModal && <SendModal onClose={() => setShowSendModal(false)} onSuccess={refreshWallet} />}
+   821→      {showTopupModal && <TopupModal onClose={() => setShowTopupModal(false)} onSuccess={refreshWallet} />}
+   822→      {showQRModal && <QRModal onClose={() => setShowQRModal(false)} onSuccess={refreshWallet} />}
+   823→      {showTransactionHistory && <TransactionHistoryModal onClose={() => setShowTransactionHistory(false)} />}
+   824→      {showCardModal && <WalletCardModal onClose={() => setShowCardModal(false)} />}
+   825→    </div>
+   826→  );
+   827→}
+   828→
+   829→// Service Modal Wrapper - handles opening the right modal
+   830→function ServiceModalWrapper({ service, children }: { service: string; children: React.ReactNode }) {
+   831→  const [activeService, setActiveService] = useState<string | null>(null);
+   832→
+   833→  return (
+   834→    <>
+   835→      <div onClick={() => setActiveService(service)}>
+   836→        {children}
+   837→      </div>
+   838→      {activeService === 'airtime' && <AirtimeModal onClose={() => setActiveService(null)} />}
+   839→      {activeService === 'electricity' && <ElectricityModal onClose={() => setActiveService(null)} />}
+   840→      {activeService === 'water' && <WaterModal onClose={() => setActiveService(null)} />}
+   841→      {activeService === 'bills' && <BillsModal onClose={() => setActiveService(null)} />}
+   842→      {activeService === 'transfers' && <TransfersModal onClose={() => setActiveService(null)} />}
+   843→      {activeService === 'sassa' && <GrantPlusModal onClose={() => setActiveService(null)} />}
+   844→      {activeService === 'insurance' && <InsuranceModal onClose={() => setActiveService(null)} />}
+   845→      {activeService === 'credit' && <CreditModal onClose={() => setActiveService(null)} />}
+   846→      {activeService === 'bnpl' && <BNPLModal onClose={() => setActiveService(null)} />}
+   847→      {activeService === 'payplus' && <PayPlusModal onClose={() => setActiveService(null)} />}
+   848→      {activeService === 'laybye' && <LaybyeModal onClose={() => setActiveService(null)} />}
+   849→      {activeService === 'savings' && <SavingsModal onClose={() => setActiveService(null)} />}
+   850→      {activeService === 'gautrain' && <GautrainModal onClose={() => setActiveService(null)} />}
+   851→      {activeService === 'bus' && <BusModal onClose={() => setActiveService(null)} />}
+   852→      {activeService === 'flights' && <FlightsModal onClose={() => setActiveService(null)} />}
+   853→      {activeService === 'events' && <EventsModal onClose={() => setActiveService(null)} />}
+   854→      {activeService === 'vouchers' && <VouchersModal onClose={() => setActiveService(null)} />}
+   855→    </>
+   856→  );
+   857→}
+   858→
+   859→// ==================== PAY TAB ====================
+   860→function PayTab({ walletData, refreshWallet }: { walletData: WalletData | null; refreshWallet: () => void }) {
+   861→  const [selectedMethod, setSelectedMethod] = useState('payshap');
+   862→  const [showSendModal, setShowSendModal] = useState(false);
+   863→  const [showQRModal, setShowQRModal] = useState(false);
+   864→  const [showRequestModal, setShowRequestModal] = useState(false);
+   865→  const [showSplitModal, setShowSplitModal] = useState(false);
+   866→  const [recentRecipients, setRecentRecipients] = useState<any[]>([]);
+   867→
+   868→  // Fetch recent recipients
+   869→  useEffect(() => {
+   870→    const fetchRecipients = async () => {
+   871→      try {
+   872→        const res = await fetch('/api/send-money?action=recipients');
+   873→        const data = await res.json();
+   874→        if (data.success) setRecentRecipients(data.data);
+   875→      } catch (error) {
+   876→        console.error('Failed to fetch recipients:', error);
+   877→      }
+   878→    };
+   879→    fetchRecipients();
+   880→  }, []);
+   881→
+   882→  const paymentMethods = [
+   883→    { id: 'payshap', label: 'PayShap', desc: 'Instant bank transfer', icon: Zap },
+   884→    { id: 'gopay', label: 'GoPay', desc: 'Instant EFT', icon: CreditCard },
+   885→    { id: 'wallet', label: 'Wallet', desc: walletData ? formatCurrency(walletData.balance) : 'R 0.00', icon: Wallet },
+   886→    { id: 'card', label: 'Card', desc: '**** 4567', icon: CreditCard },
+   887→  ];
+   888→
+   889→  const quickActions = [
+   890→    { icon: QrCode, label: 'Scan', color: colors.teal, action: () => setShowQRModal(true) },
+   891→    { icon: Send, label: 'Send', color: colors.green, action: () => setShowSendModal(true) },
+   892→    { icon: Download, label: 'Request', color: colors.purple, action: () => setShowRequestModal(true) },
+   893→    { icon: Users, label: 'Split', color: colors.blue, action: () => setShowSplitModal(true) },
+   894→  ];
+   895→
+   896→  // Display recipients (use fetched or fallback to demo)
+   897→  const displayRecipients = recentRecipients.length > 0 
+   898→    ? recentRecipients.slice(0, 4).map(r => ({
+   899→        name: r.name.split(' ')[0],
+   900→        initials: r.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2),
+   901→        color: colors.teal,
+   902→        phone: r.phone,
+   903→      }))
+   904→    : [
+   905→        { name: 'Thabo', initials: 'TS', color: colors.teal },
+   906→        { name: 'Lerato', initials: 'LM', color: colors.purple },
+   907→        { name: 'Sipho', initials: 'SK', color: colors.amber },
+   908→        { name: 'Nomsa', initials: 'ND', color: colors.blue },
+   909→      ];
+   910→
+   911→  return (
+   912→    <div className="px-3 py-3">
+   913→      {/* Header */}
+   914→      <div className="mb-3">
+   915→        <h1 className="text-lg font-bold text-gray-900">Pay Hub</h1>
+   916→        <p className="text-xs text-gray-500">Send and receive money instantly</p>
+   917→      </div>
+   918→
+   919→      {/* QR Code Section */}
+   920→      <Card className="mb-3 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowQRModal(true)}>
+   921→        <CardContent className="py-3">
+   922→          <div className="flex flex-col items-center">
+   923→            <div className="w-28 h-28 bg-gradient-to-br from-[#00897B]/10 to-[#43A047]/10 rounded-2xl flex items-center justify-center mb-2 border-2 border-dashed border-[#00897B]/30">
+   924→              <QrCode className="w-16 h-16 text-[#00897B]/60" />
+   925→            </div>
+   926→            <p className="text-xs font-medium text-[#00897B]">Tap to show your QR code</p>
+   927→            <p className="text-[10px] text-gray-400 mt-0.5">Receive payments instantly</p>
+   928→          </div>
+   929→        </CardContent>
+   930→      </Card>
+   931→
+   932→      {/* Quick Actions */}
+   933→      <div className="grid grid-cols-4 gap-1.5 mb-3">
+   934→        {quickActions.map((action, idx) => (
+   935→          <Card key={idx} className="cursor-pointer hover:shadow-md transition-shadow" onClick={action.action}>
+   936→            <CardContent className="py-2.5 flex flex-col items-center">
+   937→              <div 
+   938→                className="w-9 h-9 rounded-xl flex items-center justify-center mb-0.5"
+   939→                style={{ backgroundColor: `${action.color}15` }}
+   940→              >
+   941→                <action.icon className="w-4 h-4" style={{ color: action.color }} />
+   942→              </div>
+   943→              <span className="text-[10px] text-gray-600 font-medium">{action.label}</span>
+   944→            </CardContent>
+   945→          </Card>
+   946→        ))}
+   947→      </div>
+   948→
+   949→      {/* Payment Methods */}
+   950→      <div className="mb-3">
+   951→        <div className="flex items-center justify-between mb-2">
+   952→          <h3 className="font-semibold text-gray-900 text-sm">Payment Method</h3>
+   953→          <span className="text-[10px] text-gray-400">Tap to select</span>
+   954→        </div>
+   955→        <div className="space-y-1.5">
+   956→          {paymentMethods.map((method) => {
+   957→            const MethodIcon = method.icon;
+   958→            return (
+   959→              <Card 
+   960→                key={method.id} 
+   961→                className={`cursor-pointer transition-all ${selectedMethod === method.id ? 'border-[#00897B] border-2 bg-[#00897B]/5' : ''}`}
+   962→                onClick={() => setSelectedMethod(method.id)}
+   963→              >
+   964→                <CardContent className="py-2 px-2.5">
+   965→                  <div className="flex items-center gap-2">
+   966→                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+   967→                      selectedMethod === method.id ? 'border-[#00897B]' : 'border-gray-300'
+   968→                    }`}>
+   969→                      {selectedMethod === method.id && <div className="w-2 h-2 rounded-full bg-[#00897B]"></div>}
+   970→                    </div>
+   971→                    <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center">
+   972→                      <MethodIcon className="w-3.5 h-3.5 text-gray-600" />
+   973→                    </div>
+   974→                    <div className="flex-1">
+   975→                      <p className="font-medium text-gray-900 text-xs">{method.label}</p>
+   976→                      <p className="text-[10px] text-gray-500">{method.desc}</p>
+   977→                    </div>
+   978→                    {method.id === 'wallet' && walletData && (
+   979→                      <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">
+   980→                        Active
+   981→                      </Badge>
+   982→                    )}
+   983→                  </div>
+   984→                </CardContent>
+   985→              </Card>
+   986→            );
+   987→          })}
+   988→        </div>
+   989→      </div>
+   990→
+   991→      {/* Recent Recipients */}
+   992→      <div className="mb-3">
+   993→        <div className="flex items-center justify-between mb-2">
+   994→          <h3 className="font-semibold text-gray-900 text-sm">Recent Recipients</h3>
+   995→        </div>
+   996→        <div className="flex gap-3 overflow-x-auto pb-2">
+   997→          {displayRecipients.map((recipient, idx) => (
+   998→            <button key={idx} className="flex flex-col items-center" onClick={() => setShowSendModal(true)}>
+   999→              <div 
+  1000→                className="w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-sm mb-1 shadow-sm"
+  1001→                style={{ backgroundColor: recipient.color }}
+  1002→              >
+  1003→                {recipient.initials}
+  1004→              </div>
+  1005→              <span className="text-xs text-gray-600">{recipient.name}</span>
+  1006→            </button>
+  1007→          ))}
+  1008→          {/* Add new recipient button */}
+  1009→          <button 
+  1010→            className="flex flex-col items-center" 
+  1011→            onClick={() => setShowSendModal(true)}
+  1012→          >
+  1013→            <div className="w-11 h-11 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center mb-1">
+  1014→              <Plus className="w-4 h-4 text-gray-400" />
+  1015→            </div>
+  1016→            <span className="text-xs text-gray-400">New</span>
+  1017→          </button>
+  1018→        </div>
+  1019→      </div>
+  1020→
+  1021→      {/* PayShap Info Card */}
+  1022→      <Card className="border-[#00897B]/20 bg-gradient-to-r from-[#00897B]/5 to-[#43A047]/5">
+  1023→        <CardContent className="py-2.5 px-3">
+  1024→          <div className="flex items-start gap-2">
+  1025→            <div className="w-8 h-8 rounded-lg bg-[#00897B]/10 flex items-center justify-center shrink-0">
+  1026→              <Zap className="w-4 h-4 text-[#00897B]" />
+  1027→            </div>
+  1028→            <div>
+  1029→              <p className="font-medium text-gray-800 text-xs">PayShap is now available!</p>
+  1030→              <p className="text-[10px] text-gray-600 mt-0.5">Send up to R3,000 instantly to any SA bank account using just a phone number. Free transfers!</p>
+  1031→            </div>
+  1032→          </div>
+  1033→        </CardContent>
+  1034→      </Card>
+  1035→
+  1036→      {/* Modals */}
+  1037→      {showSendModal && <SendModal onClose={() => setShowSendModal(false)} onSuccess={refreshWallet} />}
+  1038→      {showQRModal && <QRModal onClose={() => setShowQRModal(false)} onSuccess={refreshWallet} />}
+  1039→      {showRequestModal && <RequestModal onClose={() => setShowRequestModal(false)} walletData={walletData} />}
+  1040→      {showSplitModal && <SplitModal onClose={() => setShowSplitModal(false)} walletData={walletData} />}
+  1041→    </div>
+  1042→  );
+  1043→}
+  1044→
+  1045→// Request Money Modal
+  1046→function RequestModal({ onClose, walletData }: { onClose: () => void; walletData: WalletData | null }) {
+  1047→  const [amount, setAmount] = useState('');
+  1048→  const [note, setNote] = useState('');
+  1049→  const [requesterName] = useState('Thabo Molefe');
+  1050→  const [loading, setLoading] = useState(false);
+  1051→  const [requestLink, setRequestLink] = useState('');
+  1052→  const [copied, setCopied] = useState(false);
+  1053→
+  1054→  const generateRequest = () => {
+  1055→    if (!amount || parseFloat(amount) <= 0) {
+  1056→      toast.error('Please enter a valid amount');
+  1057→      return;
+  1058→    }
+  1059→
+  1060→    setLoading(true);
+  1061→    // Simulate generating a payment request
+  1062→    setTimeout(() => {
+  1063→      const link = `https://pay.groway.co.za/req/${Date.now().toString(36)}`;
+  1064→      setRequestLink(link);
+  1065→      setLoading(false);
+  1066→    }, 1000);
+  1067→  };
+  1068→
+  1069→  const copyLink = () => {
+  1070→    navigator.clipboard.writeText(requestLink);
+  1071→    setCopied(true);
+  1072→    toast.success('Link copied to clipboard');
+  1073→    setTimeout(() => setCopied(false), 2000);
+  1074→  };
+  1075→
+  1076→  return (
+  1077→    <Dialog open={true} onOpenChange={onClose}>
+  1078→      <DialogContent className="max-w-sm">
+  1079→        <DialogHeader>
+  1080→          <DialogTitle>Request Money</DialogTitle>
+  1081→          <DialogDescription>Generate a payment request link</DialogDescription>
+  1082→        </DialogHeader>
+  1083→        
+  1084→        {!requestLink ? (
+  1085→          <div className="space-y-3">
+  1086→            <div>
+  1087→              <Label className="text-xs">Amount (R)</Label>
+  1088→              <Input
+  1089→                type="number"
+  1090→                placeholder="0.00"
+  1091→                value={amount}
+  1092→                onChange={(e) => setAmount(e.target.value)}
+  1093→                className="h-9 text-sm mt-1"
+  1094→              />
+  1095→            </div>
+  1096→            <div>
+  1097→              <Label className="text-xs">Note (optional)</Label>
+  1098→              <Input
+  1099→                placeholder="What's this for?"
+  1100→                value={note}
+  1101→                onChange={(e) => setNote(e.target.value)}
+  1102→                className="h-9 text-sm mt-1"
+  1103→              />
+  1104→            </div>
+  1105→            <div className="p-2.5 rounded-lg bg-gray-50">
+  1106→              <p className="text-[10px] text-gray-500">
+  1107→                A payment link will be generated that you can share with anyone. They can pay using PayShap, card, or EFT.
+  1108→              </p>
+  1109→            </div>
+  1110→          </div>
+  1111→        ) : (
+  1112→          <div className="space-y-3">
+  1113→            <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-center">
+  1114→              <CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-2" />
+  1115→              <p className="font-medium text-gray-900 text-sm">Request Created</p>
+  1116→              <p className="text-lg font-bold text-[#00897B] mt-1">{formatCurrency(parseFloat(amount))}</p>
+  1117→              {note && <p className="text-xs text-gray-500 mt-0.5">"{note}"</p>}
+  1118→            </div>
+  1119→            <div>
+  1120→              <Label className="text-xs">Payment Link</Label>
+  1121→              <div className="flex gap-1.5 mt-1">
+  1122→                <Input
+  1123→                  value={requestLink}
+  1124→                  readOnly
+  1125→                  className="h-9 text-xs"
+  1126→                />
+  1127→                <Button size="sm" onClick={copyLink} className="shrink-0">
+  1128→                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+  1129→                </Button>
+  1130→              </div>
+  1131→            </div>
+  1132→            <div className="flex gap-2">
+  1133→              <Button variant="outline" size="sm" className="flex-1">
+  1134→                <Share2 className="w-3.5 h-3.5 mr-1.5" />
+  1135→                Share
+  1136→              </Button>
+  1137→              <Button variant="outline" size="sm" className="flex-1">
+  1138→                <QrCode className="w-3.5 h-3.5 mr-1.5" />
+  1139→                QR Code
+  1140→              </Button>
+  1141→            </div>
+  1142→          </div>
+  1143→        )}
+  1144→        
+  1145→        <DialogFooter>
+  1146→          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+  1147→          {!requestLink && (
+  1148→            <Button size="sm" onClick={generateRequest} disabled={loading} className="bg-[#00897B] hover:bg-[#00695C]">
+  1149→              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+  1150→              Generate Link
+  1151→            </Button>
+  1152→          )}
+  1153→        </DialogFooter>
+  1154→      </DialogContent>
+  1155→    </Dialog>
+  1156→  );
+  1157→}
+  1158→
+  1159→// Split Payment Modal
+  1160→function SplitModal({ onClose, walletData }: { onClose: () => void; walletData: WalletData | null }) {
+  1161→  const [totalAmount, setTotalAmount] = useState('');
+  1162→  const [description, setDescription] = useState('');
+  1163→  const [participants, setParticipants] = useState([
+  1164→    { name: '', phone: '', amount: '' }
+  1165→  ]);
+  1166→  const [splitType, setSplitType] = useState<'equal' | 'custom'>('equal');
+  1167→  const [loading, setLoading] = useState(false);
+  1168→
+  1169→  const addParticipant = () => {
+  1170→    setParticipants([...participants, { name: '', phone: '', amount: '' }]);
+  1171→  };
+  1172→
+  1173→  const removeParticipant = (index: number) => {
+  1174→    if (participants.length > 1) {
+  1175→      setParticipants(participants.filter((_, i) => i !== index));
+  1176→    }
+  1177→  };
+  1178→
+  1179→  const updateParticipant = (index: number, field: 'name' | 'phone' | 'amount', value: string) => {
+  1180→    const updated = [...participants];
+  1181→    updated[index][field] = value;
+  1182→    setParticipants(updated);
+  1183→  };
+  1184→
+  1185→  // Calculate split amounts for display (derived state, not stored)
+  1186→  const calculatedSplits = useMemo(() => {
+  1187→    if (splitType === 'equal') {
+  1188→      const total = parseFloat(totalAmount) || 0;
+  1189→      const split = participants.length > 0 ? total / participants.length : 0;
+  1190→      return participants.map(() => split.toFixed(2));
+  1191→    }
+  1192→    return participants.map(p => p.amount);
+  1193→  }, [splitType, totalAmount, participants]);
+  1194→
+  1195→  const handleSplit = async () => {
+  1196→    if (!totalAmount || parseFloat(totalAmount) <= 0) {
+  1197→      toast.error('Please enter a valid amount');
+  1198→      return;
+  1199→    }
+  1200→
+  1201→    const validParticipants = participants.filter(p => p.name && p.phone);
+  1202→    if (validParticipants.length === 0) {
+  1203→      toast.error('Please add at least one participant');
+  1204→      return;
+  1205→    }
+  1206→
+  1207→    setLoading(true);
+  1208→    // Simulate split request
+  1209→    setTimeout(() => {
+  1210→      toast.success(`Split request sent to ${validParticipants.length} participants`);
+  1211→      setLoading(false);
+  1212→      onClose();
+  1213→    }, 1500);
+  1214→  };
+  1215→
+  1216→  return (
+  1217→    <Dialog open={true} onOpenChange={onClose}>
+  1218→      <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+  1219→        <DialogHeader>
+  1220→          <DialogTitle>Split Payment</DialogTitle>
+  1221→          <DialogDescription>Split a bill with friends</DialogDescription>
+  1222→        </DialogHeader>
+  1223→        
+  1224→        <div className="space-y-3">
+  1225→          {/* Total Amount */}
+  1226→          <div>
+  1227→            <Label className="text-xs">Total Amount (R)</Label>
+  1228→            <Input
+  1229→              type="number"
+  1230→              placeholder="0.00"
+  1231→              value={totalAmount}
+  1232→              onChange={(e) => setTotalAmount(e.target.value)}
+  1233→              className="h-9 text-sm mt-1"
+  1234→            />
+  1235→          </div>
+  1236→
+  1237→          {/* Description */}
+  1238→          <div>
+  1239→            <Label className="text-xs">Description</Label>
+  1240→            <Input
+  1241→              placeholder="e.g., Dinner at Spur"
+  1242→              value={description}
+  1243→              onChange={(e) => setDescription(e.target.value)}
+  1244→              className="h-9 text-sm mt-1"
+  1245→            />
+  1246→          </div>
+  1247→
+  1248→          {/* Split Type */}
+  1249→          <div className="flex gap-2">
+  1250→            <Button
+  1251→              size="sm"
+  1252→              variant={splitType === 'equal' ? 'default' : 'outline'}
+  1253→              onClick={() => setSplitType('equal')}
+  1254→              className={`flex-1 text-xs ${splitType === 'equal' ? 'bg-[#00897B] hover:bg-[#00695C]' : ''}`}
+  1255→            >
+  1256→              Split Equally
+  1257→            </Button>
+  1258→            <Button
+  1259→              size="sm"
+  1260→              variant={splitType === 'custom' ? 'default' : 'outline'}
+  1261→              onClick={() => setSplitType('custom')}
+  1262→              className={`flex-1 text-xs ${splitType === 'custom' ? 'bg-[#00897B] hover:bg-[#00695C]' : ''}`}
+  1263→            >
+  1264→              Custom Amounts
+  1265→            </Button>
+  1266→          </div>
+  1267→
+  1268→          {/* Participants */}
+  1269→          <div>
+  1270→            <div className="flex items-center justify-between mb-1.5">
+  1271→              <Label className="text-xs">Participants</Label>
+  1272→              <span className="text-[10px] text-gray-500">
+  1273→                {splitType === 'equal' && totalAmount && `R${(parseFloat(totalAmount) / participants.length).toFixed(2)} each`}
+  1274→              </span>
+  1275→            </div>
+  1276→            <div className="space-y-2">
+  1277→              {participants.map((p, i) => (
+  1278→                <div key={i} className="p-2 rounded-lg border border-gray-200 space-y-1.5">
+  1279→                  <div className="flex gap-1.5">
+  1280→                    <Input
+  1281→                      placeholder="Name"
+  1282→                      value={p.name}
+  1283→                      onChange={(e) => updateParticipant(i, 'name', e.target.value)}
+  1284→                      className="h-8 text-xs flex-1"
+  1285→                    />
+  1286→                    <Input
+  1287→                      placeholder="Phone"
+  1288→                      value={p.phone}
+  1289→                      onChange={(e) => updateParticipant(i, 'phone', e.target.value)}
+  1290→                      className="h-8 text-xs flex-1"
+  1291→                    />
+  1292→                  </div>
+  1293→                  {splitType === 'equal' ? (
+  1294→                    <div className="px-2 py-1.5 bg-gray-50 rounded text-xs text-gray-600">
+  1295→                      Amount: R{calculatedSplits[i] || '0.00'}
+  1296→                    </div>
+  1297→                  ) : (
+  1298→                    <Input
+  1299→                      placeholder="Amount"
+  1300→                      value={p.amount}
+  1301→                      onChange={(e) => updateParticipant(i, 'amount', e.target.value)}
+  1302→                      className="h-8 text-xs"
+  1303→                    />
+  1304→                  )}
+  1305→                  {participants.length > 1 && (
+  1306→                    <Button
+  1307→                      variant="ghost"
+  1308→                      size="sm"
+  1309→                      onClick={() => removeParticipant(i)}
+  1310→                      className="w-full h-7 text-xs text-red-600"
+  1311→                    >
+  1312→                      Remove
+  1313→                    </Button>
+  1314→                  )}
+  1315→                </div>
+  1316→              ))}
+  1317→            </div>
+  1318→            <Button
+  1319→              variant="outline"
+  1320→              size="sm"
+  1321→              onClick={addParticipant}
+  1322→              className="w-full mt-2 text-xs"
+  1323→            >
+  1324→              <Plus className="w-3.5 h-3.5 mr-1.5" />
+  1325→              Add Participant
+  1326→            </Button>
+  1327→          </div>
+  1328→        </div>
+  1329→        
+  1330→        <DialogFooter>
+  1331→          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+  1332→          <Button size="sm" onClick={handleSplit} disabled={loading} className="bg-[#00897B] hover:bg-[#00695C]">
+  1333→            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+  1334→            Send Requests
+  1335→          </Button>
+  1336→        </DialogFooter>
+  1337→      </DialogContent>
+  1338→    </Dialog>
+  1339→  );
+  1340→}
+  1341→
+  1342→// ==================== SERVICES TAB ====================
+  1343→function ServicesTab() {
+  1344→  const [activeService, setActiveService] = useState<string | null>(null);
+  1345→
+  1346→  const financialServices = [
+  1347→    { icon: TrendingUp, label: 'Credit Market', desc: 'Personal & Business loans', color: '#E91E63', service: 'credit' },
+  1348→    { icon: Shield, label: 'Insurance', desc: 'Life, Funeral, Health', color: '#4CAF50', service: 'insurance' },
+  1349→    { icon: CreditCard, label: 'BNPL', desc: 'Buy Now, Pay Later', color: '#9C27B0', service: 'bnpl' },
+  1350→    { icon: ShoppingCart, label: 'Laybye', desc: 'Reserve & pay later', color: '#00BCD4', service: 'laybye' },
+  1351→    { icon: PiggyBank, label: 'Savings Goals', desc: 'Goal-based savings', color: '#2196F3', service: 'savings' },
+  1352→  ];
+  1353→
+  1354→  const paymentsServices = [
+  1355→    { icon: Building, label: 'Bill Payments', desc: '35+ providers', color: '#607D8B', service: 'bills' },
+  1356→    { icon: Globe, label: 'Int\'l Transfer', desc: '50+ countries', color: '#3F51B5', service: 'transfers' },
+  1357→    { icon: Phone, label: 'Airtime & Data', desc: 'All SA networks', color: '#E91E63', service: 'airtime' },
+  1358→    { icon: Zap, label: 'Electricity', desc: 'Prepaid tokens', color: '#FF9800', service: 'electricity' },
+  1359→    { icon: Droplets, label: 'Water', desc: 'Municipal water', color: '#2196F3', service: 'water' },
+  1360→  ];
+  1361→
+  1362→  const travelServices = [
+  1363→    { icon: Train, label: 'Gautrain', desc: 'Train tickets', color: '#009688', service: 'gautrain' },
+  1364→    { icon: Bus, label: 'Bus Tickets', desc: 'Intercape, Greyhound', color: '#795548', service: 'bus' },
+  1365→    { icon: Plane, label: 'Flights', desc: 'FlySafair, more', color: '#03A9F4', service: 'flights' },
+  1366→    { icon: Ticket, label: 'Events', desc: 'Concerts, shows', color: '#9C27B0', service: 'events' },
+  1367→  ];
+  1368→
+  1369→  const voucherServices = [
+  1370→    { icon: Gift, label: 'Gift Cards', desc: 'Shoprite, Netflix, more', color: '#E91E63', service: 'vouchers' },
+  1371→    { icon: Ticket, label: 'Vouchers', desc: '1Voucher, OTT, Blu', color: '#FF5722', service: 'vouchers' },
+  1372→  ];
+  1373→
+  1374→  return (
+  1375→    <div className="px-3 py-3">
+  1376→      {/* Header */}
+  1377→      <div className="mb-3">
+  1378→        <h1 className="text-lg font-bold text-gray-900">Services</h1>
+  1379→        <p className="text-xs text-gray-500">All your financial services</p>
+  1380→      </div>
+  1381→
+  1382→      {/* Envelope Pockets - Grant+ and Pay+ */}
+  1383→      <div className="grid grid-cols-2 gap-2 mb-4">
+  1384→        {/* Grant+ Envelope Pocket */}
+  1385→        <div 
+  1386→          className="relative overflow-hidden rounded-xl cursor-pointer group"
+  1387→          onClick={() => setActiveService('sassa')}
+  1388→        >
+  1389→          <div 
+  1390→            className="p-3 text-white"
+  1391→            style={{ background: 'linear-gradient(145deg, #00897B 0%, #43A047 100%)' }}
+  1392→          >
+  1393→            <div className="absolute top-0 left-0 right-0 h-6 overflow-hidden opacity-30">
+  1394→              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120%] h-8 bg-[#00695C] rounded-b-[50%]" />
+  1395→            </div>
+  1396→            <div className="relative z-10">
+  1397→              <div className="flex items-start justify-between mb-2">
+  1398→                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+  1399→                  <HandCoins className="w-4 h-4 text-white" />
+  1400→                </div>
+  1401→                <Badge className="bg-white/20 text-white text-[8px] px-1.5 py-0">NCA</Badge>
+  1402→              </div>
+  1403→              <p className="font-semibold text-white text-xs">Grant+</p>
+  1404→              <p className="text-white/80 text-[10px]">SASSA Advance</p>
+  1405→            </div>
+  1406→          </div>
+  1407→        </div>
+  1408→        
+  1409→        {/* Pay+ Envelope Pocket */}
+  1410→        <div 
+  1411→          className="relative overflow-hidden rounded-xl cursor-pointer group"
+  1412→          onClick={() => setActiveService('payplus')}
+  1413→        >
+  1414→          <div 
+  1415→            className="p-3 text-white"
+  1416→            style={{ background: 'linear-gradient(145deg, #FF9800 0%, #F57C00 100%)' }}
+  1417→          >
+  1418→            <div className="absolute top-0 left-0 right-0 h-6 overflow-hidden opacity-30">
+  1419→              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120%] h-8 bg-[#E65100] rounded-b-[50%]" />
+  1420→            </div>
+  1421→            <div className="relative z-10">
+  1422→              <div className="flex items-start justify-between mb-2">
+  1423→                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+  1424→                  <Zap className="w-4 h-4 text-white" />
+  1425→                </div>
+  1426→                <Badge className="bg-white/20 text-white text-[8px] px-1.5 py-0">Instant</Badge>
+  1427→              </div>
+  1428→              <p className="font-semibold text-white text-xs">Pay+</p>
+  1429→              <p className="text-white/80 text-[10px]">Early Wage Access</p>
+  1430→            </div>
+  1431→          </div>
+  1432→        </div>
+  1433→      </div>
+  1434→
+  1435→      {/* Financial Services */}
+  1436→      <div className="mb-4">
+  1437→        <h3 className="font-semibold text-gray-900 text-sm mb-2 flex items-center gap-1">
+  1438→          <TrendingUp className="w-4 h-4 text-[#00897B]" />
+  1439→          Financial Services
+  1440→        </h3>
+  1441→        <div className="grid grid-cols-2 gap-1.5">
+  1442→          {financialServices.map((service, idx) => (
+  1443→            <Card 
+  1444→              key={idx} 
+  1445→              className="cursor-pointer hover:shadow-md transition-shadow"
+  1446→              onClick={() => setActiveService(service.service)}
+  1447→            >
+  1448→              <CardContent className="py-2.5 px-2.5">
+  1449→                <div className="flex items-start gap-2">
+  1450→                  <div 
+  1451→                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+  1452→                    style={{ backgroundColor: `${service.color}15` }}
+  1453→                  >
+  1454→                    <service.icon className="w-4 h-4" style={{ color: service.color }} />
+  1455→                  </div>
+  1456→                  <div className="min-w-0">
+  1457→                    <p className="font-medium text-gray-900 text-xs">{service.label}</p>
+  1458→                    <p className="text-[10px] text-gray-500">{service.desc}</p>
+  1459→                  </div>
+  1460→                </div>
+  1461→              </CardContent>
+  1462→            </Card>
+  1463→          ))}
+  1464→        </div>
+  1465→      </div>
+  1466→
+  1467→      {/* Payments & Transfers */}
+  1468→      <div className="mb-4">
+  1469→        <h3 className="font-semibold text-gray-900 text-sm mb-2 flex items-center gap-1">
+  1470→          <CreditCard className="w-4 h-4 text-[#00897B]" />
+  1471→          Payments & Transfers
+  1472→        </h3>
+  1473→        <div className="grid grid-cols-2 gap-1.5">
+  1474→          {paymentsServices.map((service, idx) => (
+  1475→            <Card 
+  1476→              key={idx}
+  1477→              className="cursor-pointer hover:shadow-md transition-shadow"
+  1478→              onClick={() => setActiveService(service.service)}
+  1479→            >
+  1480→              <CardContent className="py-2.5 px-2.5">
+  1481→                <div className="flex items-start gap-2">
+  1482→                  <div 
+  1483→                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+  1484→                    style={{ backgroundColor: `${service.color}15` }}
+  1485→                  >
+  1486→                    <service.icon className="w-4 h-4" style={{ color: service.color }} />
+  1487→                  </div>
+  1488→                  <div className="min-w-0">
+  1489→                    <p className="font-medium text-gray-900 text-xs">{service.label}</p>
+  1490→                    <p className="text-[10px] text-gray-500">{service.desc}</p>
+  1491→                  </div>
+  1492→                </div>
+  1493→              </CardContent>
+  1494→            </Card>
+  1495→          ))}
+  1496→        </div>
+  1497→      </div>
+  1498→
+  1499→      {/* Transport & Travel */}
+  1500→      <div className="mb-4">
+  1501→        <h3 className="font-semibold text-gray-900 text-sm mb-2 flex items-center gap-1">
+  1502→          <Train className="w-4 h-4 text-[#00897B]" />
+  1503→          Transport & Travel
+  1504→        </h3>
+  1505→        <div className="grid grid-cols-2 gap-1.5">
+  1506→          {travelServices.map((service, idx) => (
+  1507→            <Card 
+  1508→              key={idx}
+  1509→              className="cursor-pointer hover:shadow-md transition-shadow"
+  1510→              onClick={() => setActiveService(service.service)}
+  1511→            >
+  1512→              <CardContent className="py-2.5 px-2.5">
+  1513→                <div className="flex items-start gap-2">
+  1514→                  <div 
+  1515→                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+  1516→                    style={{ backgroundColor: `${service.color}15` }}
+  1517→                  >
+  1518→                    <service.icon className="w-4 h-4" style={{ color: service.color }} />
+  1519→                  </div>
+  1520→                  <div className="min-w-0">
+  1521→                    <p className="font-medium text-gray-900 text-xs">{service.label}</p>
+  1522→                    <p className="text-[10px] text-gray-500">{service.desc}</p>
+  1523→                  </div>
+  1524→                </div>
+  1525→              </CardContent>
+  1526→            </Card>
+  1527→          ))}
+  1528→        </div>
+  1529→      </div>
+  1530→
+  1531→      {/* Vouchers & Gift Cards */}
+  1532→      <div className="mb-4">
+  1533→        <h3 className="font-semibold text-gray-900 text-sm mb-2 flex items-center gap-1">
+  1534→          <Gift className="w-4 h-4 text-[#00897B]" />
+  1535→          Vouchers & Gift Cards
+  1536→        </h3>
+  1537→        <div className="grid grid-cols-2 gap-1.5">
+  1538→          {voucherServices.map((service, idx) => (
+  1539→            <Card 
+  1540→              key={idx}
+  1541→              className="cursor-pointer hover:shadow-md transition-shadow"
+  1542→              onClick={() => setActiveService(service.service)}
+  1543→            >
+  1544→              <CardContent className="py-2.5 px-2.5">
+  1545→                <div className="flex items-start gap-2">
+  1546→                  <div 
+  1547→                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+  1548→                    style={{ backgroundColor: `${service.color}15` }}
+  1549→                  >
+  1550→                    <service.icon className="w-4 h-4" style={{ color: service.color }} />
+  1551→                  </div>
+  1552→                  <div className="min-w-0">
+  1553→                    <p className="font-medium text-gray-900 text-xs">{service.label}</p>
+  1554→                    <p className="text-[10px] text-gray-500">{service.desc}</p>
+  1555→                  </div>
+  1556→                </div>
+  1557→              </CardContent>
+  1558→            </Card>
+  1559→          ))}
+  1560→        </div>
+  1561→      </div>
+  1562→
+  1563→      {/* Service Modals */}
+  1564→      {activeService === 'bills' && <BillsModal onClose={() => setActiveService(null)} />}
+  1565→      {activeService === 'airtime' && <AirtimeModal onClose={() => setActiveService(null)} />}
+  1566→      {activeService === 'electricity' && <ElectricityModal onClose={() => setActiveService(null)} />}
+  1567→      {activeService === 'water' && <WaterModal onClose={() => setActiveService(null)} />}
+  1568→      {activeService === 'transfers' && <TransfersModal onClose={() => setActiveService(null)} />}
+  1569→      {activeService === 'sassa' && <GrantPlusModal onClose={() => setActiveService(null)} />}
+  1570→      {activeService === 'insurance' && <InsuranceModal onClose={() => setActiveService(null)} />}
+  1571→      {activeService === 'credit' && <CreditModal onClose={() => setActiveService(null)} />}
+  1572→      {activeService === 'bnpl' && <BNPLModal onClose={() => setActiveService(null)} />}
+  1573→      {activeService === 'payplus' && <PayPlusModal onClose={() => setActiveService(null)} />}
+  1574→      {activeService === 'laybye' && <LaybyeModal onClose={() => setActiveService(null)} />}
+  1575→      {activeService === 'savings' && <SavingsModal onClose={() => setActiveService(null)} />}
+  1576→      {activeService === 'gautrain' && <GautrainModal onClose={() => setActiveService(null)} />}
+  1577→      {activeService === 'bus' && <BusModal onClose={() => setActiveService(null)} />}
+  1578→      {activeService === 'flights' && <FlightsModal onClose={() => setActiveService(null)} />}
+  1579→      {activeService === 'events' && <EventsModal onClose={() => setActiveService(null)} />}
+  1580→      {activeService === 'vouchers' && <VouchersModal onClose={() => setActiveService(null)} />}
+  1581→    </div>
+  1582→  );
+  1583→}
+  1584→
+  1585→// ==================== OFFERS TAB ====================
+  1586→function OffersTab({ loyaltyData }: { loyaltyData: LoyaltyData | null }) {
+  1587→  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+  1588→  const [offers, setOffers] = useState<Offer[]>([]);
+  1589→  const [clippingOffer, setClippingOffer] = useState<string | null>(null);
+  1590→
+  1591→  useEffect(() => {
+  1592→    if (loyaltyData?.offers) {
+  1593→      setOffers(loyaltyData.offers);
+  1594→    }
+  1595→  }, [loyaltyData]);
+  1596→
+  1597→  if (!loyaltyData) {
+  1598→    return (
+  1599→      <div className="flex items-center justify-center h-64">
+  1600→        <Loader2 className="w-8 h-8 animate-spin text-[#00897B]" />
+  1601→      </div>
+  1602→    );
+  1603→  }
+  1604→
+  1605→  const formatTimeLeft = (seconds: number) => {
+  1606→    const hours = Math.floor(seconds / 3600);
+  1607→    const mins = Math.floor((seconds % 3600) / 60);
+  1608→    return `${hours}h ${mins}m`;
+  1609→  };
+  1610→
+  1611→  const handleClipOffer = async (offerId: string) => {
+  1612→    setClippingOffer(offerId);
+  1613→    try {
+  1614→      await new Promise(resolve => setTimeout(resolve, 500));
+  1615→      setOffers(prev => prev.map(o => o.id === offerId ? {...o, clipped: true} : o));
+  1616→      toast.success('Offer clipped! Use it at checkout.');
+  1617→    } catch (error) {
+  1618→      toast.error('Failed to clip offer');
+  1619→    } finally {
+  1620→      setClippingOffer(null);
+  1621→    }
+  1622→  };
+  1623→
+  1624→  const handleUseFlashSale = (sale: FlashSale) => {
+  1625→    toast.success(`"${sale.title}" activated! Discount applied at ${sale.merchant}`);
+  1626→  };
+  1627→
+  1628→  return (
+  1629→    <div className="px-3 py-3">
+  1630→      {/* Header */}
+  1631→      <div className="mb-3">
+  1632→        <h1 className="text-lg font-bold text-gray-900">Offers</h1>
+  1633→        <p className="text-xs text-gray-500">Personalised just for you</p>
+  1634→      </div>
+  1635→
+  1636→      {/* Loyalty Status */}
+  1637→      <Card className="mb-3">
+  1638→        <CardContent className="py-2.5">
+  1639→          <div className="flex items-center gap-2 mb-2">
+  1640→            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
+  1641→              <Award className="w-5 h-5 text-white" />
+  1642→            </div>
+  1643→            <div className="flex-1">
+  1644→              <p className="font-semibold text-gray-900 text-sm">{loyaltyData.loyalty.tierName} Member</p>
+  1645→              <p className="text-xs text-gray-600">{loyaltyData.loyalty.points.toLocaleString()} points • {loyaltyData.loyalty.pointsToNextTier} to {loyaltyData.loyalty.nextTier}</p>
+  1646→            </div>
+  1647→          </div>
+  1648→          <div className="bg-gray-200 rounded-full h-1.5">
+  1649→            <div 
+  1650→              className="bg-gradient-to-r from-gray-400 to-gray-500 h-1.5 rounded-full" 
+  1651→              style={{ width: `${((loyaltyData.loyalty.points % 3000) / 3000) * 100}%` }}
+  1652→            ></div>
+  1653→          </div>
+  1654→        </CardContent>
+  1655→      </Card>
+  1656→
+  1657→      {/* Flash Sales */}
+  1658→      <div className="mb-4">
+  1659→        <h3 className="font-semibold text-gray-900 text-sm mb-2 flex items-center gap-1">
+  1660→          <Zap className="w-4 h-4 text-amber-500" />
+  1661→          Flash Sales
+  1662→        </h3>
+  1663→        <div className="space-y-1.5">
+  1664→          {loyaltyData.flashSales.map((sale, idx) => (
+  1665→            <Card key={idx} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleUseFlashSale(sale)}>
+  1666→              <CardContent className="py-2 px-2.5">
+  1667→                <div className="flex items-center gap-2">
+  1668→                  <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-base">
+  1669→                    🛒
+  1670→                  </div>
+  1671→                  <div className="flex-1">
+  1672→                    <p className="font-medium text-gray-900 text-xs">{sale.title}</p>
+  1673→                    <p className="text-sm font-bold text-[#00897B]">{sale.discount}</p>
+  1674→                  </div>
+  1675→                  <div className="text-right">
+  1676→                    <p className="text-[10px] text-gray-500">Ends in</p>
+  1677→                    <p className="text-xs font-medium text-amber-600">{formatTimeLeft(sale.timeLeft)}</p>
+  1678→                  </div>
+  1679→                </div>
+  1680→              </CardContent>
+  1681→            </Card>
+  1682→          ))}
+  1683→        </div>
+  1684→      </div>
+  1685→
+  1686→      {/* Personalized Offers */}
+  1687→      <div className="mb-4">
+  1688→        <h3 className="font-semibold text-gray-900 text-sm mb-2">For You</h3>
+  1689→        <div className="flex gap-2 overflow-x-auto pb-2">
+  1690→          {offers.slice(0, 4).map((offer, idx) => (
+  1691→            <Card 
+  1692→              key={idx} 
+  1693→              className={`min-w-[110px] cursor-pointer transition-all ${offer.clipped ? 'bg-[#00897B]/5 border-[#00897B]/30' : 'hover:shadow-md'}`}
+  1694→              onClick={() => !offer.clipped && handleClipOffer(offer.id)}
+  1695→            >
+  1696→              <CardContent className="py-2.5 flex flex-col items-center text-center">
+  1697→                <div 
+  1698→                  className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${offer.clipped ? 'bg-[#00897B]' : ''}`}
+  1699→                  style={{ backgroundColor: offer.clipped ? undefined : `${colors.green}20` }}
+  1700→                >
+  1701→                  {offer.clipped ? (
+  1702→                    <Check className="w-3.5 h-3.5 text-white" />
+  1703→                  ) : (
+  1704→                    <Percent className="w-3.5 h-3.5" style={{ color: colors.green }} />
+  1705→                  )}
+  1706→                </div>
+  1707→                <p className="font-medium text-gray-900 text-xs">{offer.title}</p>
+  1708→                <p className="text-[10px] text-gray-500 mt-0.5">{offer.clipped ? 'Clipped!' : 'Tap to clip'}</p>
+  1709→              </CardContent>
+  1710→            </Card>
+  1711→          ))}
+  1712→        </div>
+  1713→      </div>
+  1714→
+  1715→      {/* Clipped Offers */}
+  1716→      <div>
+  1717→        <h3 className="font-semibold text-gray-900 text-sm mb-2">Clipped Offers ({offers.filter(o => o.clipped).length})</h3>
+  1718→        <div className="space-y-1.5">
+  1719→          {offers.filter(o => o.clipped).map((offer, idx) => (
+  1720→            <Card key={idx} className="bg-[#00897B]/5 border-[#00897B]/20">
+  1721→              <CardContent className="py-2 px-2.5">
+  1722→                <div className="flex items-center gap-2">
+  1723→                  <div className="w-7 h-7 rounded-full bg-[#00897B] flex items-center justify-center">
+  1724→                    <Check className="w-3.5 h-3.5 text-white" />
+  1725→                  </div>
+  1726→                  <div className="flex-1">
+  1727→                    <p className="font-medium text-gray-900 text-xs">{offer.merchant}</p>
+  1728→                    <p className="text-[10px] text-gray-500">{offer.description}</p>
+  1729→                  </div>
+  1730→                  <Badge className="bg-[#00897B] text-white text-[10px]">{offer.discount}% off</Badge>
+  1731→                </div>
+  1732→              </CardContent>
+  1733→            </Card>
+  1734→          ))}
+  1735→          {offers.filter(o => o.clipped).length === 0 && (
+  1736→            <Card>
+  1737→              <CardContent className="py-6 text-center">
+  1738→                <Ticket className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+  1739→                <p className="text-xs text-gray-500">No clipped offers yet</p>
+  1740→                <p className="text-[10px] text-gray-400 mt-1">Tap offers above to clip them</p>
+  1741→              </CardContent>
+  1742→            </Card>
+  1743→          )}
+  1744→        </div>
+  1745→      </div>
+  1746→    </div>
+  1747→  );
+  1748→}
+  1749→
+  1750→// ==================== PROFILE TAB ====================
+  1751→function ProfileTab() {
+  1752→  const [activeModal, setActiveModal] = useState<string | null>(null);
+  1753→
+  1754→  const menuItems = [
+  1755→    { 
+  1756→      section: 'Account',
+  1757→      items: [
+  1758→        { icon: User, label: 'Personal Details', desc: 'Name, email, phone', action: 'personal' },
+  1759→        { icon: FileText, label: 'KYC/FICA Documents', desc: 'ID, proof of address', action: 'kyc' },
+  1760→        { icon: Building, label: 'Linked Accounts', desc: 'Banks, cards', action: 'accounts' },
+  1761→      ]
+  1762→    },
+  1763→    { 
+  1764→      section: 'Security',
+  1765→      items: [
+  1766→        { icon: Lock, label: 'Change PIN', desc: 'Update your PIN', action: 'pin' },
+  1767→        { icon: Smartphone, label: 'Biometric Settings', desc: 'Face ID, fingerprint', action: 'biometric' },
+  1768→        { icon: Shield, label: 'Login Activity', desc: 'Recent logins', action: 'logins' },
+  1769→      ]
+  1770→    },
+  1771→    { 
+  1772→      section: 'Support',
+  1773→      items: [
+  1774→        { icon: HelpCircle, label: 'Help Centre', desc: 'FAQs and guides', action: 'help' },
+  1775→        { icon: MessageCircle, label: 'Chat Support', desc: 'Talk to an agent', action: 'chat' },
+  1776→        { icon: Bell, label: 'Notifications', desc: 'Alerts and updates', action: 'notifications' },
+  1777→      ]
+  1778→    },
+  1779→  ];
+  1780→
+  1781→  return (
+  1782→    <div className="px-3 py-3">
+  1783→      {/* User Header */}
+  1784→      <div className="flex items-center gap-3 mb-4">
+  1785→        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00897B] to-[#43A047] flex items-center justify-center text-white font-bold text-lg">
+  1786→          TM
+  1787→        </div>
+  1788→        <div>
+  1789→          <p className="font-semibold text-gray-900 text-sm">Thabo Molefe</p>
+  1790→          <p className="text-xs text-gray-500">+27 82 123 4567</p>
+  1791→          <p className="text-xs text-gray-500">thabo.molefe@example.com</p>
+  1792→        </div>
+  1793→      </div>
+  1794→
+  1795→      {/* Menu Sections */}
+  1796→      {menuItems.map((section, idx) => (
+  1797→        <div key={idx} className="mb-3">
+  1798→          <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{section.section}</h3>
+  1799→          <Card>
+  1800→            <CardContent className="py-0">
+  1801→              {section.items.map((item, itemIdx) => (
+  1802→                <button 
+  1803→                  key={itemIdx} 
+  1804→                  onClick={() => setActiveModal(item.action)}
+  1805→                  className={`flex items-center gap-2 w-full py-2.5 ${itemIdx < section.items.length - 1 ? 'border-b border-gray-100' : ''}`}
+  1806→                >
+  1807→                  <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center">
+  1808→                    <item.icon className="w-3.5 h-3.5 text-gray-600" />
+  1809→                  </div>
+  1810→                  <div className="flex-1 text-left">
+  1811→                    <p className="font-medium text-gray-900 text-xs">{item.label}</p>
+  1812→                    <p className="text-[10px] text-gray-500">{item.desc}</p>
+  1813→                  </div>
+  1814→                  <ChevronRight className="w-4 h-4 text-gray-400" />
+  1815→                </button>
+  1816→              ))}
+  1817→            </CardContent>
+  1818→          </Card>
+  1819→        </div>
+  1820→      ))}
+  1821→
+  1822→      {/* Logout Button */}
+  1823→      <Button variant="outline" className="w-full text-red-600 border-red-200 hover:bg-red-50 text-xs">
+  1824→        <LogOut className="w-3.5 h-3.5 mr-2" />
+  1825→        Sign Out
+  1826→      </Button>
+  1827→
+  1828→      {/* App Version */}
+  1829→      <p className="text-center text-[10px] text-gray-400 mt-3">Version 2.1.0</p>
+  1830→
+  1831→      {/* Modals */}
+  1832→      {activeModal === 'personal' && <PersonalDetailsModal onClose={() => setActiveModal(null)} />}
+  1833→      {activeModal === 'kyc' && <KYCModal onClose={() => setActiveModal(null)} />}
+  1834→      {activeModal === 'accounts' && <LinkedAccountsModal onClose={() => setActiveModal(null)} />}
+  1835→      {activeModal === 'pin' && <ChangePINModal onClose={() => setActiveModal(null)} />}
+  1836→      {activeModal === 'biometric' && <BiometricModal onClose={() => setActiveModal(null)} />}
+  1837→      {activeModal === 'logins' && <LoginActivityModal onClose={() => setActiveModal(null)} />}
+  1838→      {activeModal === 'help' && <HelpCentreModal onClose={() => setActiveModal(null)} />}
+  1839→      {activeModal === 'chat' && <ChatSupportModal onClose={() => setActiveModal(null)} />}
+  1840→      {activeModal === 'notifications' && <NotificationsModal onClose={() => setActiveModal(null)} />}
+  1841→    </div>
+  1842→  );
+  1843→}
+  1844→
+  1845→// ==================== MODALS ====================
+  1846→
+  1847→// Send Money Modal Types
+  1848→type SendMethod = 'payshap' | 'momo' | 'wallet';
+  1849→type SendStep = 'method' | 'details' | 'confirm' | 'success';
+  1850→
+  1851→// Comprehensive Send Money Modal with PayShap and MTN MoMo
+  1852→function SendModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  1853→  const [step, setStep] = useState<SendStep>('method');
+  1854→  const [method, setMethod] = useState<SendMethod>('payshap');
+  1855→  const [recipientName, setRecipientName] = useState('');
+  1856→  const [recipientPhone, setRecipientPhone] = useState('');
+  1857→  const [recipientBank, setRecipientBank] = useState('');
+  1858→  const [amount, setAmount] = useState('');
+  1859→  const [note, setNote] = useState('');
+  1860→  const [pin, setPin] = useState('');
+  1861→  const [loading, setLoading] = useState(false);
+  1862→  const [banks, setBanks] = useState<any[]>([]);
+  1863→  const [recentRecipients, setRecentRecipients] = useState<any[]>([]);
+  1864→  const [estimate, setEstimate] = useState<any>(null);
+  1865→  const [transactionResult, setTransactionResult] = useState<any>(null);
+  1866→
+  1867→  // Fetch banks and recent recipients on mount
+  1868→  useEffect(() => {
+  1869→    const fetchData = async () => {
+  1870→      try {
+  1871→        const [banksRes, recipientsRes] = await Promise.all([
+  1872→          fetch('/api/send-money?action=banks'),
+  1873→          fetch('/api/send-money?action=recipients'),
+  1874→        ]);
+  1875→        
+  1876→        const banksData = await banksRes.json();
+  1877→        const recipientsData = await recipientsRes.json();
+  1878→        
+  1879→        if (banksData.success) setBanks(banksData.data);
+  1880→        if (recipientsData.success) setRecentRecipients(recipientsData.data);
+  1881→      } catch (error) {
+  1882→        console.error('Failed to fetch send money data:', error);
+  1883→      }
+  1884→    };
+  1885→    
+  1886→    fetchData();
+  1887→  }, []);
+  1888→
+  1889→  // Calculate estimate when amount or method changes
+  1890→  useEffect(() => {
+  1891→    const calculateEstimate = async () => {
+  1892→      if (!amount || parseFloat(amount) <= 0) {
+  1893→        setEstimate(null);
+  1894→        return;
+  1895→      }
+  1896→      
+  1897→      try {
+  1898→        const res = await fetch(`/api/send-money?action=estimate&method=${method}&amount=${amount}`);
+  1899→        const data = await res.json();
+  1900→        if (data.success) setEstimate(data.data);
+  1901→      } catch (error) {
+  1902→        console.error('Failed to calculate estimate:', error);
+  1903→      }
+  1904→    };
+  1905→    
+  1906→    calculateEstimate();
+  1907→  }, [amount, method]);
+  1908→
+  1909→  // Get method config
+  1910→  const getMethodConfig = () => {
+  1911→    switch (method) {
+  1912→      case 'payshap':
+  1913→        return {
+  1914→          name: 'PayShap',
+  1915→          description: 'Instant bank transfer',
+  1916→          icon: Zap,
+  1917→          color: '#00897B',
+  1918→          maxAmount: 3000,
+  1919→          fee: 0,
+  1920→        };
+  1921→      case 'momo':
+  1922→        return {
+  1923→          name: 'MTN MoMo',
+  1924→          description: 'Mobile Money transfer',
+  1925→          icon: Smartphone,
+  1926→          color: '#FFCC00',
+  1927→          maxAmount: 5000,
+  1928→          fee: estimate?.fee || 0,
+  1929→        };
+  1930→      case 'wallet':
+  1931→        return {
+  1932→          name: 'Wallet Transfer',
+  1933→          description: 'Instant wallet-to-wallet',
+  1934→          icon: Wallet,
+  1935→          color: '#9C27B0',
+  1936→          maxAmount: 50000,
+  1937→          fee: 0,
+  1938→        };
+  1939→    }
+  1940→  };
+  1941→
+  1942→  const handleContinue = () => {
+  1943→    if (step === 'method') {
+  1944→      if (!method) {
+  1945→        toast.error('Please select a transfer method');
+  1946→        return;
+  1947→      }
+  1948→      setStep('details');
+  1949→    } else if (step === 'details') {
+  1950→      if (!recipientName || !amount) {
+  1951→        toast.error('Please fill in recipient name and amount');
+  1952→        return;
+  1953→      }
+  1954→      if ((method === 'payshap' || method === 'momo' || method === 'wallet') && !recipientPhone) {
+  1955→        toast.error('Phone number is required');
+  1956→        return;
+  1957→      }
+  1958→      if (parseFloat(amount) <= 0) {
+  1959→        toast.error('Please enter a valid amount');
+  1960→        return;
+  1961→      }
+  1962→      if (estimate && !estimate.withinLimits) {
+  1963→        toast.error(`Amount must be between R${estimate.limits.min} and R${estimate.limits.max}`);
+  1964→        return;
+  1965→      }
+  1966→      setStep('confirm');
+  1967→    }
+  1968→  };
+  1969→
+  1970→  const handleSend = async () => {
+  1971→    setLoading(true);
+  1972→    try {
+  1973→      const res = await fetch('/api/send-money', {
+  1974→        method: 'POST',
+  1975→        headers: { 'Content-Type': 'application/json' },
+  1976→        body: JSON.stringify({
+  1977→          method,
+  1978→          amount: parseFloat(amount),
+  1979→          recipientName,
+  1980→          recipientPhone,
+  1981→          recipientBank,
+  1982→          note,
+  1983→          pin,
+  1984→        }),
+  1985→      });
+  1986→      
+  1987→      const data = await res.json();
+  1988→      if (data.success) {
+  1989→        setTransactionResult(data.data);
+  1990→        setStep('success');
+  1991→        onSuccess();
+  1992→      } else {
+  1993→        toast.error(data.error || 'Failed to send money');
+  1994→      }
+  1995→    } catch (error) {
+  1996→      toast.error('Failed to send money');
+  1997→    } finally {
+  1998→      setLoading(false);
+  1999→    }
+  2000→  };
+
+[showing lines 1-2000 of 13193; use offset=2001 with limit to continue reading]

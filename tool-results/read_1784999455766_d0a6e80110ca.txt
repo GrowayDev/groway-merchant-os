@@ -1,0 +1,2002 @@
+  3148→model JournalEntryLine {
+  3149→  id              String       @id
+  3150→  entryId         String
+  3151→  accountCode     String
+  3152→  accountName     String
+  3153→  debit           Float        @default(0)
+  3154→  credit          Float        @default(0)
+  3155→  lineDescription String?
+  3156→  branchId        String?
+  3157→  departmentId    String?
+  3158→  createdAt       DateTime     @default(now())
+  3159→  JournalEntry    JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  3160→}
+  3161→
+  3162→model KPIScorecard {
+  3163→  id                String   @id
+  3164→  merchantId        String
+  3165→  name              String
+  3166→  category          String
+  3167→  metric            String
+  3168→  calculationType   String   @default("sum")
+  3169→  dataSource        String   @default("transactions")
+  3170→  targetType        String   @default("absolute")
+  3171→  targetValue       Float?
+  3172→  comparisonPeriod  String?
+  3173→  unit              String?
+  3174→  decimals          Int      @default(2)
+  3175→  prefix            String?
+  3176→  suffix            String?
+  3177→  warningThreshold  Float?
+  3178→  criticalThreshold Float?
+  3179→  showTrend         Boolean  @default(true)
+  3180→  trendPeriod       String   @default("previous_period")
+  3181→  dashboardId       String?
+  3182→  widgetOrder       Int      @default(0)
+  3183→  isActive          Boolean  @default(true)
+  3184→  createdAt         DateTime @default(now())
+  3185→  updatedAt         DateTime
+  3186→
+  3187→  @@unique([merchantId, name])
+  3188→  @@index([merchantId, category])
+  3189→}
+  3190→
+  3191→model KitchenOrder {
+  3192→  id                  String                @id
+  3193→  orderNumber         String
+  3194→  type                String                @default("dine-in")
+  3195→  priority            String                @default("normal")
+  3196→  tableNumber         String?
+  3197→  customerName        String?
+  3198→  status              String                @default("new")
+  3199→  estimatedTime       Int                   @default(15)
+  3200→  notes               String?
+  3201→  waiterName          String?
+  3202→  createdAt           DateTime              @default(now())
+  3203→  updatedAt           DateTime
+  3204→  KitchenOrderItem    KitchenOrderItem[]
+  3205→  KitchenOrderStation KitchenOrderStation[]
+  3206→}
+  3207→
+  3208→model KitchenOrderItem {
+  3209→  id              String       @id
+  3210→  name            String
+  3211→  quantity        Int          @default(1)
+  3212→  notes           String?
+  3213→  modifiers       String?
+  3214→  status          String       @default("pending")
+  3215→  station         String       @default("grill")
+  3216→  preparationTime Int          @default(15)
+  3217→  startedAt       DateTime?
+  3218→  completedAt     DateTime?
+  3219→  dietary         String?
+  3220→  allergens       String?
+  3221→  spicyLevel      Int?
+  3222→  orderId         String
+  3223→  createdAt       DateTime     @default(now())
+  3224→  updatedAt       DateTime
+  3225→  KitchenOrder    KitchenOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  3226→}
+  3227→
+  3228→model KitchenOrderStation {
+  3229→  id           String       @id
+  3230→  station      String
+  3231→  orderId      String
+  3232→  createdAt    DateTime     @default(now())
+  3233→  KitchenOrder KitchenOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  3234→}
+  3235→
+  3236→model KitchenStation {
+  3237→  id        String   @id
+  3238→  name      String
+  3239→  icon      String   @default("Flame")
+  3240→  color     String   @default("#EF4444")
+  3241→  active    Boolean  @default(true)
+  3242→  createdAt DateTime @default(now())
+  3243→  updatedAt DateTime
+  3244→}
+  3245→
+  3246→model LiquorAudit {
+  3247→  id               String        @id
+  3248→  licenseId        String
+  3249→  auditType        String
+  3250→  auditDate        String
+  3251→  auditorName      String?
+  3252→  auditorOrg       String?
+  3253→  result           String
+  3254→  findings         String?
+  3255→  recommendations  String?
+  3256→  followUpRequired Boolean       @default(false)
+  3257→  followUpDate     String?
+  3258→  resolved         Boolean       @default(false)
+  3259→  resolvedDate     String?
+  3260→  notes            String?
+  3261→  createdAt        DateTime      @default(now())
+  3262→  updatedAt        DateTime
+  3263→  LiquorLicense    LiquorLicense @relation(fields: [licenseId], references: [id])
+  3264→}
+  3265→
+  3266→model LiquorLicense {
+  3267→  id                    String                  @id
+  3268→  licenseNumber         String                  @unique
+  3269→  licenseType           String
+  3270→  licenseHolder         String
+  3271→  tradingName           String?
+  3272→  registrationNumber    String?
+  3273→  issuedBy              String
+  3274→  issueDate             String
+  3275→  expiryDate            String
+  3276→  status                String                  @default("active")
+  3277→  premisesAddress       String?
+  3278→  premisesType          String?
+  3279→  conditions            String?
+  3280→  authorizedHours       String?
+  3281→  maxCapacity           Int?
+  3282→  managerName           String?
+  3283→  managerId             String?
+  3284→  contactPhone          String?
+  3285→  contactEmail          String?
+  3286→  renewalReminderSent   Boolean                 @default(false)
+  3287→  suspensionReason      String?
+  3288→  suspensionDate        DateTime?
+  3289→  revocationReason      String?
+  3290→  revocationDate        DateTime?
+  3291→  createdAt             DateTime                @default(now())
+  3292→  updatedAt             DateTime
+  3293→  LiquorAudit           LiquorAudit[]
+  3294→  LiquorLicenseDocument LiquorLicenseDocument[]
+  3295→}
+  3296→
+  3297→model LiquorLicenseDocument {
+  3298→  id            String        @id
+  3299→  licenseId     String
+  3300→  documentType  String
+  3301→  documentName  String
+  3302→  documentUrl   String
+  3303→  uploadDate    String
+  3304→  expiryDate    String?
+  3305→  notes         String?
+  3306→  createdAt     DateTime      @default(now())
+  3307→  updatedAt     DateTime
+  3308→  LiquorLicense LiquorLicense @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  3309→}
+  3310→
+  3311→model LoyaltyAccount {
+  3312→  id                 String               @id
+  3313→  merchantId         String
+  3314→  customerId         String               @unique
+  3315→  pointsBalance      Int                  @default(0)
+  3316→  pointsEarned       Int                  @default(0)
+  3317→  pointsRedeemed     Int                  @default(0)
+  3318→  pointsExpired      Int                  @default(0)
+  3319→  tier               String               @default("bronze")
+  3320→  tierAchievedAt     DateTime?
+  3321→  isActive           Boolean              @default(true)
+  3322→  createdAt          DateTime             @default(now())
+  3323→  updatedAt          DateTime
+  3324→  MerchantCustomer   MerchantCustomer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  3325→  Merchant           Merchant             @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  3326→  LoyaltyTransaction LoyaltyTransaction[]
+  3327→
+  3328→  @@unique([merchantId, customerId])
+  3329→}
+  3330→
+  3331→model LoyaltyTransaction {
+  3332→  id               String         @id
+  3333→  loyaltyAccountId String
+  3334→  type             String
+  3335→  points           Int
+  3336→  balance          Int
+  3337→  referenceType    String?
+  3338→  referenceId      String?
+  3339→  description      String?
+  3340→  monetaryValue    Float?
+  3341→  createdAt        DateTime       @default(now())
+  3342→  LoyaltyAccount   LoyaltyAccount @relation(fields: [loyaltyAccountId], references: [id], onDelete: Cascade)
+  3343→}
+  3344→
+  3345→model MarketingCampaign {
+  3346→  id             String    @id
+  3347→  merchantId     String
+  3348→  name           String
+  3349→  type           String
+  3350→  targetSegment  String?
+  3351→  status         String    @default("draft")
+  3352→  content        String?
+  3353→  subject        String?
+  3354→  channels       String?
+  3355→  scheduledAt    DateTime?
+  3356→  sentAt         DateTime?
+  3357→  targetCount    Int       @default(0)
+  3358→  sentCount      Int       @default(0)
+  3359→  deliveredCount Int       @default(0)
+  3360→  openedCount    Int       @default(0)
+  3361→  clickedCount   Int       @default(0)
+  3362→  convertedCount Int       @default(0)
+  3363→  revenue        Float     @default(0)
+  3364→  cost           Float     @default(0)
+  3365→  createdAt      DateTime  @default(now())
+  3366→  updatedAt      DateTime
+  3367→
+  3368→  @@index([merchantId, createdAt])
+  3369→  @@index([merchantId, status])
+  3370→}
+  3371→
+  3372→model MembershipPlan {
+  3373→  id                 String               @id
+  3374→  name               String
+  3375→  monthlyFee         Float
+  3376→  includedServices   String?
+  3377→  rollover           Boolean              @default(false)
+  3378→  active             Boolean              @default(true)
+  3379→  createdAt          DateTime             @default(now())
+  3380→  updatedAt          DateTime
+  3381→  CustomerMembership CustomerMembership[]
+  3382→}
+  3383→
+  3384→model Merchant {
+  3385→  id                 String             @id
+  3386→  code               String             @unique
+  3387→  name               String
+  3388→  tradingName        String?
+  3389→  registrationNumber String?
+  3390→  vatNumber          String?
+  3391→  vertical           String
+  3392→  subVertical        String?
+  3393→  logo               String?
+  3394→  coverImage         String?
+  3395→  description        String?
+  3396→  phone              String?
+  3397→  email              String?
+  3398→  website            String?
+  3399→  addressLine1       String?
+  3400→  addressLine2       String?
+  3401→  city               String?
+  3402→  province           String?
+  3403→  postalCode         String?
+  3404→  country            String             @default("South Africa")
+  3405→  currency           String             @default("ZAR")
+  3406→  timezone           String             @default("Africa/Johannesburg")
+  3407→  language           String             @default("en")
+  3408→  vatRate            Float              @default(15.0)
+  3409→  vatRegistered      Boolean            @default(false)
+  3410→  posEnabled         Boolean            @default(true)
+  3411→  onlineStoreEnabled Boolean            @default(false)
+  3412→  bookingEnabled     Boolean            @default(false)
+  3413→  deliveryEnabled    Boolean            @default(false)
+  3414→  loyaltyEnabled     Boolean            @default(true)
+  3415→  plan               String             @default("starter")
+  3416→  planStatus         String             @default("trial")
+  3417→  trialEndsAt        DateTime?
+  3418→  subscriptionEndsAt DateTime?
+  3419→  status             String             @default("pending")
+  3420→  onboardingComplete Boolean            @default(false)
+  3421→  onboardingStep     String?
+  3422→  kycStatus          String             @default("pending")
+  3423→  kycSubmittedAt     DateTime?
+  3424→  kycVerifiedAt      DateTime?
+  3425→  lastLoginAt        DateTime?
+  3426→  createdAt          DateTime           @default(now())
+  3427→  updatedAt          DateTime
+  3428→  Branch             Branch[]
+  3429→  LoyaltyAccount     LoyaltyAccount[]
+  3430→  MerchantCustomer   MerchantCustomer[]
+  3431→  MerchantUser       MerchantUser[]
+  3432→  Product            Product[]
+  3433→  ProductCategory    ProductCategory[]
+  3434→  StockTransfer      StockTransfer[]
+  3435→  Transaction        Transaction[]
+  3436→}
+  3437→
+  3438→model MerchantCredit {
+  3439→  id                 String               @id
+  3440→  merchantId         String               @unique
+  3441→  tierId             String?
+  3442→  tierName           String               @default("starter")
+  3443→  status             String               @default("pending")
+  3444→  approvedLimit      Float                @default(0)
+  3445→  availableCredit    Float                @default(0)
+  3446→  drawnAmount        Float                @default(0)
+  3447→  interestRate       Float                @default(12)
+  3448→  totalRepaid        Float                @default(0)
+  3449→  totalInterestPaid  Float                @default(0)
+  3450→  totalDraws         Int                  @default(0)
+  3451→  activeDraws        Int                  @default(0)
+  3452→  nextPaymentDue     String?
+  3453→  nextPaymentAmount  Float                @default(0)
+  3454→  lastDrawAt         DateTime?
+  3455→  lastPaymentAt      DateTime?
+  3456→  lastReviewAt       DateTime?
+  3457→  nextReviewAt       DateTime?
+  3458→  applicationDate    String?
+  3459→  approvalDate       String?
+  3460→  approvedBy         String?
+  3461→  approvalNotes      String?
+  3462→  suspensionReason   String?
+  3463→  suspendedAt        DateTime?
+  3464→  ncaAgreementId     String?
+  3465→  ncaAcceptedAt      DateTime?
+  3466→  ncaExpiryAt        DateTime?
+  3467→  riskScore          Float                @default(0)
+  3468→  paymentScore       Float                @default(0)
+  3469→  createdAt          DateTime             @default(now())
+  3470→  updatedAt          DateTime
+  3471→  CreditDocument     CreditDocument[]
+  3472→  CreditDrawRequest  CreditDrawRequest[]
+  3473→  CreditNotification CreditNotification[]
+  3474→  CreditRepayment    CreditRepayment[]
+  3475→  CreditTransaction  CreditTransaction[]
+  3476→  CreditTier         CreditTier?          @relation(fields: [tierId], references: [id])
+  3477→}
+  3478→
+  3479→model MerchantCustomer {
+  3480→  id             String          @id
+  3481→  merchantId     String
+  3482→  name           String
+  3483→  phone          String?
+  3484→  email          String?
+  3485→  totalSpent     Float           @default(0)
+  3486→  visitCount     Int             @default(0)
+  3487→  averageBasket  Float           @default(0)
+  3488→  lastVisitAt    DateTime?
+  3489→  tags           String?
+  3490→  segment        String?
+  3491→  notes          String?
+  3492→  loyaltyPoints  Int             @default(0)
+  3493→  loyaltyTier    String          @default("bronze")
+  3494→  createdAt      DateTime        @default(now())
+  3495→  updatedAt      DateTime
+  3496→  LoyaltyAccount LoyaltyAccount?
+  3497→  Merchant       Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  3498→  Transaction    Transaction[]
+  3499→
+  3500→  @@unique([merchantId, phone])
+  3501→}
+  3502→
+  3503→model MerchantSubscription {
+  3504→  id                 String           @id
+  3505→  merchantId         String           @unique
+  3506→  planId             String
+  3507→  status             String           @default("trial")
+  3508→  billingCycle       String           @default("monthly")
+  3509→  priceOverride      Float?
+  3510→  currentPeriodStart DateTime?
+  3511→  currentPeriodEnd   DateTime?
+  3512→  trialEndsAt        DateTime?
+  3513→  cancelAtPeriodEnd  Boolean          @default(false)
+  3514→  cancelledAt        DateTime?
+  3515→  cancelReason       String?
+  3516→  paymentMethodId    String?
+  3517→  lastPaymentAt      DateTime?
+  3518→  lastPaymentAmount  Float?
+  3519→  lastPaymentStatus  String?
+  3520→  nextPaymentDue     DateTime?
+  3521→  invoiceEmail       String?
+  3522→  createdAt          DateTime         @default(now())
+  3523→  updatedAt          DateTime
+  3524→  SubscriptionPlan   SubscriptionPlan @relation(fields: [planId], references: [id])
+  3525→
+  3526→  @@index([currentPeriodEnd])
+  3527→  @@index([status])
+  3528→}
+  3529→
+  3530→model MerchantUser {
+  3531→  id           String    @id
+  3532→  merchantId   String
+  3533→  userId       String
+  3534→  role         String    @default("staff")
+  3535→  branchId     String?
+  3536→  permissions  String?
+  3537→  invitedBy    String?
+  3538→  invitedAt    DateTime?
+  3539→  acceptedAt   DateTime?
+  3540→  isActive     Boolean   @default(true)
+  3541→  lastAccessAt DateTime?
+  3542→  createdAt    DateTime  @default(now())
+  3543→  updatedAt    DateTime
+  3544→  User         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  3545→  Merchant     Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  3546→
+  3547→  @@unique([merchantId, userId])
+  3548→}
+  3549→
+  3550→model MonitoringRule {
+  3551→  id          String   @id
+  3552→  name        String
+  3553→  type        String
+  3554→  status      String   @default("active")
+  3555→  threshold   String?
+  3556→  action      String   @default("alert")
+  3557→  priority    Int      @default(1)
+  3558→  triggers24h Int      @default(0)
+  3559→  createdAt   DateTime @default(now())
+  3560→  updatedAt   DateTime
+  3561→}
+  3562→
+  3563→model MtnMomoAccount {
+  3564→  id             String    @id
+  3565→  userId         String    @unique
+  3566→  phone          String
+  3567→  momoCustomerId String?   @unique
+  3568→  status         String    @default("pending")
+  3569→  linkedAt       DateTime?
+  3570→  balanceCents   BigInt    @default(0)
+  3571→  lastSyncAt     DateTime?
+  3572→  createdAt      DateTime  @default(now())
+  3573→  updatedAt      DateTime
+  3574→}
+  3575→
+  3576→model NotificationChannel {
+  3577→  id                  String    @id
+  3578→  merchantId          String
+  3579→  channel             String
+  3580→  status              String    @default("pending")
+  3581→  config              String?
+  3582→  whatsappNumber      String?
+  3583→  whatsappBusinessId  String?
+  3584→  whatsappPhoneId     String?
+  3585→  whatsappAccessToken String?
+  3586→  webhookVerifyToken  String?
+  3587→  qualityRating       String?
+  3588→  smsProvider         String?
+  3589→  smsSenderId         String?
+  3590→  smsApiKey           String?
+  3591→  emailProvider       String?
+  3592→  emailFrom           String?
+  3593→  emailFromName       String?
+  3594→  emailApiKey         String?
+  3595→  smtpHost            String?
+  3596→  smtpPort            Int?
+  3597→  smtpUser            String?
+  3598→  smtpPassword        String?
+  3599→  totalSent           Int       @default(0)
+  3600→  totalDelivered      Int       @default(0)
+  3601→  totalFailed         Int       @default(0)
+  3602→  lastSentAt          DateTime?
+  3603→  costPerWhatsapp     Float     @default(0.35)
+  3604→  costPerSms          Float     @default(0.50)
+  3605→  costPerEmail        Float     @default(0.005)
+  3606→  createdAt           DateTime  @default(now())
+  3607→  updatedAt           DateTime
+  3608→
+  3609→  @@unique([merchantId, channel])
+  3610→}
+  3611→
+  3612→model NotificationLog {
+  3613→  id                String    @id
+  3614→  merchantId        String
+  3615→  recipientType     String
+  3616→  recipientId       String?
+  3617→  recipientPhone    String?
+  3618→  recipientEmail    String?
+  3619→  recipientName     String?
+  3620→  channel           String
+  3621→  templateCode      String?
+  3622→  subject           String?
+  3623→  bodyPreview       String?
+  3624→  referenceType     String?
+  3625→  referenceId       String?
+  3626→  status            String
+  3627→  providerMessageId String?
+  3628→  providerStatus    String?
+  3629→  providerError     String?
+  3630→  cost              Float     @default(0)
+  3631→  sentAt            DateTime
+  3632→  deliveredAt       DateTime?
+  3633→  failedAt          DateTime?
+  3634→  createdAt         DateTime  @default(now())
+  3635→
+  3636→  @@index([merchantId, createdAt])
+  3637→  @@index([recipientPhone, createdAt])
+  3638→}
+  3639→
+  3640→model NotificationQueue {
+  3641→  id                   String                @id
+  3642→  merchantId           String
+  3643→  recipientType        String
+  3644→  recipientId          String?
+  3645→  recipientPhone       String?
+  3646→  recipientEmail       String?
+  3647→  recipientName        String?
+  3648→  channel              String
+  3649→  templateCode         String?
+  3650→  subject              String?
+  3651→  body                 String
+  3652→  variables            String?
+  3653→  referenceType        String?
+  3654→  referenceId          String?
+  3655→  status               String                @default("queued")
+  3656→  priority             Int                   @default(5)
+  3657→  scheduledAt          DateTime?
+  3658→  sentAt               DateTime?
+  3659→  deliveredAt          DateTime?
+  3660→  failedAt             DateTime?
+  3661→  providerMessageId    String?
+  3662→  providerStatus       String?
+  3663→  providerError        String?
+  3664→  cost                 Float                 @default(0)
+  3665→  retryCount           Int                   @default(0)
+  3666→  maxRetries           Int                   @default(3)
+  3667→  nextRetryAt          DateTime?
+  3668→  createdAt            DateTime              @default(now())
+  3669→  updatedAt            DateTime
+  3670→  NotificationTemplate NotificationTemplate? @relation(fields: [templateCode], references: [code])
+  3671→
+  3672→  @@index([merchantId, status])
+  3673→  @@index([merchantId, scheduledAt])
+  3674→}
+  3675→
+  3676→model NotificationSettings {
+  3677→  id                       String   @id
+  3678→  merchantId               String   @unique
+  3679→  whatsappEnabled          Boolean  @default(false)
+  3680→  whatsappSendReceipts     Boolean  @default(true)
+  3681→  whatsappSendPromos       Boolean  @default(false)
+  3682→  smsEnabled               Boolean  @default(false)
+  3683→  smsSendReceipts          Boolean  @default(false)
+  3684→  smsSendReminders         Boolean  @default(true)
+  3685→  emailEnabled             Boolean  @default(false)
+  3686→  emailSendReceipts        Boolean  @default(true)
+  3687→  emailSendReports         Boolean  @default(true)
+  3688→  emailSendInvoices        Boolean  @default(true)
+  3689→  reminder24hEnabled       Boolean  @default(true)
+  3690→  reminder2hEnabled        Boolean  @default(true)
+  3691→  reminderChannel          String   @default("whatsapp")
+  3692→  orderConfirmationEnabled Boolean  @default(true)
+  3693→  orderReadyEnabled        Boolean  @default(true)
+  3694→  orderDeliveredEnabled    Boolean  @default(true)
+  3695→  paymentDueReminder       Boolean  @default(true)
+  3696→  paymentDueDays           Int      @default(3)
+  3697→  paymentOverdueEnabled    Boolean  @default(true)
+  3698→  quietHoursEnabled        Boolean  @default(false)
+  3699→  quietHoursStart          String   @default("21:00")
+  3700→  quietHoursEnd            String   @default("08:00")
+  3701→  dailySummaryEnabled      Boolean  @default(true)
+  3702→  dailySummaryTime         String   @default("18:00")
+  3703→  dailySummaryChannel      String   @default("email")
+  3704→  createdAt                DateTime @default(now())
+  3705→  updatedAt                DateTime
+  3706→}
+  3707→
+  3708→model NotificationTemplate {
+  3709→  id                      String              @id
+  3710→  merchantId              String?
+  3711→  code                    String              @unique
+  3712→  name                    String
+  3713→  description             String?
+  3714→  channel                 String
+  3715→  subject                 String?
+  3716→  body                    String
+  3717→  whatsappTemplateId      String?
+  3718→  whatsappCategory        String?
+  3719→  variables               String?
+  3720→  status                  String              @default("draft")
+  3721→  isSystem                Boolean             @default(false)
+  3722→  whatsappStatus          String?
+  3723→  whatsappRejectionReason String?
+  3724→  createdAt               DateTime            @default(now())
+  3725→  updatedAt               DateTime
+  3726→  NotificationQueue       NotificationQueue[]
+  3727→}
+  3728→
+  3729→model OTABooking {
+  3730→  id               String     @id
+  3731→  channelId        String
+  3732→  channelBookingId String     @unique
+  3733→  guestName        String
+  3734→  guestEmail       String?
+  3735→  guestPhone       String?
+  3736→  roomType         String
+  3737→  checkIn          String
+  3738→  checkOut         String
+  3739→  adults           Int        @default(1)
+  3740→  children         Int        @default(0)
+  3741→  totalPrice       Float      @default(0)
+  3742→  commission       Float      @default(0)
+  3743→  netPrice         Float      @default(0)
+  3744→  currency         String     @default("ZAR")
+  3745→  status           String     @default("pending")
+  3746→  syncStatus       String     @default("pending")
+  3747→  specialRequests  String?
+  3748→  reservationId    String?
+  3749→  notes            String?
+  3750→  createdAt        DateTime   @default(now())
+  3751→  updatedAt        DateTime
+  3752→  OTAChannel       OTAChannel @relation(fields: [channelId], references: [id])
+  3753→}
+  3754→
+  3755→model OTAChannel {
+  3756→  id          String       @id
+  3757→  name        String       @unique
+  3758→  displayName String
+  3759→  logo        String?
+  3760→  status      String       @default("disconnected")
+  3761→  apiKey      String?
+  3762→  apiSecret   String?
+  3763→  webhookUrl  String?
+  3764→  lastSync    DateTime?
+  3765→  commission  Float        @default(15)
+  3766→  syncEnabled Boolean      @default(true)
+  3767→  autoConfirm Boolean      @default(false)
+  3768→  notes       String?
+  3769→  createdAt   DateTime     @default(now())
+  3770→  updatedAt   DateTime
+  3771→  OTABooking  OTABooking[]
+  3772→}
+  3773→
+  3774→model OnlineStoreSettings {
+  3775→  id               String   @id
+  3776→  merchantId       String   @unique
+  3777→  enabled          Boolean  @default(true)
+  3778→  storeName        String
+  3779→  storeDescription String?
+  3780→  currency         String   @default("ZAR")
+  3781→  logo             String?
+  3782→  banner           String?
+  3783→  themeColor       String   @default("#00897B")
+  3784→  allowPickup      Boolean  @default(true)
+  3785→  allowDelivery    Boolean  @default(true)
+  3786→  deliveryRadius   Int      @default(10)
+  3787→  deliveryFee      Float    @default(0)
+  3788→  freeDeliveryMin  Float    @default(0)
+  3789→  minOrderValue    Float    @default(0)
+  3790→  acceptedPayments String?
+  3791→  showPrices       Boolean  @default(true)
+  3792→  allowPreOrder    Boolean  @default(true)
+  3793→  requireLogin     Boolean  @default(false)
+  3794→  termsUrl         String?
+  3795→  privacyUrl       String?
+  3796→  createdAt        DateTime @default(now())
+  3797→  updatedAt        DateTime
+  3798→}
+  3799→
+  3800→model OrderTrackingEvent {
+  3801→  id                String             @id
+  3802→  poId              String?
+  3803→  grnId             String?
+  3804→  stage             String
+  3805→  status            String             @default("pending")
+  3806→  title             String
+  3807→  description       String?
+  3808→  location          String?
+  3809→  latitude          Float?
+  3810→  longitude         Float?
+  3811→  timestamp         DateTime           @default(now())
+  3812→  createdBy         String?
+  3813→  metadata          String?
+  3814→  createdAt         DateTime           @default(now())
+  3815→  PurchaseOrder     PurchaseOrder?     @relation(fields: [poId], references: [id])
+  3816→  GoodsReceivedNote GoodsReceivedNote? @relation(fields: [grnId], references: [id])
+  3817→
+  3818→  @@index([poId, timestamp])
+  3819→  @@index([grnId, timestamp])
+  3820→}
+  3821→
+  3822→model OtpVerification {
+  3823→  id         String    @id
+  3824→  phone      String
+  3825→  otpCode    String
+  3826→  purpose    String
+  3827→  attempts   Int       @default(0)
+  3828→  verified   Boolean   @default(false)
+  3829→  expiresAt  DateTime
+  3830→  verifiedAt DateTime?
+  3831→  createdAt  DateTime  @default(now())
+  3832→}
+  3833→
+  3834→model POPIARequest {
+  3835→  id                 String    @id
+  3836→  requestType        String
+  3837→  requesterName      String
+  3838→  requesterEmail     String
+  3839→  requesterPhone     String?
+  3840→  requesterIdNumber  String?
+  3841→  description        String?
+  3842→  dataCategories     String?
+  3843→  identityVerified   Boolean   @default(false)
+  3844→  identityVerifiedBy String?
+  3845→  identityVerifiedAt DateTime?
+  3846→  status             String    @default("pending")
+  3847→  assignedTo         String?
+  3848→  assignedToName     String?
+  3849→  assignedAt         DateTime?
+  3850→  submittedAt        DateTime  @default(now())
+  3851→  dueDate            DateTime
+  3852→  completedAt        DateTime?
+  3853→  responseNotes      String?
+  3854→  rejectionReason    String?
+  3855→  dataProvidedAt     DateTime?
+  3856→  dataDeletedAt      DateTime?
+  3857→  verifiedBy         String?
+  3858→  verifiedByName     String?
+  3859→  createdAt          DateTime  @default(now())
+  3860→  updatedAt          DateTime
+  3861→
+  3862→  @@index([requestType])
+  3863→  @@index([dueDate])
+  3864→  @@index([status])
+  3865→}
+  3866→
+  3867→model POSOrder {
+  3868→  id              String           @id
+  3869→  orderNumber     String           @unique
+  3870→  type            String           @default("dine-in")
+  3871→  tableId         String?
+  3872→  tableNumber     String?
+  3873→  sectionId       String?
+  3874→  sectionName     String?
+  3875→  customerName    String?
+  3876→  customerPhone   String?
+  3877→  customerEmail   String?
+  3878→  guests          Int              @default(1)
+  3879→  staffId         String?
+  3880→  staffName       String?
+  3881→  openedAt        DateTime         @default(now())
+  3882→  closedAt        DateTime?
+  3883→  estimatedTime   Int              @default(30)
+  3884→  status          String           @default("open")
+  3885→  kitchenStatus   String           @default("pending")
+  3886→  subtotal        Float            @default(0)
+  3887→  taxAmount       Float            @default(0)
+  3888→  discountAmount  Float            @default(0)
+  3889→  discountType    String?
+  3890→  discountReason  String?
+  3891→  tipAmount       Float            @default(0)
+  3892→  total           Float            @default(0)
+  3893→  paymentStatus   String           @default("unpaid")
+  3894→  paidAmount      Float            @default(0)
+  3895→  notes           String?
+  3896→  specialRequests String?
+  3897→  kitchenOrderId  String?
+  3898→  printed         Boolean          @default(false)
+  3899→  printedAt       DateTime?
+  3900→  createdAt       DateTime         @default(now())
+  3901→  updatedAt       DateTime
+  3902→  RestaurantStaff RestaurantStaff? @relation(fields: [staffId], references: [id])
+  3903→  POSOrderItem    POSOrderItem[]
+  3904→  POSPayment      POSPayment[]
+  3905→
+  3906→  @@index([staffId, status])
+  3907→  @@index([tableId, status])
+  3908→  @@index([status, createdAt])
+  3909→}
+  3910→
+  3911→model POSOrderItem {
+  3912→  id              String    @id
+  3913→  orderId         String
+  3914→  menuItemId      String?
+  3915→  name            String
+  3916→  quantity        Int       @default(1)
+  3917→  unitPrice       Float     @default(0)
+  3918→  totalPrice      Float     @default(0)
+  3919→  modifiers       String?
+  3920→  notes           String?
+  3921→  dietary         String?
+  3922→  allergens       String?
+  3923→  spicyLevel      Int?
+  3924→  station         String    @default("grill")
+  3925→  status          String    @default("pending")
+  3926→  sentToKitchen   Boolean   @default(false)
+  3927→  sentAt          DateTime?
+  3928→  readyAt         DateTime?
+  3929→  servedAt        DateTime?
+  3930→  voidedAt        DateTime?
+  3931→  voidReason      String?
+  3932→  voidedBy        String?
+  3933→  preparationTime Int       @default(15)
+  3934→  createdAt       DateTime  @default(now())
+  3935→  updatedAt       DateTime
+  3936→  POSOrder        POSOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  3937→
+  3938→  @@index([orderId, status])
+  3939→}
+  3940→
+  3941→model POSPayment {
+  3942→  id              String           @id
+  3943→  orderId         String
+  3944→  amount          Float            @default(0)
+  3945→  method          String
+  3946→  status          String           @default("pending")
+  3947→  cardType        String?
+  3948→  cardLastFour    String?
+  3949→  cardHolderName  String?
+  3950→  authCode        String?
+  3951→  terminalId      String?
+  3952→  mobileProvider  String?
+  3953→  transactionRef  String?
+  3954→  splitOrderId    String?
+  3955→  splitIndex      Int?
+  3956→  cashTendered    Float?
+  3957→  changeGiven     Float?
+  3958→  tipAmount       Float            @default(0)
+  3959→  tipMethod       String?
+  3960→  processedBy     String?
+  3961→  refundedAt      DateTime?
+  3962→  refundedAmount  Float?
+  3963→  refundReason    String?
+  3964→  refundedBy      String?
+  3965→  processedAt     DateTime?
+  3966→  createdAt       DateTime         @default(now())
+  3967→  updatedAt       DateTime
+  3968→  RestaurantStaff RestaurantStaff? @relation(fields: [processedBy], references: [id])
+  3969→  POSOrder        POSOrder         @relation(fields: [orderId], references: [id])
+  3970→
+  3971→  @@index([orderId])
+  3972→  @@index([method, status])
+  3973→}
+  3974→
+  3975→model PayPlusAdvance {
+  3976→  id                     String               @id
+  3977→  employeeId             String
+  3978→  merchantId             String
+  3979→  referenceNumber        String               @unique
+  3980→  requestedAmount        Float
+  3981→  serviceFeePercent      Float                @default(2.5)
+  3982→  serviceFeeAmount       Float
+  3983→  netAmount              Float
+  3984→  accruedSalaryAtRequest Float
+  3985→  daysWorked             Int
+  3986→  dailyRate              Float
+  3987→  maxAllowedAmount       Float
+  3988→  utilizationPercent     Float
+  3989→  status                 String               @default("pending")
+  3990→  reason                 String?
+  3991→  walletCredited         Boolean              @default(false)
+  3992→  walletCreditedAt       DateTime?
+  3993→  walletTransactionId    String?
+  3994→  payrollDeducted        Boolean              @default(false)
+  3995→  payrollDeductedAt      DateTime?
+  3996→  payrollReference       String?
+  3997→  repaymentDate          String
+  3998→  repaidAt               DateTime?
+  3999→  approvedBy             String?
+  4000→  approvedAt             DateTime?
+  4001→  cancelledAt            DateTime?
+  4002→  cancelReason           String?
+  4003→  notes                  String?
+  4004→  createdAt              DateTime             @default(now())
+  4005→  updatedAt              DateTime
+  4006→  PayPlusEmployee        PayPlusEmployee      @relation(fields: [employeeId], references: [id])
+  4007→  PayPlusTransaction     PayPlusTransaction[]
+  4008→
+  4009→  @@index([status, repaymentDate])
+  4010→  @@index([merchantId, createdAt])
+  4011→  @@index([employeeId, status])
+  4012→}
+  4013→
+  4014→model PayPlusEmployee {
+  4015→  id                   String               @id
+  4016→  merchantId           String
+  4017→  merchantName         String?
+  4018→  userId               String?
+  4019→  employeeNumber       String?
+  4020→  firstName            String
+  4021→  lastName             String
+  4022→  idNumber             String?
+  4023→  phone                String
+  4024→  email                String?
+  4025→  department           String?
+  4026→  position             String?
+  4027→  employmentType       String               @default("full_time")
+  4028→  startDate            String
+  4029→  endDate              String?
+  4030→  monthlySalary        Float                @default(0)
+  4031→  salaryFrequency      String               @default("monthly")
+  4032→  payDay               Int                  @default(25)
+  4033→  bankName             String?
+  4034→  bankAccount          String?
+  4035→  bankAccountType      String?
+  4036→  status               String               @default("active")
+  4037→  grosellVerified      Boolean              @default(false)
+  4038→  grosellVerifiedAt    DateTime?
+  4039→  merchantOSVerified   Boolean              @default(false)
+  4040→  merchantOSVerifiedAt DateTime?
+  4041→  payplusEligible      Boolean              @default(false)
+  4042→  payplusEnabledAt     DateTime?
+  4043→  advancesThisMonth    Int                  @default(0)
+  4044→  totalAdvanceAmount   Float                @default(0)
+  4045→  createdAt            DateTime             @default(now())
+  4046→  updatedAt            DateTime
+  4047→  PayPlusAdvance       PayPlusAdvance[]
+  4048→  PayPlusTransaction   PayPlusTransaction[]
+  4049→
+  4050→  @@unique([merchantId, employeeNumber])
+  4051→  @@index([merchantId, status])
+  4052→  @@index([phone])
+  4053→}
+  4054→
+  4055→model PayPlusMerchantConfig {
+  4056→  id                     String    @id
+  4057→  merchantId             String    @unique
+  4058→  enabled                Boolean   @default(false)
+  4059→  maxAdvancePercent      Float     @default(60)
+  4060→  serviceFeePercent      Float     @default(2.5)
+  4061→  minAdvanceAmount       Float     @default(100)
+  4062→  maxAdvanceAmount       Float     @default(15000)
+  4063→  maxAdvancesPerMonth    Int       @default(2)
+  4064→  requireManagerApproval Boolean   @default(false)
+  4065→  autoApproveEnabled     Boolean   @default(true)
+  4066→  autoDeductFromPayroll  Boolean   @default(true)
+  4067→  minEmploymentDays      Int       @default(90)
+  4068→  settlementTime         String    @default("instant")
+  4069→  grosellSyncEnabled     Boolean   @default(true)
+  4070→  merchantOSSyncEnabled  Boolean   @default(true)
+  4071→  lastSyncAt             DateTime?
+  4072→  syncErrors             String?
+  4073→  notes                  String?
+  4074→  createdAt              DateTime  @default(now())
+  4075→  updatedAt              DateTime
+  4076→
+  4077→  @@index([merchantId, enabled])
+  4078→}
+  4079→
+  4080→model PayPlusPayrollIntegration {
+  4081→  id                String    @id
+  4082→  merchantId        String
+  4083→  providerName      String
+  4084→  providerType      String
+  4085→  status            String    @default("pending")
+  4086→  apiKey            String?
+  4087→  apiSecret         String?
+  4088→  endpointUrl       String?
+  4089→  companyId         String?
+  4090→  lastSyncAt        DateTime?
+  4091→  syncFrequency     String    @default("daily")
+  4092→  lastSyncStatus    String?
+  4093→  lastSyncError     String?
+  4094→  employeeCount     Int       @default(0)
+  4095→  payrollEnabled    Boolean   @default(true)
+  4096→  autoDeductEnabled Boolean   @default(true)
+  4097→  createdAt         DateTime  @default(now())
+  4098→  updatedAt         DateTime
+  4099→
+  4100→  @@unique([merchantId, providerName])
+  4101→  @@index([merchantId, status])
+  4102→}
+  4103→
+  4104→model PayPlusTransaction {
+  4105→  id                  String          @id
+  4106→  advanceId           String?
+  4107→  employeeId          String
+  4108→  merchantId          String
+  4109→  type                String
+  4110→  amount              Float
+  4111→  direction           String
+  4112→  description         String?
+  4113→  reference           String?
+  4114→  walletTransactionId String?
+  4115→  externalReference   String?
+  4116→  status              String          @default("completed")
+  4117→  metadata            String?
+  4118→  createdAt           DateTime        @default(now())
+  4119→  updatedAt           DateTime
+  4120→  PayPlusEmployee     PayPlusEmployee @relation(fields: [employeeId], references: [id])
+  4121→  PayPlusAdvance      PayPlusAdvance? @relation(fields: [advanceId], references: [id])
+  4122→
+  4123→  @@index([advanceId])
+  4124→  @@index([merchantId, type])
+  4125→  @@index([employeeId, createdAt])
+  4126→}
+  4127→
+  4128→model PayShapRecipient {
+  4129→  id                String       @id
+  4130→  userId            String
+  4131→  proxyId           String
+  4132→  proxyType         String
+  4133→  accountHolderName String?
+  4134→  bankName          String?
+  4135→  verified          Boolean      @default(false)
+  4136→  verifiedAt        DateTime?
+  4137→  lastUsedAt        DateTime?
+  4138→  createdAt         DateTime     @default(now())
+  4139→  updatedAt         DateTime
+  4140→  ConsumerUser      ConsumerUser @relation(fields: [userId], references: [id])
+  4141→}
+  4142→
+  4143→model PaymentMethod {
+  4144→  id        String   @id
+  4145→  name      String
+  4146→  type      String
+  4147→  active    Boolean  @default(true)
+  4148→  icon      String?
+  4149→  sortOrder Int      @default(0)
+  4150→  config    String?
+  4151→  feeType   String?
+  4152→  feeAmount Float    @default(0)
+  4153→  createdAt DateTime @default(now())
+  4154→  updatedAt DateTime
+  4155→}
+  4156→
+  4157→model PlatformStat {
+  4158→  id            String   @id
+  4159→  key           String   @unique
+  4160→  value         String
+  4161→  previousValue String?
+  4162→  changePercent Float?
+  4163→  lastUpdated   DateTime @default(now())
+  4164→  createdAt     DateTime @default(now())
+  4165→  updatedAt     DateTime
+  4166→}
+  4167→
+  4168→model PlatformTenant {
+  4169→  id                 String              @id
+  4170→  name               String
+  4171→  slug               String              @unique
+  4172→  logo               String?
+  4173→  primaryColor       String?
+  4174→  domain             String?             @unique
+  4175→  status             String              @default("active")
+  4176→  plan               String              @default("starter")
+  4177→  maxUsers           Int                 @default(10)
+  4178→  maxMerchants       Int                 @default(1)
+  4179→  features           String?
+  4180→  settings           String?
+  4181→  createdAt          DateTime            @default(now())
+  4182→  updatedAt          DateTime
+  4183→  TenantInvitation   TenantInvitation[]
+  4184→  TenantSubscription TenantSubscription?
+  4185→  TenantUser         TenantUser[]
+  4186→
+  4187→  @@index([status])
+  4188→  @@index([slug])
+  4189→}
+  4190→
+  4191→model Post {
+  4192→  id        String   @id
+  4193→  title     String
+  4194→  content   String?
+  4195→  published Boolean  @default(false)
+  4196→  authorId  String
+  4197→  createdAt DateTime @default(now())
+  4198→  updatedAt DateTime
+  4199→}
+  4200→
+  4201→model Product {
+  4202→  id                String              @id
+  4203→  merchantId        String
+  4204→  branchId          String?
+  4205→  categoryId        String?
+  4206→  sku               String
+  4207→  barcode           String?
+  4208→  name              String
+  4209→  description       String?
+  4210→  image             String?
+  4211→  images            String?
+  4212→  type              String              @default("standard")
+  4213→  unit              String              @default("each")
+  4214→  costPrice         Float               @default(0)
+  4215→  sellingPrice      Float               @default(0)
+  4216→  compareAtPrice    Float?
+  4217→  margin            Float               @default(0)
+  4218→  vatRate           Float?
+  4219→  vatExempt         Boolean             @default(false)
+  4220→  zeroRated         Boolean             @default(false)
+  4221→  trackInventory    Boolean             @default(true)
+  4222→  currentStock      Float               @default(0)
+  4223→  lowStockThreshold Float               @default(10)
+  4224→  reorderPoint      Float               @default(5)
+  4225→  reorderQuantity   Float               @default(10)
+  4226→  hasVariants       Boolean             @default(false)
+  4227→  variantOptions    String?
+  4228→  parentId          String?
+  4229→  variantAttributes String?
+  4230→  isActive          Boolean             @default(true)
+  4231→  isFeatured        Boolean             @default(false)
+  4232→  isAvailableOnline Boolean             @default(true)
+  4233→  timesSold         Int                 @default(0)
+  4234→  lastSoldAt        DateTime?
+  4235→  createdAt         DateTime            @default(now())
+  4236→  updatedAt         DateTime
+  4237→  Product           Product?            @relation("ProductToProduct", fields: [parentId], references: [id])
+  4238→  other_Product     Product[]           @relation("ProductToProduct")
+  4239→  ProductCategory   ProductCategory?    @relation(fields: [categoryId], references: [id])
+  4240→  Branch            Branch?             @relation(fields: [branchId], references: [id])
+  4241→  Merchant          Merchant            @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  4242→  StockMovement     StockMovement[]
+  4243→  StockTransferItem StockTransferItem[]
+  4244→  TransactionItem   TransactionItem[]
+  4245→
+  4246→  @@unique([merchantId, sku])
+  4247→}
+  4248→
+  4249→model ProductCategory {
+  4250→  id                    String            @id
+  4251→  merchantId            String
+  4252→  name                  String
+  4253→  description           String?
+  4254→  parentId              String?
+  4255→  image                 String?
+  4256→  color                 String?
+  4257→  sortOrder             Int               @default(0)
+  4258→  isActive              Boolean           @default(true)
+  4259→  createdAt             DateTime          @default(now())
+  4260→  updatedAt             DateTime
+  4261→  Product               Product[]
+  4262→  ProductCategory       ProductCategory?  @relation("ProductCategoryToProductCategory", fields: [parentId], references: [id])
+  4263→  other_ProductCategory ProductCategory[] @relation("ProductCategoryToProductCategory")
+  4264→  Merchant              Merchant          @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  4265→}
+  4266→
+  4267→model PurchaseOrder {
+  4268→  id                 String               @id
+  4269→  number             String               @unique
+  4270→  rfqId              String?              @unique
+  4271→  quoteId            String?              @unique
+  4272→  supplierId         String
+  4273→  status             String               @default("draft")
+  4274→  subtotal           Float                @default(0)
+  4275→  vat                Float                @default(0)
+  4276→  deliveryCost       Float                @default(0)
+  4277→  total              Float                @default(0)
+  4278→  deliveryAddress    String?
+  4279→  requestedDate      String
+  4280→  confirmedDate      String?
+  4281→  trackingNumber     String?
+  4282→  estimatedDelivery  String?
+  4283→  notes              String?
+  4284→  internalNotes      String?
+  4285→  createdBy          String?
+  4286→  sentAt             DateTime?
+  4287→  confirmedAt        DateTime?
+  4288→  createdAt          DateTime             @default(now())
+  4289→  updatedAt          DateTime
+  4290→  GoodsReceivedNote  GoodsReceivedNote[]
+  4291→  OrderTrackingEvent OrderTrackingEvent[]
+  4292→  Supplier           Supplier             @relation(fields: [supplierId], references: [id])
+  4293→  SupplierQuote      SupplierQuote?       @relation(fields: [quoteId], references: [id])
+  4294→  RFQ                RFQ?                 @relation(fields: [rfqId], references: [id])
+  4295→  PurchaseOrderItem  PurchaseOrderItem[]
+  4296→  StockMovementOrder StockMovementOrder[]
+  4297→}
+  4298→
+  4299→model PurchaseOrderItem {
+  4300→  id            String        @id
+  4301→  poId          String
+  4302→  sku           String
+  4303→  description   String
+  4304→  quantity      Float         @default(1)
+  4305→  unitPrice     Float         @default(0)
+  4306→  totalPrice    Float         @default(0)
+  4307→  unit          String        @default("each")
+  4308→  receivedQty   Float         @default(0)
+  4309→  rejectedQty   Float         @default(0)
+  4310→  notes         String?
+  4311→  createdAt     DateTime      @default(now())
+  4312→  updatedAt     DateTime
+  4313→  PurchaseOrder PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  4314→}
+  4315→
+  4316→model QRMenuLink {
+  4317→  id         String   @id
+  4318→  merchantId String
+  4319→  name       String
+  4320→  url        String
+  4321→  qrCode     String   @unique
+  4322→  scans      Int      @default(0)
+  4323→  active     Boolean  @default(true)
+  4324→  createdAt  DateTime @default(now())
+  4325→  updatedAt  DateTime
+  4326→
+  4327→  @@unique([merchantId, name])
+  4328→}
+  4329→
+  4330→model QRTransaction {
+  4331→  id               String     @id
+  4332→  qrId             String
+  4333→  payerId          String?
+  4334→  payerPhone       String?
+  4335→  payerName        String?
+  4336→  payeeId          String?
+  4337→  payeeName        String?
+  4338→  amountCents      BigInt
+  4339→  tipAmountCents   BigInt     @default(0)
+  4340→  feeCents         BigInt     @default(0)
+  4341→  netAmountCents   BigInt
+  4342→  currency         String     @default("ZAR")
+  4343→  transactionType  String
+  4344→  status           String     @default("pending")
+  4345→  paymentMethod    String?
+  4346→  reference        String?
+  4347→  receiptNumber    String?
+  4348→  emvTransactionId String?
+  4349→  nfcTerminalId    String?
+  4350→  latitude         Float?
+  4351→  longitude        Float?
+  4352→  deviceInfo       String?
+  4353→  verified         Boolean    @default(false)
+  4354→  verifiedAt       DateTime?
+  4355→  completedAt      DateTime?
+  4356→  failedAt         DateTime?
+  4357→  failureReason    String?
+  4358→  reversedAt       DateTime?
+  4359→  reversalReason   String?
+  4360→  createdAt        DateTime   @default(now())
+  4361→  updatedAt        DateTime
+  4362→  ConsumerQR       ConsumerQR @relation(fields: [qrId], references: [id], onDelete: Cascade)
+  4363→
+  4364→  @@index([createdAt])
+  4365→  @@index([status])
+  4366→  @@index([payerId])
+  4367→  @@index([qrId])
+  4368→}
+  4369→
+  4370→model QuotationRequest {
+  4371→  id                   String                 @id
+  4372→  number               String                 @unique
+  4373→  status               String                 @default("draft")
+  4374→  supplierId           String
+  4375→  deliveryAddress      String?
+  4376→  requiredBy           String
+  4377→  notes                String?
+  4378→  internalNotes        String?
+  4379→  validUntil           String?
+  4380→  totalItems           Int                    @default(0)
+  4381→  estimatedValue       Float                  @default(0)
+  4382→  createdBy            String?
+  4383→  sentAt               DateTime?
+  4384→  respondedAt          DateTime?
+  4385→  acceptedAt           DateTime?
+  4386→  rejectedAt           DateTime?
+  4387→  createdAt            DateTime               @default(now())
+  4388→  updatedAt            DateTime
+  4389→  Supplier             Supplier               @relation(fields: [supplierId], references: [id])
+  4390→  QuotationRequestItem QuotationRequestItem[]
+  4391→  QuotationResponse    QuotationResponse?
+  4392→
+  4393→  @@index([supplierId, status])
+  4394→}
+  4395→
+  4396→model QuotationRequestItem {
+  4397→  id               String           @id
+  4398→  requestId        String
+  4399→  sku              String
+  4400→  productName      String
+  4401→  quantity         Int              @default(1)
+  4402→  unit             String           @default("each")
+  4403→  currentPrice     Float?
+  4404→  notes            String?
+  4405→  createdAt        DateTime         @default(now())
+  4406→  updatedAt        DateTime
+  4407→  QuotationRequest QuotationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  4408→
+  4409→  @@index([requestId])
+  4410→}
+  4411→
+  4412→model QuotationResponse {
+  4413→  id                    String                  @id
+  4414→  requestId             String                  @unique
+  4415→  supplierId            String
+  4416→  status                String                  @default("submitted")
+  4417→  subtotal              Float                   @default(0)
+  4418→  discount              Float                   @default(0)
+  4419→  deliveryCost          Float                   @default(0)
+  4420→  vat                   Float                   @default(0)
+  4421→  total                 Float                   @default(0)
+  4422→  deliveryDays          Int                     @default(3)
+  4423→  paymentTerms          String?
+  4424→  validUntil            String
+  4425→  notes                 String?
+  4426→  submittedAt           DateTime                @default(now())
+  4427→  createdAt             DateTime                @default(now())
+  4428→  updatedAt             DateTime
+  4429→  QuotationRequest      QuotationRequest        @relation(fields: [requestId], references: [id])
+  4430→  Supplier              Supplier                @relation(fields: [supplierId], references: [id])
+  4431→  QuotationResponseItem QuotationResponseItem[]
+  4432→
+  4433→  @@index([supplierId, status])
+  4434→}
+  4435→
+  4436→model QuotationResponseItem {
+  4437→  id                String            @id
+  4438→  responseId        String
+  4439→  sku               String
+  4440→  productName       String
+  4441→  quantity          Int               @default(1)
+  4442→  unitPrice         Float             @default(0)
+  4443→  discountPercent   Float             @default(0)
+  4444→  totalPrice        Float             @default(0)
+  4445→  inStock           Boolean           @default(true)
+  4446→  leadTime          Int?
+  4447→  notes             String?
+  4448→  createdAt         DateTime          @default(now())
+  4449→  updatedAt         DateTime
+  4450→  QuotationResponse QuotationResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  4451→
+  4452→  @@index([responseId])
+  4453→}
+  4454→
+  4455→model RFQ {
+  4456→  id              String          @id
+  4457→  number          String          @unique
+  4458→  supplierId      String?
+  4459→  status          String          @default("draft")
+  4460→  requiredBy      String
+  4461→  deliveryAddress String?
+  4462→  notes           String?
+  4463→  internalNotes   String?
+  4464→  totalQuotes     Int             @default(0)
+  4465→  selectedQuoteId String?
+  4466→  createdBy       String?
+  4467→  createdAt       DateTime        @default(now())
+  4468→  updatedAt       DateTime
+  4469→  PurchaseOrder   PurchaseOrder?
+  4470→  Supplier        Supplier?       @relation(fields: [supplierId], references: [id])
+  4471→  RFQItem         RFQItem[]
+  4472→  SupplierQuote   SupplierQuote[]
+  4473→}
+  4474→
+  4475→model RFQItem {
+  4476→  id          String   @id
+  4477→  rfqId       String
+  4478→  sku         String
+  4479→  description String
+  4480→  quantity    Float    @default(1)
+  4481→  unit        String   @default("each")
+  4482→  notes       String?
+  4483→  createdAt   DateTime @default(now())
+  4484→  updatedAt   DateTime
+  4485→  RFQ         RFQ      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  4486→}
+  4487→
+  4488→model RSACertification {
+  4489→  id                  String   @id
+  4490→  staffId             String?
+  4491→  staffName           String
+  4492→  rsaNumber           String   @unique
+  4493→  certificateType     String
+  4494→  issuingBody         String
+  4495→  issueDate           String
+  4496→  expiryDate          String
+  4497→  status              String   @default("active")
+  4498→  trainingProvider    String?
+  4499→  trainingDate        String?
+  4500→  renewalReminderSent Boolean  @default(false)
+  4501→  notes               String?
+  4502→  createdAt           DateTime @default(now())
+  4503→  updatedAt           DateTime
+  4504→}
+  4505→
+  4506→model Recipe {
+  4507→  id                   String             @id
+  4508→  name                 String
+  4509→  category             String             @default("mains")
+  4510→  description          String?
+  4511→  sku                  String             @unique
+  4512→  preparationTime      Int                @default(15)
+  4513→  yield                Int                @default(1)
+  4514→  yieldUnit            String             @default("serving")
+  4515→  sellingPrice         Float              @default(0)
+  4516→  station              String             @default("grill")
+  4517→  active               Boolean            @default(true)
+  4518→  allergens            String?
+  4519→  dietary              String?
+  4520→  preparationSteps     String?
+  4521→  timesSold            Int                @default(0)
+  4522→  deductionsLast30Days Float              @default(0)
+  4523→  createdAt            DateTime           @default(now())
+  4524→  updatedAt            DateTime
+  4525→  RecipeIngredient     RecipeIngredient[]
+  4526→  StockDeduction       StockDeduction[]
+  4527→}
+  4528→
+  4529→model RecipeIngredient {
+  4530→  id           String     @id
+  4531→  quantity     Float
+  4532→  unit         String     @default("g")
+  4533→  cost         Float      @default(0)
+  4534→  optional     Boolean    @default(false)
+  4535→  substitute   String?
+  4536→  ingredientId String
+  4537→  recipeId     String
+  4538→  createdAt    DateTime   @default(now())
+  4539→  updatedAt    DateTime
+  4540→  Recipe       Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  4541→  Ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  4542→}
+  4543→
+  4544→model RecurringAppointment {
+  4545→  id                  String   @id
+  4546→  customerId          String
+  4547→  staffId             String
+  4548→  serviceId           String
+  4549→  frequency           String
+  4550→  dayOfWeek           Int?
+  4551→  dayOfMonth          Int?
+  4552→  time                String
+  4553→  startDate           String
+  4554→  endDate             String?
+  4555→  active              Boolean  @default(true)
+  4556→  appointmentsCreated Int      @default(0)
+  4557→  lastAppointmentDate String?
+  4558→  createdAt           DateTime @default(now())
+  4559→  updatedAt           DateTime
+  4560→  Customer            Customer @relation(fields: [customerId], references: [id])
+  4561→}
+  4562→
+  4563→model ReminderTemplate {
+  4564→  id        String   @id
+  4565→  name      String
+  4566→  type      String
+  4567→  channel   String
+  4568→  subject   String?
+  4569→  message   String
+  4570→  active    Boolean  @default(true)
+  4571→  createdAt DateTime @default(now())
+  4572→  updatedAt DateTime
+  4573→}
+  4574→
+  4575→model ReportDashboard {
+  4576→  id              String   @id
+  4577→  merchantId      String
+  4578→  name            String
+  4579→  description     String?
+  4580→  widgets         String
+  4581→  layout          String?
+  4582→  isDefault       Boolean  @default(false)
+  4583→  isPublic        Boolean  @default(false)
+  4584→  refreshInterval Int      @default(300)
+  4585→  status          String   @default("active")
+  4586→  createdBy       String?
+  4587→  createdByName   String?
+  4588→  createdAt       DateTime @default(now())
+  4589→  updatedAt       DateTime
+  4590→
+  4591→  @@unique([merchantId, name])
+  4592→  @@index([merchantId, isDefault])
+  4593→}
+  4594→
+  4595→model ReportExecution {
+  4596→  id                String           @id
+  4597→  reportId          String?
+  4598→  scheduledReportId String?
+  4599→  merchantId        String
+  4600→  executionType     String           @default("manual")
+  4601→  triggeredBy       String?
+  4602→  triggeredByName   String?
+  4603→  startedAt         DateTime         @default(now())
+  4604→  completedAt       DateTime?
+  4605→  duration          Int?
+  4606→  status            String           @default("pending")
+  4607→  recordCount       Int              @default(0)
+  4608→  fileSize          Int?
+  4609→  exportFormat      String?
+  4610→  fileUrl           String?
+  4611→  fileName          String?
+  4612→  deliveryStatus    String?
+  4613→  deliveryAttempts  Int              @default(0)
+  4614→  deliveredAt       DateTime?
+  4615→  deliveryError     String?
+  4616→  errorMessage      String?
+  4617→  errorStack        String?
+  4618→  retryFor          String?
+  4619→  retryCount        Int              @default(0)
+  4620→  parameters        String?
+  4621→  createdAt         DateTime         @default(now())
+  4622→  ScheduledReport   ScheduledReport? @relation(fields: [scheduledReportId], references: [id], onDelete: Cascade)
+  4623→  CustomReport      CustomReport?    @relation(fields: [reportId], references: [id])
+  4624→
+  4625→  @@index([status])
+  4626→  @@index([merchantId, createdAt])
+  4627→  @@index([scheduledReportId, createdAt])
+  4628→  @@index([reportId, createdAt])
+  4629→}
+  4630→
+  4631→model ReportTemplate {
+  4632→  id                  String   @id
+  4633→  name                String
+  4634→  description         String?
+  4635→  category            String
+  4636→  reportType          String
+  4637→  vertical            String?
+  4638→  selectedFields      String
+  4639→  defaultFilters      String?
+  4640→  defaultGroupBy      String?
+  4641→  defaultAggregations String?
+  4642→  defaultChartType    String?
+  4643→  chartConfig         String?
+  4644→  defaultFormat       String   @default("pdf")
+  4645→  supportedFormats    String?
+  4646→  isSystem            Boolean  @default(false)
+  4647→  isPremium           Boolean  @default(false)
+  4648→  popularity          Int      @default(0)
+  4649→  isActive            Boolean  @default(true)
+  4650→  createdAt           DateTime @default(now())
+  4651→  updatedAt           DateTime
+  4652→
+  4653→  @@unique([name, category])
+  4654→  @@index([isActive])
+  4655→  @@index([vertical])
+  4656→  @@index([reportType])
+  4657→}
+  4658→
+  4659→model RestaurantStaff {
+  4660→  id               String       @id
+  4661→  name             String
+  4662→  email            String?      @unique
+  4663→  phone            String?
+  4664→  pin              String
+  4665→  role             String       @default("waiter")
+  4666→  status           String       @default("active")
+  4667→  avatar           String?
+  4668→  color            String       @default("#00897B")
+  4669→  canVoid          Boolean      @default(false)
+  4670→  canDiscount      Boolean      @default(false)
+  4671→  canRefund        Boolean      @default(false)
+  4672→  canCloseShift    Boolean      @default(false)
+  4673→  canManageStaff   Boolean      @default(false)
+  4674→  canViewReports   Boolean      @default(false)
+  4675→  assignedSections String?
+  4676→  createdAt        DateTime     @default(now())
+  4677→  updatedAt        DateTime
+  4678→  POSOrder         POSOrder[]
+  4679→  POSPayment       POSPayment[]
+  4680→  StaffShift       StaffShift[]
+  4681→  VoidLog          VoidLog[]
+  4682→}
+  4683→
+  4684→model RestaurantTable {
+  4685→  id               String            @id
+  4686→  number           String
+  4687→  shape            String            @default("circle")
+  4688→  x                Float             @default(0)
+  4689→  y                Float             @default(0)
+  4690→  width            Float             @default(60)
+  4691→  height           Float             @default(60)
+  4692→  rotation         Float             @default(0)
+  4693→  seats            Int               @default(4)
+  4694→  status           String            @default("available")
+  4695→  minSpending      Float?
+  4696→  sectionId        String
+  4697→  serverId         String?
+  4698→  createdAt        DateTime          @default(now())
+  4699→  updatedAt        DateTime
+  4700→  Server           Server?           @relation(fields: [serverId], references: [id])
+  4701→  FloorSection     FloorSection      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  4702→  TableOrder       TableOrder?
+  4703→  TableReservation TableReservation?
+  4704→}
+  4705→
+  4706→model RiskProfile {
+  4707→  id               String    @id
+  4708→  entityType       String
+  4709→  entityId         String
+  4710→  riskScore        Int       @default(50)
+  4711→  riskLevel        String    @default("medium")
+  4712→  riskFactors      String?
+  4713→  scoreBreakdown   String?
+  4714→  lastAssessmentAt DateTime?
+  4715→  assessmentCount  Int       @default(0)
+  4716→  alertsTriggered  Int       @default(0)
+  4717→  trueFrauds       Int       @default(0)
+  4718→  falsePositives   Int       @default(0)
+  4719→  restrictions     String?
+  4720→  reviewRequired   Boolean   @default(false)
+  4721→  reviewReason     String?
+  4722→  reviewedAt       DateTime?
+  4723→  reviewedBy       String?
+  4724→  status           String    @default("active")
+  4725→  blockedAt        DateTime?
+  4726→  blockedReason    String?
+  4727→  blockedBy        String?
+  4728→  createdAt        DateTime  @default(now())
+  4729→  updatedAt        DateTime  @default(now())
+  4730→
+  4731→  @@unique([entityType, entityId])
+  4732→  @@index([riskScore])
+  4733→  @@index([entityType, riskLevel])
+  4734→}
+  4735→
+  4736→model SaleEvent {
+  4737→  id            String   @id
+  4738→  merchantId    String
+  4739→  transactionId String?
+  4740→  totalAmount   Float    @default(0)
+  4741→  itemCount     Int      @default(0)
+  4742→  paymentMethod String?
+  4743→  category      String?
+  4744→  customerId    String?
+  4745→  branchId      String?
+  4746→  createdAt     DateTime @default(now())
+  4747→
+  4748→  @@index([merchantId, branchId])
+  4749→  @@index([merchantId, createdAt])
+  4750→}
+  4751→
+  4752→model SavingsPocket {
+  4753→  id             String       @id
+  4754→  userId         String
+  4755→  name           String
+  4756→  icon           String       @default("wallet")
+  4757→  color          String       @default("#00897B")
+  4758→  targetCents    BigInt?
+  4759→  currentCents   BigInt       @default(0)
+  4760→  interestRate   Float        @default(0.05)
+  4761→  interestEarned BigInt       @default(0)
+  4762→  autoSaveRule   String?
+  4763→  targetDate     String?
+  4764→  status         String       @default("active")
+  4765→  createdAt      DateTime     @default(now())
+  4766→  updatedAt      DateTime
+  4767→  ConsumerUser   ConsumerUser @relation(fields: [userId], references: [id])
+  4768→}
+  4769→
+  4770→model ScheduledReport {
+  4771→  id                String            @id
+  4772→  merchantId        String
+  4773→  reportId          String            @unique
+  4774→  name              String
+  4775→  description       String?
+  4776→  frequency         String            @default("daily")
+  4777→  customCron        String?
+  4778→  timezone          String            @default("Africa/Johannesburg")
+  4779→  runAt             String            @default("08:00")
+  4780→  dayOfWeek         Int?
+  4781→  dayOfMonth        Int?
+  4782→  lastDayOfMonth    Boolean           @default(false)
+  4783→  periodType        String            @default("previous_day")
+  4784→  customStartDate   String?
+  4785→  customEndDate     String?
+  4786→  deliveryChannels  String
+  4787→  recipients        String?
+  4788→  webhookUrl        String?
+  4789→  webhookSecret     String?
+  4790→  exportFormat      String            @default("pdf")
+  4791→  includeSummary    Boolean           @default(true)
+  4792→  includeCharts     Boolean           @default(true)
+  4793→  isActive          Boolean           @default(true)
+  4794→  status            String            @default("active")
+  4795→  lastRunAt         DateTime?
+  4796→  lastRunStatus     String?
+  4797→  lastError         String?
+  4798→  nextRunAt         DateTime?
+  4799→  retryOnFailure    Boolean           @default(true)
+  4800→  maxRetries        Int               @default(3)
+  4801→  retryCount        Int               @default(0)
+  4802→  notifyOnSuccess   Boolean           @default(false)
+  4803→  notifyOnFailure   Boolean           @default(true)
+  4804→  notificationEmail String?
+  4805→  createdBy         String?
+  4806→  createdByName     String?
+  4807→  createdAt         DateTime          @default(now())
+  4808→  updatedAt         DateTime
+  4809→  ReportExecution   ReportExecution[]
+  4810→  CustomReport      CustomReport      @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  4811→
+  4812→  @@index([status])
+  4813→  @@index([nextRunAt])
+  4814→  @@index([merchantId, isActive])
+  4815→}
+  4816→
+  4817→model Server {
+  4818→  id              String            @id
+  4819→  name            String
+  4820→  status          String            @default("active")
+  4821→  createdAt       DateTime          @default(now())
+  4822→  updatedAt       DateTime
+  4823→  RestaurantTable RestaurantTable[]
+  4824→}
+  4825→
+  4826→model Session {
+  4827→  id        String   @id
+  4828→  userId    String
+  4829→  token     String   @unique
+  4830→  expiresAt DateTime
+  4831→  userAgent String?
+  4832→  ipAddress String?
+  4833→  createdAt DateTime @default(now())
+  4834→  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  4835→
+  4836→  @@index([userId])
+  4837→  @@index([token])
+  4838→}
+  4839→
+  4840→model Staff {
+  4841→  id           String         @id
+  4842→  name         String
+  4843→  email        String?
+  4844→  phone        String?
+  4845→  avatar       String?
+  4846→  color        String         @default("#00897B")
+  4847→  status       String         @default("active")
+  4848→  role         String         @default("staff")
+  4849→  specialties  String?
+  4850→  workingHours String?
+  4851→  rating       Float          @default(0)
+  4852→  reviewCount  Int            @default(0)
+  4853→  createdAt    DateTime       @default(now())
+  4854→  updatedAt    DateTime
+  4855→  Appointment  Appointment[]
+  4856→  StaffBreak   StaffBreak[]
+  4857→  StaffService StaffService[]
+  4858→}
+  4859→
+  4860→model StaffBreak {
+  4861→  id        String   @id
+  4862→  staffId   String
+  4863→  date      String
+  4864→  startTime String
+  4865→  endTime   String
+  4866→  reason    String?
+  4867→  createdAt DateTime @default(now())
+  4868→  updatedAt DateTime
+  4869→  Staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  4870→}
+  4871→
+  4872→model StaffService {
+  4873→  id             String         @id
+  4874→  staffId        String
+  4875→  serviceId      String
+  4876→  customPrice    Float?
+  4877→  isPrimary      Boolean        @default(false)
+  4878→  createdAt      DateTime       @default(now())
+  4879→  updatedAt      DateTime
+  4880→  BookingService BookingService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  4881→  Staff          Staff          @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  4882→
+  4883→  @@unique([staffId, serviceId])
+  4884→}
+  4885→
+  4886→model StaffShift {
+  4887→  id              String          @id
+  4888→  staffId         String
+  4889→  date            String
+  4890→  clockIn         DateTime
+  4891→  clockOut        DateTime?
+  4892→  breakStart      DateTime?
+  4893→  breakEnd        DateTime?
+  4894→  breakMinutes    Int             @default(0)
+  4895→  totalOrders     Int             @default(0)
+  4896→  totalSales      Float           @default(0)
+  4897→  totalTips       Float           @default(0)
+  4898→  status          String          @default("active")
+  4899→  notes           String?
+  4900→  createdAt       DateTime        @default(now())
+  4901→  updatedAt       DateTime
+  4902→  RestaurantStaff RestaurantStaff @relation(fields: [staffId], references: [id])
+  4903→
+  4904→  @@unique([staffId, date])
+  4905→  @@index([staffId, date])
+  4906→}
+  4907→
+  4908→model StockDeduction {
+  4909→  id           String     @id
+  4910→  quantity     Float
+  4911→  unit         String
+  4912→  cost         Float
+  4913→  orderId      String
+  4914→  recipeId     String
+  4915→  ingredientId String
+  4916→  createdAt    DateTime   @default(now())
+  4917→  Ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  4918→  Recipe       Recipe     @relation(fields: [recipeId], references: [id])
+  4919→}
+  4920→
+  4921→model StockMovement {
+  4922→  id              String   @id
+  4923→  merchantId      String
+  4924→  branchId        String
+  4925→  productId       String
+  4926→  type            String
+  4927→  quantity        Float
+  4928→  previousStock   Float
+  4929→  newStock        Float
+  4930→  unitCost        Float?
+  4931→  totalValue      Float?
+  4932→  referenceType   String?
+  4933→  referenceId     String?
+  4934→  reason          String?
+  4935→  notes           String?
+  4936→  performedBy     String?
+  4937→  performedByName String?
+  4938→  createdAt       DateTime @default(now())
+  4939→  Product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  4940→  Branch          Branch   @relation(fields: [branchId], references: [id])
+  4941→}
+  4942→
+  4943→model StockMovementOrder {
+  4944→  id                String             @id
+  4945→  poId              String?
+  4946→  grnId             String?
+  4947→  inventoryItemId   String?
+  4948→  sku               String
+  4949→  productName       String
+  4950→  quantity          Int
+  4951→  unitCost          Float
+  4952→  totalValue        Float
+  4953→  movementType      String
+  4954→  reason            String?
+  4955→  batchNumber       String?
+  4956→  expiryDate        String?
+  4957→  location          String?
+  4958→  reference         String?
+  4959→  verifiedBy        String?
+  4960→  verifiedAt        DateTime?
+  4961→  createdAt         DateTime           @default(now())
+  4962→  updatedAt         DateTime
+  4963→  PurchaseOrder     PurchaseOrder?     @relation(fields: [poId], references: [id])
+  4964→  GoodsReceivedNote GoodsReceivedNote? @relation(fields: [grnId], references: [id])
+  4965→
+  4966→  @@index([sku, createdAt])
+  4967→  @@index([movementType, createdAt])
+  4968→}
+  4969→
+  4970→model StockTransfer {
+  4971→  id                                        String              @id
+  4972→  merchantId                                String
+  4973→  code                                      String              @unique
+  4974→  fromBranchId                              String
+  4975→  toBranchId                                String
+  4976→  status                                    String              @default("draft")
+  4977→  itemsCount                                Int                 @default(0)
+  4978→  totalValue                                Float               @default(0)
+  4979→  notes                                     String?
+  4980→  internalNotes                             String?
+  4981→  requestedBy                               String?
+  4982→  requestedByName                           String?
+  4983→  requestedAt                               DateTime?
+  4984→  approvedBy                                String?
+  4985→  approvedByName                            String?
+  4986→  approvedAt                                DateTime?
+  4987→  dispatchedBy                              String?
+  4988→  dispatchedByName                          String?
+  4989→  dispatchedAt                              DateTime?
+  4990→  estimatedArrival                          DateTime?
+  4991→  receivedBy                                String?
+  4992→  receivedByName                            String?
+  4993→  receivedAt                                DateTime?
+  4994→  discrepancyNotes                          String?
+  4995→  cancelledBy                               String?
+  4996→  cancelledByName                           String?
+  4997→  cancelledAt                               DateTime?
+  4998→  cancelledReason                           String?
+  4999→  createdAt                                 DateTime            @default(now())
+  5000→  updatedAt                                 DateTime
+  5001→  Branch_StockTransfer_toBranchIdToBranch   Branch              @relation("StockTransfer_toBranchIdToBranch", fields: [toBranchId], references: [id])
+  5002→  Branch_StockTransfer_fromBranchIdToBranch Branch              @relation("StockTransfer_fromBranchIdToBranch", fields: [fromBranchId], references: [id])
+  5003→  Merchant                                  Merchant            @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  5004→  StockTransferItem                         StockTransferItem[]
+  5005→}
+  5006→
+  5007→model StockTransferItem {
+  5008→  id                String        @id
+  5009→  transferId        String
+  5010→  productId         String
+  5011→  sku               String
+  5012→  productName       String
+  5013→  quantityRequested Float         @default(0)
+  5014→  quantitySent      Float?
+  5015→  quantityReceived  Float?
+  5016→  unit              String        @default("each")
+  5017→  unitCost          Float         @default(0)
+  5018→  totalValue        Float         @default(0)
+  5019→  notes             String?
+  5020→  discrepancyNotes  String?
+  5021→  createdAt         DateTime      @default(now())
+  5022→  updatedAt         DateTime
+  5023→  Product           Product       @relation(fields: [productId], references: [id])
+  5024→  StockTransfer     StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  5025→}
+  5026→
+  5027→model StokvelContribution {
+  5028→  id            String        @id
+  5029→  groupId       String
+  5030→  memberId      String
+  5031→  amountCents   BigInt
+  5032→  cycle         Int
+  5033→  status        String        @default("completed")
+  5034→  paidAt        DateTime      @default(now())
+  5035→  createdAt     DateTime      @default(now())
+  5036→  updatedAt     DateTime
+  5037→  StokvelMember StokvelMember @relation(fields: [memberId], references: [id])
+  5038→  StokvelGroup  StokvelGroup  @relation(fields: [groupId], references: [id])
+  5039→}
+  5040→
+  5041→model StokvelGroup {
+  5042→  id                  String                @id
+  5043→  name                String
+  5044→  description         String?
+  5045→  icon                String                @default("users")
+  5046→  creatorId           String
+  5047→  targetCents         BigInt?
+  5048→  contributionCents   BigInt
+  5049→  contributionDay     Int                   @default(1)
+  5050→  payoutOrder         String?
+  5051→  currentCycle        Int                   @default(1)
+  5052→  status              String                @default("active")
+  5053→  totalSavedCents     BigInt                @default(0)
+  5054→  createdAt           DateTime              @default(now())
+  5055→  updatedAt           DateTime
+  5056→  StokvelContribution StokvelContribution[]
+  5057→  StokvelMember       StokvelMember[]
+  5058→  StokvelPayout       StokvelPayout[]
+  5059→}
+  5060→
+  5061→model StokvelMember {
+  5062→  id                  String                @id
+  5063→  groupId             String
+  5064→  userId              String
+  5065→  role                String                @default("member")
+  5066→  payoutPosition      Int
+  5067→  totalContributed    BigInt                @default(0)
+  5068→  totalReceived       BigInt                @default(0)
+  5069→  status              String                @default("active")
+  5070→  joinedAt            DateTime              @default(now())
+  5071→  createdAt           DateTime              @default(now())
+  5072→  updatedAt           DateTime
+  5073→  StokvelContribution StokvelContribution[]
+  5074→  ConsumerUser        ConsumerUser          @relation(fields: [userId], references: [id])
+  5075→  StokvelGroup        StokvelGroup          @relation(fields: [groupId], references: [id])
+  5076→  StokvelPayout       StokvelPayout[]
+  5077→}
+  5078→
+  5079→model StokvelPayout {
+  5080→  id            String        @id
+  5081→  groupId       String
+  5082→  memberId      String
+  5083→  amountCents   BigInt
+  5084→  cycle         Int
+  5085→  status        String        @default("completed")
+  5086→  paidAt        DateTime      @default(now())
+  5087→  createdAt     DateTime      @default(now())
+  5088→  updatedAt     DateTime
+  5089→  StokvelMember StokvelMember @relation(fields: [memberId], references: [id])
+  5090→  StokvelGroup  StokvelGroup  @relation(fields: [groupId], references: [id])
+  5091→}
+  5092→
+  5093→model StoreCategory {
+  5094→  id           String         @id
+  5095→  merchantId   String
+  5096→  name         String
+  5097→  description  String?
+  5098→  image        String?
+  5099→  sortOrder    Int            @default(0)
+  5100→  active       Boolean        @default(true)
+  5101→  createdAt    DateTime       @default(now())
+  5102→  updatedAt    DateTime
+  5103→  StoreProduct StoreProduct[]
+  5104→
+  5105→  @@unique([merchantId, name])
+  5106→}
+  5107→
+  5108→model StoreOrder {
+  5109→  id              String           @id
+  5110→  merchantId      String
+  5111→  orderNumber     String           @unique
+  5112→  customerName    String
+  5113→  customerPhone   String
+  5114→  customerEmail   String?
+  5115→  customerNote    String?
+  5116→  subtotal        Float            @default(0)
+  5117→  deliveryFee     Float            @default(0)
+  5118→  discount        Float            @default(0)
+  5119→  total           Float            @default(0)
+  5120→  status          String           @default("pending")
+  5121→  type            String           @default("pickup")
+  5122→  deliveryName    String?
+  5123→  deliveryPhone   String?
+  5124→  deliveryEmail   String?
+  5125→  deliveryAddress String?
+  5126→  deliveryCity    String?
+  5127→  deliveryPostal  String?
+  5128→  deliveryNotes   String?
+  5129→  deliveryLat     Float?
+  5130→  deliveryLng     Float?
+  5131→  paymentMethod   String?
+  5132→  paymentStatus   String           @default("pending")
+  5133→  paymentRef      String?
+  5134→  notes           String?
+  5135→  confirmedAt     DateTime?
+  5136→  dispatchedAt    DateTime?
+  5137→  deliveredAt     DateTime?
+  5138→  cancelledAt     DateTime?
+  5139→  createdAt       DateTime         @default(now())
+  5140→  updatedAt       DateTime
+  5141→  StoreOrderItem  StoreOrderItem[]
+  5142→}
+  5143→
+  5144→model StoreOrderItem {
+  5145→  id           String        @id
+  5146→  orderId      String
+  5147→  productId    String?
+
+[showing lines 3148-5147 of 7002; use offset=5148 with limit to continue reading]

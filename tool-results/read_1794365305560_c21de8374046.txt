@@ -1,0 +1,1527 @@
+     1→'use client'
+     2→
+     3→/**
+     4→ * GroCredit - Merchant Working Capital Facility
+     5→ * 
+     6→ * Algorithm-based credit scoring that measures sales performance
+     7→ * to determine credit qualification. Integrates with Inventory
+     8→ * Intelligence and Supply Intelligence for seamless operations.
+     9→ * 
+    10→ * 4-Tier System: Starter | Business | Enterprise | Seasonal
+    11→ * Interest Rate: Repo + 5-8% p.a. (risk-based)
+    12→ */
+    13→
+    14→import { useState, useMemo, useCallback, useEffect } from 'react'
+    15→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+    16→import { Badge } from '@/components/ui/badge'
+    17→import { Button } from '@/components/ui/button'
+    18→import { Input } from '@/components/ui/input'
+    19→import { Label } from '@/components/ui/label'
+    20→import { ScrollArea } from '@/components/ui/scroll-area'
+    21→import { Progress } from '@/components/ui/progress'
+    22→import { Separator } from '@/components/ui/separator'
+    23→import { Textarea } from '@/components/ui/textarea'
+    24→import {
+    25→  Dialog,
+    26→  DialogContent,
+    27→  DialogDescription,
+    28→  DialogFooter,
+    29→  DialogHeader,
+    30→  DialogTitle,
+    31→} from '@/components/ui/dialog'
+    32→import {
+    33→  Select,
+    34→  SelectContent,
+    35→  SelectItem,
+    36→  SelectTrigger,
+    37→  SelectValue,
+    38→} from '@/components/ui/select'
+    39→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    40→import { toast } from 'sonner'
+    41→import {
+    42→  PiggyBank,
+    43→  TrendingUp,
+    44→  TrendingDown,
+    45→  CreditCard,
+    46→  Wallet,
+    47→  CheckCircle2,
+    48→  AlertCircle,
+    49→  Clock,
+    50→  Coins,
+    51→  Percent,
+    52→  Calendar,
+    53→  Bot,
+    54→  Lightbulb,
+    55→  Target,
+    56→  Zap,
+    57→  Brain,
+    58→  Shield,
+    59→  Star,
+    60→  Award,
+    61→  Lock,
+    62→  Sparkles,
+    63→  FileText,
+    64→  ChevronRight,
+    65→  Info,
+    66→  Calculator,
+    67→  Loader2,
+    68→  Building2,
+    69→  BarChart3,
+    70→  ArrowRight,
+    71→  CheckCircle,
+    72→  XCircle,
+    73→  Hourglass,
+    74→  Send,
+    75→  RefreshCw,
+    76→  Plus,
+    77→  Activity,
+    78→  Package,
+    79→  ShoppingCart,
+    80→  LineChart,
+    81→  PieChart,
+    82→  ArrowUpRight,
+    83→  ArrowDownRight,
+    84→  Minus,
+    85→  AlertTriangle,
+    86→  BadgeCheck,
+    87→  Settings,
+    88→  HelpCircle,
+    89→  Scale,
+    90→  Users,
+    91→  Store,
+    92→  ShoppingBag,
+    93→  Boxes,
+    94→  Truck,
+    95→} from 'lucide-react'
+    96→import { useMerchantData } from '../hooks/useMerchantData'
+    97→import { EmptyState, NoDataEmptyState } from './EmptyState'
+    98→
+    99→// ============================================
+   100→// TYPES & INTERFACES
+   101→// ============================================
+   102→
+   103→// Credit Tiers based on spec
+   104→type CreditTier = 'starter' | 'business' | 'enterprise' | 'seasonal'
+   105→
+   106→interface TierConfig {
+   107→  name: string
+   108→  color: string
+   109→  bgColor: string
+   110→  borderColor: string
+   111→  minMonthlySales: number
+   112→  maxLimit: number
+   113→  baseRate: number // Repo + baseRate
+   114→  features: string[]
+   115→  icon: typeof Star
+   116→}
+   117→
+   118→const TIER_CONFIGS: Record<CreditTier, TierConfig> = {
+   119→  starter: {
+   120→    name: 'Starter',
+   121→    color: 'text-gray-600',
+   122→    bgColor: 'bg-gray-100',
+   123→    borderColor: 'border-gray-300',
+   124→    minMonthlySales: 10000,
+   125→    maxLimit: 50000,
+   126→    baseRate: 8, // Repo + 8%
+   127→    features: ['Basic credit limit', 'Standard processing', 'Monthly reviews'],
+   128→    icon: Star
+   129→  },
+   130→  business: {
+   131→    name: 'Business',
+   132→    color: 'text-blue-600',
+   133→    bgColor: 'bg-blue-100',
+   134→    borderColor: 'border-blue-300',
+   135→    minMonthlySales: 50000,
+   136→    maxLimit: 200000,
+   137→    baseRate: 7, // Repo + 7%
+   138→    features: ['Higher limits', 'Priority processing', 'Flexible repayment', 'GroSupply integration'],
+   139→    icon: Award
+   140→  },
+   141→  enterprise: {
+   142→    name: 'Enterprise',
+   143→    color: 'text-purple-600',
+   144→    bgColor: 'bg-purple-100',
+   145→    borderColor: 'border-purple-300',
+   146→    minMonthlySales: 200000,
+   147→    maxLimit: 1000000,
+   148→    baseRate: 6, // Repo + 6%
+   149→    features: ['Maximum limits', 'Instant approval', 'Dedicated support', 'Custom terms', 'Multi-branch'],
+   150→    icon: Shield
+   151→  },
+   152→  seasonal: {
+   153→    name: 'Seasonal',
+   154→    color: 'text-amber-600',
+   155→    bgColor: 'bg-amber-100',
+   156→    borderColor: 'border-amber-300',
+   157→    minMonthlySales: 30000,
+   158→    maxLimit: 150000,
+   159→    baseRate: 5.5, // Repo + 5.5%
+   160→    features: ['Flexible terms', 'Peak season boosts', 'Interest holidays', 'Variable limits'],
+   161→    icon: Calendar
+   162→  }
+   163→}
+   164→
+   165→// Current SARB Repo Rate (as of 2026)
+   166→const REPO_RATE = 8.25
+   167→
+   168→// Sales Performance Data (from POS/Analytics integration)
+   169→interface SalesPerformance {
+   170→  dailyAverage: number
+   171→  weeklyTrend: number // percentage
+   172→  monthlyTotal: number
+   173→  monthlyGrowth: number // percentage
+   174→  peakDay: string
+   175→  peakDaySales: number
+   176→  transactionCount: number
+   177→  averageTransaction: number
+   178→  consistency: number // 0-100 score
+   179→  ytdTotal: number
+   180→  lastThreeMonths: number[]
+   181→}
+   182→
+   183→// Inventory Intelligence Data
+   184→interface InventoryIntelligence {
+   185→  stockTurnoverRate: number // times per year
+   186→  daysOfStock: number
+   187→  lowStockAlerts: number
+   188→  reorderFrequency: number // orders per month
+   189→  topMovingCategories: string[]
+   190→  deadStockRatio: number // percentage
+   191→  grossMarginReturn: number // GMROI
+   192→}
+   193→
+   194→// Supply Intelligence Data
+   195→interface SupplyIntelligence {
+   196→  supplierReliabilityScore: number // 0-100
+   197→  averageDeliveryDays: number
+   198→  activeSuppliers: number
+   199→  pendingOrders: number
+   200→  onTimeDeliveryRate: number // percentage
+   201→  bulkDiscountOpportunities: number
+   202→  monthlyProcurementSpend: number
+   203→}
+   204→
+   205→// GroCredit Score Breakdown
+   206→interface CreditScoreBreakdown {
+   207→  salesPerformance: {
+   208→    score: number
+   209→    weight: number
+   210→    factors: { name: string; value: number; impact: 'positive' | 'negative' | 'neutral' }[]
+   211→  }
+   212→  operationalConsistency: {
+   213→    score: number
+   214→    weight: number
+   215→    factors: { name: string; value: number; impact: 'positive' | 'negative' | 'neutral' }[]
+   216→  }
+   217→  inventoryHealth: {
+   218→    score: number
+   219→    weight: number
+   220→    factors: { name: string; value: number; impact: 'positive' | 'negative' | 'neutral' }[]
+   221→  }
+   222→  supplyReliability: {
+   223→    score: number
+   224→    weight: number
+   225→    factors: { name: string; value: number; impact: 'positive' | 'negative' | 'neutral' }[]
+   226→  }
+   227→  overallScore: number
+   228→  tier: CreditTier
+   229→  confidence: number
+   230→}
+   231→
+   232→// Credit Facility
+   233→interface CreditFacility {
+   234→  id: string
+   235→  tier: CreditTier
+   236→  approvedLimit: number
+   237→  availableCredit: number
+   238→  usedCredit: number
+   239→  interestRate: number // Repo + tier base rate
+   240→  status: 'active' | 'suspended' | 'under_review' | 'pending_activation'
+   241→  activatedAt: string
+   242→  nextReviewDate: string
+   243→  repaymentTerms: {
+   244→    minimumPaymentPercent: number
+   245→    dueDate: number // day of month
+   246→    lateFeePercent: number
+   247→  }
+   248→  ncaCompliant: boolean
+   249→  businessType: 'sole_proprietor' | 'pty_ltd' | 'cc' | 'other'
+   250→}
+   251→
+   252→// Draw Transaction
+   253→interface DrawTransaction {
+   254→  id: string
+   255→  reference: string
+   256→  amount: number
+   257→  purpose: 'inventory_purchase' | 'working_capital' | 'emergency' | 'grosupply_order'
+   258→  linkedPOId?: string
+   259→  linkedSupplier?: string
+   260→  status: 'pending' | 'processed' | 'reconciled'
+   261→  createdAt: string
+   262→  interestAccrued: number
+   263→  repaymentDate: string
+   264→}
+   265→
+   266→// ============================================
+   267→// UTILITY FUNCTIONS
+   268→// ============================================
+   269→
+   270→const formatCurrency = (amount: number) => {
+   271→  return `R${Math.abs(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+   272→}
+   273→
+   274→const formatPercent = (value: number) => {
+   275→  return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
+   276→}
+   277→
+   278→const getDaysUntil = (dateStr: string) => {
+   279→  const date = new Date(dateStr)
+   280→  const now = new Date()
+   281→  const diff = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+   282→  return diff
+   283→}
+   284→
+   285→// ============================================
+   286→// MAIN COMPONENT
+   287→// ============================================
+   288→
+   289→export function GroCreditView() {
+   290→  // Get merchant data from session
+   291→  const { merchantId, isLoading: isLoadingMerchant } = useMerchantData()
+   292→  
+   293→  // State
+   294→  const [activeTab, setActiveTab] = useState<string>('overview')
+   295→  const [loading, setLoading] = useState(true)
+   296→  const [processing, setProcessing] = useState(false)
+   297→  
+   298→  // Data states
+   299→  const [salesPerformance, setSalesPerformance] = useState<SalesPerformance | null>(null)
+   300→  const [inventoryIntelligence, setInventoryIntelligence] = useState<InventoryIntelligence | null>(null)
+   301→  const [supplyIntelligence, setSupplyIntelligence] = useState<SupplyIntelligence | null>(null)
+   302→  const [creditScore, setCreditScore] = useState<CreditScoreBreakdown | null>(null)
+   303→  const [facility, setFacility] = useState<CreditFacility | null>(null)
+   304→  const [drawTransactions, setDrawTransactions] = useState<DrawTransaction[]>([])
+   305→  
+   306→  // Dialog states
+   307→  const [drawDialogOpen, setDrawDialogOpen] = useState(false)
+   308→  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+   309→  const [applyDialogOpen, setApplyDialogOpen] = useState(false)
+   310→  const [algorithmDialogOpen, setAlgorithmDialogOpen] = useState(false)
+   311→  const [groSupplyOrderDialogOpen, setGroSupplyOrderDialogOpen] = useState(false)
+   312→  
+   313→  // Form states
+   314→  const [drawAmount, setDrawAmount] = useState<number>(0)
+   315→  const [drawPurpose, setDrawPurpose] = useState<string>('working_capital')
+   316→  const [paymentAmount, setPaymentAmount] = useState<number>(0)
+   317→  const [applicationForm, setApplicationForm] = useState({
+   318→    businessType: 'pty_ltd' as 'sole_proprietor' | 'pty_ltd' | 'cc' | 'other',
+   319→    tradingYears: '',
+   320→    requestedTier: 'business' as CreditTier,
+   321→    purpose: '',
+   322→    acceptNCA: false,
+   323→    acceptTerms: false
+   324→  })
+   325→
+   326→  // Fetch all data
+   327→  const fetchData = useCallback(async () => {
+   328→    if (!merchantId) return
+   329→    setLoading(true)
+   330→    try {
+   331→      // Fetch from API endpoints
+   332→      const [salesRes, inventoryRes, supplyRes, creditRes, facilityRes, transactionsRes] = await Promise.all([
+   333→        fetch(`/merchant-os/api/grocredit/sales-performance?merchantId=${merchantId}`),
+   334→        fetch(`/merchant-os/api/grocredit/inventory-intelligence?merchantId=${merchantId}`),
+   335→        fetch(`/merchant-os/api/grocredit/supply-intelligence?merchantId=${merchantId}`),
+   336→        fetch(`/merchant-os/api/grocredit/credit-score?merchantId=${merchantId}`),
+   337→        fetch(`/merchant-os/api/grocredit/facility?merchantId=${merchantId}`),
+   338→        fetch(`/merchant-os/api/grocredit/transactions?merchantId=${merchantId}`)
+   339→      ])
+   340→      
+   341→      if (salesRes.ok) {
+   342→        const data = await salesRes.json()
+   343→        setSalesPerformance(data.salesPerformance || null)
+   344→      }
+   345→      
+   346→      if (inventoryRes.ok) {
+   347→        const data = await inventoryRes.json()
+   348→        setInventoryIntelligence(data.inventoryIntelligence || null)
+   349→      }
+   350→      
+   351→      if (supplyRes.ok) {
+   352→        const data = await supplyRes.json()
+   353→        setSupplyIntelligence(data.supplyIntelligence || null)
+   354→      }
+   355→      
+   356→      if (creditRes.ok) {
+   357→        const data = await creditRes.json()
+   358→        setCreditScore(data.creditScore || null)
+   359→      }
+   360→      
+   361→      if (facilityRes.ok) {
+   362→        const data = await facilityRes.json()
+   363→        setFacility(data.facility || null)
+   364→      }
+   365→      
+   366→      if (transactionsRes.ok) {
+   367→        const data = await transactionsRes.json()
+   368→        setDrawTransactions(data.transactions || [])
+   369→      }
+   370→      
+   371→    } catch (error) {
+   372→      console.error('Error fetching GroCredit data:', error)
+   373→      toast.error('Failed to load credit data')
+   374→    } finally {
+   375→      setLoading(false)
+   376→    }
+   377→  }, [merchantId])
+   378→
+   379→  useEffect(() => {
+   380→    fetchData()
+   381→  }, [fetchData])
+   382→
+   383→  // Calculate recommended credit limit based on algorithm
+   384→  const recommendedLimit = useMemo(() => {
+   385→    if (!salesPerformance || !creditScore) return 0
+   386→    
+   387→    // Algorithm: Based on monthly sales * credit score factor * tier multiplier
+   388→    const baseLimit = salesPerformance.monthlyTotal * 0.6 // 60% of monthly sales as base
+   389→    const scoreMultiplier = creditScore.overallScore / 100
+   390→    const tierMultiplier = creditScore.tier === 'enterprise' ? 1.5 :
+   391→                          creditScore.tier === 'business' ? 1.0 :
+   392→                          creditScore.tier === 'seasonal' ? 0.8 : 0.5
+   393→    
+   394→    return Math.round(baseLimit * scoreMultiplier * tierMultiplier)
+   395→  }, [salesPerformance, creditScore])
+   396→
+   397→  // Calculate interest for amount
+   398→  const calculateInterest = (amount: number, months: number = 1) => {
+   399→    if (!facility) return 0
+   400→    const monthlyRate = facility.interestRate / 100 / 12
+   401→    return amount * monthlyRate * months
+   402→  }
+   403→
+   404→  // Handle draw
+   405→  const handleDraw = async () => {
+   406→    if (!facility || drawAmount <= 0 || drawAmount > facility.availableCredit) {
+   407→      toast.error('Invalid draw amount')
+   408→      return
+   409→    }
+   410→    
+   411→    setProcessing(true)
+   412→    try {
+   413→      // Simulate API call
+   414→      await new Promise(resolve => setTimeout(resolve, 1500))
+   415→      
+   416→      const newDraw: DrawTransaction = {
+   417→        id: `DRW-${Date.now()}`,
+   418→        reference: `GC-DRW-${new Date().getFullYear()}-${String(drawTransactions.length + 1).padStart(3, '0')}`,
+   419→        amount: drawAmount,
+   420→        purpose: drawPurpose as any,
+   421→        status: 'processed',
+   422→        createdAt: new Date().toISOString(),
+   423→        interestAccrued: calculateInterest(drawAmount),
+   424→        repaymentDate: `${new Date().getFullYear()}-${String(new Date().getMonth() + 2).padStart(2, '0')}-25`
+   425→      }
+   426→      
+   427→      setDrawTransactions(prev => [newDraw, ...prev])
+   428→      setFacility(prev => prev ? {
+   429→        ...prev,
+   430→        availableCredit: prev.availableCredit - drawAmount,
+   431→        usedCredit: prev.usedCredit + drawAmount
+   432→      } : null)
+   433→      
+   434→      setDrawDialogOpen(false)
+   435→      setDrawAmount(0)
+   436→      toast.success(`Successfully drew ${formatCurrency(drawAmount)}`)
+   437→    } catch (error) {
+   438→      toast.error('Failed to process draw')
+   439→    } finally {
+   440→      setProcessing(false)
+   441→    }
+   442→  }
+   443→
+   444→  // Handle payment
+   445→  const handlePayment = async () => {
+   446→    if (!facility || paymentAmount <= 0) {
+   447→      toast.error('Invalid payment amount')
+   448→      return
+   449→    }
+   450→    
+   451→    setProcessing(true)
+   452→    try {
+   453→      await new Promise(resolve => setTimeout(resolve, 1500))
+   454→      
+   455→      const actualPayment = Math.min(paymentAmount, facility.usedCredit)
+   456→      
+   457→      setFacility(prev => prev ? {
+   458→        ...prev,
+   459→        availableCredit: prev.availableCredit + actualPayment,
+   460→        usedCredit: prev.usedCredit - actualPayment
+   461→      } : null)
+   462→      
+   463→      setPaymentDialogOpen(false)
+   464→      setPaymentAmount(0)
+   465→      toast.success(`Payment of ${formatCurrency(actualPayment)} processed successfully`)
+   466→    } catch (error) {
+   467→      toast.error('Failed to process payment')
+   468→    } finally {
+   469→      setProcessing(false)
+   470→    }
+   471→  }
+   472→
+   473→  // Handle GroSupply order payment
+   474→  const handleGroSupplyPayment = async (poId: string, amount: number) => {
+   475→    if (!facility || amount > facility.availableCredit) {
+   476→      toast.error('Insufficient credit available')
+   477→      return
+   478→    }
+   479→    
+   480→    setProcessing(true)
+   481→    try {
+   482→      await new Promise(resolve => setTimeout(resolve, 1500))
+   483→      
+   484→      const newDraw: DrawTransaction = {
+   485→        id: `DRW-${Date.now()}`,
+   486→        reference: `GC-GS-${new Date().getFullYear()}-${String(drawTransactions.length + 1).padStart(3, '0')}`,
+   487→        amount,
+   488→        purpose: 'grosupply_order',
+   489→        linkedPOId: poId,
+   490→        status: 'processed',
+   491→        createdAt: new Date().toISOString(),
+   492→        interestAccrued: calculateInterest(amount),
+   493→        repaymentDate: `${new Date().getFullYear()}-${String(new Date().getMonth() + 2).padStart(2, '0')}-25`
+   494→      }
+   495→      
+   496→      setDrawTransactions(prev => [newDraw, ...prev])
+   497→      setFacility(prev => prev ? {
+   498→        ...prev,
+   499→        availableCredit: prev.availableCredit - amount,
+   500→        usedCredit: prev.usedCredit + amount
+   501→      } : null)
+   502→      
+   503→      setGroSupplyOrderDialogOpen(false)
+   504→      toast.success(`GroSupply order ${poId} paid via GroCredit`)
+   505→    } catch (error) {
+   506→      toast.error('Failed to process GroSupply payment')
+   507→    } finally {
+   508→      setProcessing(false)
+   509→    }
+   510→  }
+   511→
+   512→  // Get tier badge
+   513→  const TierBadge = ({ tier }: { tier: CreditTier }) => {
+   514→    const config = TIER_CONFIGS[tier]
+   515→    const Icon = config.icon
+   516→    return (
+   517→      <Badge className={`${config.bgColor} ${config.color} border ${config.borderColor}`}>
+   518→        <Icon className="h-3 w-3 mr-1" />
+   519→        {config.name}
+   520→      </Badge>
+   521→    )
+   522→  }
+   523→
+   524→  // Loading state
+   525→  if (loading) {
+   526→    return (
+   527→      <div className="flex-1 p-6 flex items-center justify-center">
+   528→        <div className="text-center">
+   529→          <Loader2 className="h-8 w-8 animate-spin text-[#00897B] mx-auto mb-4" />
+   530→          <p className="text-sm text-[#757575]">Analyzing your business performance...</p>
+   531→        </div>
+   532→      </div>
+   533→    )
+   534→  }
+   535→
+   536→  return (
+   537→    <div className="flex-1 flex flex-col min-h-0">
+   538→      {/* Header */}
+   539→      <div className="p-4 border-b border-gray-200 bg-white">
+   540→        <div className="flex items-center justify-between">
+   541→          <div className="flex items-center gap-3">
+   542→            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+   543→              <PiggyBank className="h-5 w-5 text-white" />
+   544→            </div>
+   545→            <div>
+   546→              <div className="flex items-center gap-2">
+   547→                <h2 className="text-lg font-bold text-[#1A1A1A]">GroCredit</h2>
+   548→                <Badge className="bg-gradient-to-r from-violet-500 to-purple-500 text-white text-[10px]">
+   549→                  <Sparkles className="h-3 w-3 mr-1" />
+   550→                  WORKING CAPITAL
+   551→                </Badge>
+   552→              </div>
+   553→              <p className="text-xs text-[#757575]">Algorithm-Based Merchant Financing</p>
+   554→            </div>
+   555→          </div>
+   556→          <div className="flex items-center gap-2">
+   557→            {facility && <TierBadge tier={facility.tier} />}
+   558→            <Button
+   559→              variant="outline"
+   560→              size="sm"
+   561→              onClick={() => setAlgorithmDialogOpen(true)}
+   562→            >
+   563→              <Brain className="h-4 w-4 mr-1" />
+   564→              How It Works
+   565→            </Button>
+   566→            {facility?.status === 'active' && (
+   567→              <Button
+   568→                className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+   569→                size="sm"
+   570→                onClick={() => setDrawDialogOpen(true)}
+   571→              >
+   572→                <Plus className="h-4 w-4 mr-1" />
+   573→                Draw Funds
+   574→              </Button>
+   575→            )}
+   576→          </div>
+   577→        </div>
+   578→      </div>
+   579→
+   580→      {/* Tabs */}
+   581→      <div className="px-4 pt-3 bg-white border-b border-gray-200">
+   582→        <div className="flex gap-1 overflow-x-auto">
+   583→          {[
+   584→            { id: 'overview', label: 'Overview', icon: Wallet },
+   585→            { id: 'algorithm', label: 'Credit Algorithm', icon: Brain },
+   586→            { id: 'intelligence', label: 'Intelligence Integration', icon: Activity },
+   587→            { id: 'transactions', label: 'Transactions', icon: CreditCard },
+   588→            { id: 'compliance', label: 'NCA Compliance', icon: Scale },
+   589→          ].map((tab) => (
+   590→            <button
+   591→              key={tab.id}
+   592→              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition-colors whitespace-nowrap ${
+   593→                activeTab === tab.id
+   594→                  ? 'bg-violet-50 text-violet-700 border-b-2 border-violet-500'
+   595→                  : 'text-[#757575] hover:bg-gray-100'
+   596→              }`}
+   597→              onClick={() => setActiveTab(tab.id)}
+   598→            >
+   599→              <tab.icon className="h-3.5 w-3.5" />
+   600→              {tab.label}
+   601→            </button>
+   602→          ))}
+   603→        </div>
+   604→      </div>
+   605→
+   606→      {/* Content */}
+   607→      <ScrollArea className="flex-1 p-4">
+   608→        {/* OVERVIEW TAB */}
+   609→        {activeTab === 'overview' && (
+   610→          <div className="space-y-4">
+   611→            {/* Credit Score Hero Card */}
+   612→            <Card className="border-l-4 border-l-violet-500 bg-gradient-to-r from-violet-50 to-purple-50">
+   613→              <CardContent className="p-6">
+   614→                <div className="flex items-start justify-between mb-4">
+   615→                  <div>
+   616→                    <p className="text-xs text-[#757575] mb-1">Your GroCredit Score</p>
+   617→                    <div className="flex items-center gap-4">
+   618→                      <span className="text-5xl font-bold text-violet-600">
+   619→                        {creditScore?.overallScore || 0}
+   620→                      </span>
+   621→                      <div className="flex flex-col gap-1">
+   622→                        <TierBadge tier={creditScore?.tier || 'starter'} />
+   623→                        <span className="text-[10px] text-[#757575]">out of 100</span>
+   624→                      </div>
+   625→                    </div>
+   626→                  </div>
+   627→                  <div className="text-right">
+   628→                    <div className="text-2xl font-bold text-green-600">{formatCurrency(recommendedLimit)}</div>
+   629→                    <p className="text-xs text-[#757575]">Recommended Limit</p>
+   630→                    <p className="text-[10px] text-violet-600 mt-1">{creditScore?.confidence}% confidence</p>
+   631→                  </div>
+   632→                </div>
+   633→
+   634→                {/* Score Breakdown */}
+   635→                <div className="grid grid-cols-4 gap-2 mt-4">
+   636→                  {creditScore && Object.entries({
+   637→                    salesPerformance: 'Sales',
+   638→                    operationalConsistency: 'Operations',
+   639→                    inventoryHealth: 'Inventory',
+   640→                    supplyReliability: 'Supply'
+   641→                  }).map(([key, label]) => {
+   642→                    const data = creditScore[key as keyof CreditScoreBreakdown] as any
+   643→                    if (!data || typeof data.score === 'undefined') return null
+   644→                    return (
+   645→                      <div key={key} className="text-center p-2 rounded-lg bg-white/60">
+   646→                        <p className="text-[10px] text-[#757575]">{label}</p>
+   647→                        <p className="text-lg font-bold text-[#1A1A1A]">{data.score}</p>
+   648→                        <p className="text-[10px] text-violet-600">{data.weight}% weight</p>
+   649→                      </div>
+   650→                    )
+   651→                  })}
+   652→                </div>
+   653→              </CardContent>
+   654→            </Card>
+   655→
+   656→            {/* Credit Facility Status */}
+   657→            {facility && (
+   658→              <>
+   659→                <div className="grid grid-cols-3 gap-3">
+   660→                  <Card>
+   661→                    <CardContent className="p-4">
+   662→                      <div className="flex items-center justify-between mb-2">
+   663→                        <p className="text-xs text-[#757575]">Available Credit</p>
+   664→                        <Wallet className="h-4 w-4 text-green-500" />
+   665→                      </div>
+   666→                      <p className="text-2xl font-bold text-green-600">{formatCurrency(facility.availableCredit)}</p>
+   667→                      <div className="mt-2">
+   668→                        <div className="flex justify-between text-xs mb-1">
+   669→                          <span className="text-[#757575]">Utilization</span>
+   670→                          <span>{Math.round((facility.usedCredit / facility.approvedLimit) * 100)}%</span>
+   671→                        </div>
+   672→                        <Progress value={(facility.usedCredit / facility.approvedLimit) * 100} className="h-2" />
+   673→                      </div>
+   674→                    </CardContent>
+   675→                  </Card>
+   676→
+   677→                  <Card>
+   678→                    <CardContent className="p-4">
+   679→                      <div className="flex items-center justify-between mb-2">
+   680→                        <p className="text-xs text-[#757575]">Used Credit</p>
+   681→                        <CreditCard className="h-4 w-4 text-amber-500" />
+   682→                      </div>
+   683→                      <p className="text-2xl font-bold text-amber-600">{formatCurrency(facility.usedCredit)}</p>
+   684→                      <p className="text-xs text-[#757575] mt-2">
+   685→                        Interest: {facility.interestRate}% APR (Repo + {TIER_CONFIGS[facility.tier].baseRate}%)
+   686→                      </p>
+   687→                    </CardContent>
+   688→                  </Card>
+   689→
+   690→                  <Card>
+   691→                    <CardContent className="p-4">
+   692→                      <div className="flex items-center justify-between mb-2">
+   693→                        <p className="text-xs text-[#757575]">Approved Limit</p>
+   694→                        <BadgeCheck className="h-4 w-4 text-violet-500" />
+   695→                      </div>
+   696→                      <p className="text-2xl font-bold text-[#1A1A1A]">{formatCurrency(facility.approvedLimit)}</p>
+   697→                      <p className="text-xs text-[#757575] mt-2">
+   698→                        Review: {getDaysUntil(facility.nextReviewDate)} days
+   699→                      </p>
+   700→                    </CardContent>
+   701→                  </Card>
+   702→                </div>
+   703→
+   704→                {/* Quick Actions */}
+   705→                <div className="flex gap-2">
+   706→                  <Button
+   707→                    className="flex-1 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+   708→                    onClick={() => setDrawDialogOpen(true)}
+   709→                    disabled={facility.availableCredit <= 0}
+   710→                  >
+   711→                    <Coins className="h-4 w-4 mr-2" />
+   712→                    Draw Funds
+   713→                  </Button>
+   714→                  <Button
+   715→                    variant="outline"
+   716→                    className="flex-1"
+   717→                    onClick={() => setPaymentDialogOpen(true)}
+   718→                    disabled={facility.usedCredit <= 0}
+   719→                  >
+   720→                    <CreditCard className="h-4 w-4 mr-2" />
+   721→                    Make Payment
+   722→                  </Button>
+   723→                  <Button
+   724→                    variant="outline"
+   725→                    className="flex-1"
+   726→                    onClick={() => setGroSupplyOrderDialogOpen(true)}
+   727→                  >
+   728→                    <ShoppingCart className="h-4 w-4 mr-2" />
+   729→                    Pay GroSupplier
+   730→                  </Button>
+   731→                </div>
+   732→              </>
+   733→            )}
+   734→
+   735→            {/* Sales Performance Summary */}
+   736→            {salesPerformance && (
+   737→              <Card>
+   738→                <CardHeader className="pb-2">
+   739→                  <CardTitle className="text-sm flex items-center gap-2">
+   740→                    <TrendingUp className="h-4 w-4 text-green-500" />
+   741→                    Sales Performance
+   742→                  </CardTitle>
+   743→                </CardHeader>
+   744→                <CardContent>
+   745→                  <div className="grid grid-cols-4 gap-4">
+   746→                    <div className="text-center">
+   747→                      <p className="text-2xl font-bold text-[#1A1A1A]">{formatCurrency(salesPerformance.monthlyTotal)}</p>
+   748→                      <p className="text-xs text-[#757575]">Monthly Revenue</p>
+   749→                      <p className="text-xs text-green-600 mt-1">{formatPercent(salesPerformance.monthlyGrowth)}</p>
+   750→                    </div>
+   751→                    <div className="text-center">
+   752→                      <p className="text-2xl font-bold text-[#1A1A1A]">{formatCurrency(salesPerformance.dailyAverage)}</p>
+   753→                      <p className="text-xs text-[#757575]">Daily Average</p>
+   754→                    </div>
+   755→                    <div className="text-center">
+   756→                      <p className="text-2xl font-bold text-[#1A1A1A]">{salesPerformance.transactionCount}</p>
+   757→                      <p className="text-xs text-[#757575]">Transactions</p>
+   758→                    </div>
+   759→                    <div className="text-center">
+   760→                      <p className="text-2xl font-bold text-[#1A1A1A]">{salesPerformance.consistency}%</p>
+   761→                      <p className="text-xs text-[#757575]">Consistency Score</p>
+   762→                    </div>
+   763→                  </div>
+   764→                </CardContent>
+   765→              </Card>
+   766→            )}
+   767→
+   768→            {/* Tier Progression */}
+   769→            <Card>
+   770→              <CardHeader className="pb-2">
+   771→                <CardTitle className="text-sm">Tier Progression</CardTitle>
+   772→              </CardHeader>
+   773→              <CardContent>
+   774→                <div className="flex items-center justify-between">
+   775→                  {(Object.keys(TIER_CONFIGS) as CreditTier[]).map((tier, idx) => {
+   776→                    const config = TIER_CONFIGS[tier]
+   777→                    const Icon = config.icon
+   778→                    const isActive = facility?.tier === tier
+   779→                    const isPast = Object.keys(TIER_CONFIGS).indexOf(facility?.tier || 'starter') > idx
+   780→                    
+   781→                    return (
+   782→                      <div key={tier} className="flex items-center">
+   783→                        <div className={`flex flex-col items-center ${isActive ? 'scale-110' : ''}`}>
+   784→                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
+   785→                            isActive ? `${config.bgColor} ${config.borderColor}` :
+   786→                            isPast ? `${config.bgColor}` : 'bg-gray-100 border-gray-200'
+   787→                          }`}>
+   788→                            <Icon className={`h-5 w-5 ${isActive || isPast ? config.color : 'text-gray-400'}`} />
+   789→                          </div>
+   790→                          <span className={`text-[10px] mt-1 font-medium ${isActive ? config.color : 'text-[#757575]'}`}>
+   791→                            {config.name}
+   792→                          </span>
+   793→                          {isActive && (
+   794→                            <span className="text-[10px] text-violet-600">Current</span>
+   795→                          )}
+   796→                        </div>
+   797→                        {idx < 3 && (
+   798→                          <ArrowRight className={`h-4 w-4 mx-2 ${isPast ? 'text-violet-400' : 'text-gray-200'}`} />
+   799→                        )}
+   800→                      </div>
+   801→                    )
+   802→                  })}
+   803→                </div>
+   804→                
+   805→                {/* Next tier requirements */}
+   806→                {facility && facility.tier !== 'enterprise' && salesPerformance && (
+   807→                  <div className="mt-4 p-3 bg-violet-50 rounded-lg">
+   808→                    <p className="text-xs font-medium text-violet-700">
+   809→                      Upgrade to {TIER_CONFIGS[Object.keys(TIER_CONFIGS)[Object.keys(TIER_CONFIGS).indexOf(facility.tier) + 1] as CreditTier].name}:
+   810→                    </p>
+   811→                    <p className="text-xs text-violet-600 mt-1">
+   812→                      Current: {formatCurrency(salesPerformance.monthlyTotal)}/mo · 
+   813→                      Required: {formatCurrency(TIER_CONFIGS[Object.keys(TIER_CONFIGS)[Object.keys(TIER_CONFIGS).indexOf(facility.tier) + 1] as CreditTier].minMonthlySales)}/mo
+   814→                    </p>
+   815→                  </div>
+   816→                )}
+   817→              </CardContent>
+   818→            </Card>
+   819→          </div>
+   820→        )}
+   821→
+   822→        {/* CREDIT ALGORITHM TAB */}
+   823→        {activeTab === 'algorithm' && creditScore && salesPerformance && (
+   824→          <div className="space-y-4">
+   825→            <Card className="border-l-4 border-l-blue-500">
+   826→              <CardContent className="p-4">
+   827→                <div className="flex items-center gap-3 mb-4">
+   828→                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+   829→                    <Brain className="h-5 w-5 text-blue-600" />
+   830→                  </div>
+   831→                  <div>
+   832→                    <h3 className="font-semibold text-[#1A1A1A]">GroCredit Algorithm</h3>
+   833→                    <p className="text-xs text-[#757575]">Multi-factor credit scoring based on your business performance</p>
+   834→                  </div>
+   835→                </div>
+   836→                
+   837→                <div className="bg-blue-50 p-3 rounded-lg mb-4">
+   838→                  <p className="text-sm text-blue-700">
+   839→                    <strong>How it works:</strong> GroCredit analyzes your sales data, inventory velocity, 
+   840→                    supplier reliability, and operational consistency to determine your creditworthiness. 
+   841→                    This algorithm runs nightly and adjusts your limit based on real performance.
+   842→                  </p>
+   843→                </div>
+   844→              </CardContent>
+   845→            </Card>
+   846→
+   847→            {/* Score Factors */}
+   848→            {[
+   849→              { key: 'salesPerformance', label: 'Sales Performance', icon: TrendingUp, color: 'text-green-500', weight: 40 },
+   850→              { key: 'operationalConsistency', label: 'Operational Consistency', icon: Activity, color: 'text-blue-500', weight: 20 },
+   851→              { key: 'inventoryHealth', label: 'Inventory Health', icon: Package, color: 'text-amber-500', weight: 20 },
+   852→              { key: 'supplyReliability', label: 'Supply Chain Reliability', icon: Truck, color: 'text-purple-500', weight: 20 },
+   853→            ].map(({ key, label, icon: Icon, color, weight }) => {
+   854→              const data = creditScore[key as keyof CreditScoreBreakdown] as any
+   855→              if (!data || !data.factors) return null
+   856→              
+   857→              return (
+   858→                <Card key={key}>
+   859→                  <CardHeader className="pb-2">
+   860→                    <CardTitle className="text-sm flex items-center justify-between">
+   861→                      <div className="flex items-center gap-2">
+   862→                        <Icon className={`h-4 w-4 ${color}`} />
+   863→                        {label}
+   864→                      </div>
+   865→                      <div className="flex items-center gap-2">
+   866→                        <Badge variant="outline">{weight}% weight</Badge>
+   867→                        <span className="text-lg font-bold">{data.score}</span>
+   868→                      </div>
+   869→                    </CardTitle>
+   870→                  </CardHeader>
+   871→                  <CardContent>
+   872→                    <div className="space-y-2">
+   873→                      {data.factors.map((factor: any, idx: number) => (
+   874→                        <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-gray-50">
+   875→                          <div className="flex items-center gap-2">
+   876→                            {factor.impact === 'positive' && <ArrowUpRight className="h-4 w-4 text-green-500" />}
+   877→                            {factor.impact === 'negative' && <ArrowDownRight className="h-4 w-4 text-red-500" />}
+   878→                            {factor.impact === 'neutral' && <Minus className="h-4 w-4 text-gray-400" />}
+   879→                            <span className="text-sm">{factor.name}</span>
+   880→                          </div>
+   881→                          <span className="text-sm font-medium">
+   882→                            {typeof factor.value === 'number' && factor.value > 1000 
+   883→                              ? formatCurrency(factor.value)
+   884→                              : factor.value % 1 === 0 
+   885→                                ? factor.value 
+   886→                                : `${factor.value}%`}
+   887→                          </span>
+   888→                        </div>
+   889→                      ))}
+   890→                    </div>
+   891→                  </CardContent>
+   892→                </Card>
+   893→              )
+   894→            })}
+   895→
+   896→            {/* Limit Calculation */}
+   897→            <Card>
+   898→              <CardHeader className="pb-2">
+   899→                <CardTitle className="text-sm flex items-center gap-2">
+   900→                  <Calculator className="h-4 w-4 text-violet-500" />
+   901→                  Credit Limit Calculation
+   902→                </CardTitle>
+   903→              </CardHeader>
+   904→              <CardContent>
+   905→                <div className="space-y-3">
+   906→                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+   907→                    <span className="text-sm">Monthly Revenue Base (60%)</span>
+   908→                    <span className="font-medium">{formatCurrency(salesPerformance.monthlyTotal * 0.6)}</span>
+   909→                  </div>
+   910→                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+   911→                    <span className="text-sm">Credit Score Multiplier</span>
+   912→                    <span className="font-medium">{(creditScore.overallScore / 100).toFixed(2)}x</span>
+   913→                  </div>
+   914→                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+   915→                    <span className="text-sm">Tier Multiplier ({TIER_CONFIGS[creditScore.tier].name})</span>
+   916→                    <span className="font-medium">
+   917→                      {(creditScore.tier === 'enterprise' ? 1.5 :
+   918→                        creditScore.tier === 'business' ? 1.0 :
+   919→                        creditScore.tier === 'seasonal' ? 0.8 : 0.5).toFixed(1)}x
+   920→                    </span>
+   921→                  </div>
+   922→                  <Separator />
+   923→                  <div className="flex justify-between items-center p-3 bg-violet-50 rounded-lg">
+   924→                    <span className="font-medium">Recommended Limit</span>
+   925→                    <span className="text-xl font-bold text-violet-600">{formatCurrency(recommendedLimit)}</span>
+   926→                  </div>
+   927→                </div>
+   928→              </CardContent>
+   929→            </Card>
+   930→          </div>
+   931→        )}
+   932→
+   933→        {/* INTELLIGENCE INTEGRATION TAB */}
+   934→        {activeTab === 'intelligence' && (
+   935→          <div className="space-y-4">
+   936→            <div className="bg-gradient-to-r from-violet-50 to-purple-50 p-4 rounded-lg border border-violet-200">
+   937→              <h3 className="font-medium text-violet-700 mb-2">Intelligence Fusion</h3>
+   938→              <p className="text-sm text-violet-600">
+   939→                GroCredit integrates with Inventory Intelligence and Supply Intelligence to provide 
+   940→                seamless working capital that adapts to your business operations.
+   941→              </p>
+   942→            </div>
+   943→
+   944→            {/* Inventory Intelligence */}
+   945→            {inventoryIntelligence && (
+   946→              <Card>
+   947→                <CardHeader className="pb-2">
+   948→                  <CardTitle className="text-sm flex items-center gap-2">
+   949→                    <Boxes className="h-4 w-4 text-amber-500" />
+   950→                    Inventory Intelligence Integration
+   951→                  </CardTitle>
+   952→                </CardHeader>
+   953→                <CardContent>
+   954→                  <div className="grid grid-cols-2 gap-4 mb-4">
+   955→                    <div className="p-3 bg-amber-50 rounded-lg">
+   956→                      <p className="text-xs text-[#757575]">Stock Turnover</p>
+   957→                      <p className="text-xl font-bold">{inventoryIntelligence.stockTurnoverRate}x/year</p>
+   958→                    </div>
+   959→                    <div className="p-3 bg-amber-50 rounded-lg">
+   960→                      <p className="text-xs text-[#757575]">Days of Stock</p>
+   961→                      <p className="text-xl font-bold">{inventoryIntelligence.daysOfStock} days</p>
+   962→                    </div>
+   963→                    <div className="p-3 bg-amber-50 rounded-lg">
+   964→                      <p className="text-xs text-[#757575]">Low Stock Alerts</p>
+   965→                      <p className="text-xl font-bold">{inventoryIntelligence.lowStockAlerts}</p>
+   966→                    </div>
+   967→                    <div className="p-3 bg-amber-50 rounded-lg">
+   968→                      <p className="text-xs text-[#757575]">GMROI</p>
+   969→                      <p className="text-xl font-bold">{inventoryIntelligence.grossMarginReturn}%</p>
+   970→                    </div>
+   971→                  </div>
+   972→                  
+   973→                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+   974→                    <div className="flex items-center gap-2 text-green-700">
+   975→                      <Zap className="h-4 w-4" />
+   976→                      <span className="text-sm font-medium">Auto-Reorder Credit</span>
+   977→                    </div>
+   978→                    <p className="text-xs text-green-600 mt-1">
+   979→                      When inventory hits reorder point, GroCredit can automatically fund the purchase order.
+   980→                    </p>
+   981→                    <Button size="sm" variant="outline" className="mt-2">
+   982→                      <Settings className="h-3 w-3 mr-1" />
+   983→                      Configure Auto-Fund
+   984→                    </Button>
+   985→                  </div>
+   986→                </CardContent>
+   987→              </Card>
+   988→            )}
+   989→
+   990→            {/* Supply Intelligence */}
+   991→            {supplyIntelligence && (
+   992→              <Card>
+   993→                <CardHeader className="pb-2">
+   994→                  <CardTitle className="text-sm flex items-center gap-2">
+   995→                    <Truck className="h-4 w-4 text-blue-500" />
+   996→                    Supply Intelligence Integration
+   997→                  </CardTitle>
+   998→                </CardHeader>
+   999→                <CardContent>
+  1000→                  <div className="grid grid-cols-2 gap-4 mb-4">
+  1001→                    <div className="p-3 bg-blue-50 rounded-lg">
+  1002→                      <p className="text-xs text-[#757575]">Supplier Reliability</p>
+  1003→                      <p className="text-xl font-bold">{supplyIntelligence.supplierReliabilityScore}%</p>
+  1004→                    </div>
+  1005→                    <div className="p-3 bg-blue-50 rounded-lg">
+  1006→                      <p className="text-xs text-[#757575]">On-Time Delivery</p>
+  1007→                      <p className="text-xl font-bold">{supplyIntelligence.onTimeDeliveryRate}%</p>
+  1008→                    </div>
+  1009→                    <div className="p-3 bg-blue-50 rounded-lg">
+  1010→                      <p className="text-xs text-[#757575]">Active Suppliers</p>
+  1011→                      <p className="text-xl font-bold">{supplyIntelligence.activeSuppliers}</p>
+  1012→                    </div>
+  1013→                    <div className="p-3 bg-blue-50 rounded-lg">
+  1014→                      <p className="text-xs text-[#757575]">Monthly Spend</p>
+  1015→                      <p className="text-xl font-bold">{formatCurrency(supplyIntelligence.monthlyProcurementSpend)}</p>
+  1016→                    </div>
+  1017→                  </div>
+  1018→
+  1019→                  <div className="p-3 bg-violet-50 rounded-lg border border-violet-200">
+  1020→                    <div className="flex items-center gap-2 text-violet-700">
+  1021→                      <ShoppingCart className="h-4 w-4" />
+  1022→                      <span className="text-sm font-medium">GroSupply Instant Pay</span>
+  1023→                    </div>
+  1024→                    <p className="text-xs text-violet-600 mt-1">
+  1025→                      Pay GroSupply orders instantly with GroCredit. Earn supplier discounts for early payment.
+  1026→                    </p>
+  1027→                    {supplyIntelligence.bulkDiscountOpportunities > 0 && (
+  1028→                      <div className="mt-2 p-2 bg-white rounded border border-violet-200">
+  1029→                        <p className="text-xs text-violet-600">
+  1030→                          💰 {supplyIntelligence.bulkDiscountOpportunities} bulk discount opportunities available
+  1031→                        </p>
+  1032→                      </div>
+  1033→                    )}
+  1034→                  </div>
+  1035→                </CardContent>
+  1036→              </Card>
+  1037→            )}
+  1038→
+  1039→            {/* Integration Benefits */}
+  1040→            <Card>
+  1041→              <CardHeader className="pb-2">
+  1042→                <CardTitle className="text-sm">Integration Benefits</CardTitle>
+  1043→              </CardHeader>
+  1044→              <CardContent>
+  1045→                <div className="space-y-3">
+  1046→                  {[
+  1047→                    { icon: Zap, title: 'Instant Stock Funding', desc: 'Auto-fund reorder when inventory runs low' },
+  1048→                    { icon: Percent, title: 'Early Payment Discounts', desc: 'Capture supplier discounts with GroCredit' },
+  1049→                    { icon: TrendingUp, title: 'Dynamic Limits', desc: 'Credit grows with your sales performance' },
+  1050→                    { icon: Shield, title: 'Risk Protection', desc: 'Supplier reliability factors into your score' },
+  1051→                  ].map((item, idx) => (
+  1052→                    <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+  1053→                      <item.icon className="h-5 w-5 text-violet-500 mt-0.5" />
+  1054→                      <div>
+  1055→                        <p className="font-medium text-sm">{item.title}</p>
+  1056→                        <p className="text-xs text-[#757575]">{item.desc}</p>
+  1057→                      </div>
+  1058→                    </div>
+  1059→                  ))}
+  1060→                </div>
+  1061→              </CardContent>
+  1062→            </Card>
+  1063→          </div>
+  1064→        )}
+  1065→
+  1066→        {/* TRANSACTIONS TAB */}
+  1067→        {activeTab === 'transactions' && (
+  1068→          <div className="space-y-4">
+  1069→            <div className="flex items-center justify-between">
+  1070→              <h3 className="font-semibold text-[#1A1A1A]">Draw Transactions</h3>
+  1071→              <Button
+  1072→                size="sm"
+  1073→                className="bg-violet-500 hover:bg-violet-600"
+  1074→                onClick={() => setDrawDialogOpen(true)}
+  1075→              >
+  1076→                <Plus className="h-4 w-4 mr-1" />
+  1077→                New Draw
+  1078→              </Button>
+  1079→            </div>
+  1080→
+  1081→            {drawTransactions.length === 0 ? (
+  1082→              <Card>
+  1083→                <CardContent className="p-8 text-center">
+  1084→                  <CreditCard className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+  1085→                  <p className="text-[#757575]">No transactions yet</p>
+  1086→                  <Button
+  1087→                    variant="outline"
+  1088→                    className="mt-4"
+  1089→                    onClick={() => setDrawDialogOpen(true)}
+  1090→                  >
+  1091→                    Draw Funds
+  1092→                  </Button>
+  1093→                </CardContent>
+  1094→              </Card>
+  1095→            ) : (
+  1096→              <div className="space-y-3">
+  1097→                {drawTransactions.map((tx) => (
+  1098→                  <Card key={tx.id} className="hover:border-violet-300 transition-colors cursor-pointer">
+  1099→                    <CardContent className="p-4">
+  1100→                      <div className="flex items-center justify-between">
+  1101→                        <div className="flex items-center gap-3">
+  1102→                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+  1103→                            tx.purpose === 'grosupply_order' ? 'bg-blue-100' :
+  1104→                            tx.purpose === 'inventory_purchase' ? 'bg-amber-100' :
+  1105→                            'bg-violet-100'
+  1106→                          }`}>
+  1107→                            {tx.purpose === 'grosupply_order' ? (
+  1108→                              <ShoppingCart className="h-5 w-5 text-blue-600" />
+  1109→                            ) : tx.purpose === 'inventory_purchase' ? (
+  1110→                              <Package className="h-5 w-5 text-amber-600" />
+  1111→                            ) : (
+  1112→                              <Coins className="h-5 w-5 text-violet-600" />
+  1113→                            )}
+  1114→                          </div>
+  1115→                          <div>
+  1116→                            <p className="font-medium text-[#1A1A1A]">{tx.reference}</p>
+  1117→                            <div className="flex items-center gap-2">
+  1118→                              <p className="text-xs text-[#757575] capitalize">
+  1119→                                {tx.purpose.replace('_', ' ')}
+  1120→                              </p>
+  1121→                              {tx.linkedPOId && (
+  1122→                                <Badge variant="outline" className="text-[10px]">
+  1123→                                  {tx.linkedPOId}
+  1124→                                </Badge>
+  1125→                              )}
+  1126→                            </div>
+  1127→                          </div>
+  1128→                        </div>
+  1129→                        <div className="text-right">
+  1130→                          <p className="font-semibold text-[#1A1A1A]">{formatCurrency(tx.amount)}</p>
+  1131→                          <div className="flex items-center gap-2">
+  1132→                            <p className="text-xs text-[#757575]">
+  1133→                              {new Date(tx.createdAt).toLocaleDateString()}
+  1134→                            </p>
+  1135→                            <Badge className={`${
+  1136→                              tx.status === 'reconciled' ? 'bg-green-100 text-green-700' :
+  1137→                              tx.status === 'processed' ? 'bg-blue-100 text-blue-700' :
+  1138→                              'bg-gray-100 text-gray-700'
+  1139→                            }`}>
+  1140→                              {tx.status}
+  1141→                            </Badge>
+  1142→                          </div>
+  1143→                        </div>
+  1144→                      </div>
+  1145→                      <div className="mt-3 pt-3 border-t flex justify-between text-xs">
+  1146→                        <span className="text-[#757575]">Interest Accrued: <span className="font-medium">{formatCurrency(tx.interestAccrued)}</span></span>
+  1147→                        <span className="text-[#757575]">Repayment: <span className="font-medium">{new Date(tx.repaymentDate).toLocaleDateString()}</span></span>
+  1148→                      </div>
+  1149→                    </CardContent>
+  1150→                  </Card>
+  1151→                ))}
+  1152→              </div>
+  1153→            )}
+  1154→          </div>
+  1155→        )}
+  1156→
+  1157→        {/* NCA COMPLIANCE TAB */}
+  1158→        {activeTab === 'compliance' && (
+  1159→          <div className="space-y-4">
+  1160→            <Card className="border-l-4 border-l-amber-500">
+  1161→              <CardContent className="p-4">
+  1162→                <div className="flex items-center gap-3 mb-4">
+  1163→                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+  1164→                    <Scale className="h-5 w-5 text-amber-600" />
+  1165→                  </div>
+  1166→                  <div>
+  1167→                    <h3 className="font-semibold text-[#1A1A1A]">National Credit Act (NCA) Compliance</h3>
+  1168→                    <p className="text-xs text-[#757575]">Regulatory framework for credit providers</p>
+  1169→                  </div>
+  1170→                </div>
+  1171→                
+  1172→                <div className="bg-amber-50 p-3 rounded-lg">
+  1173→                  <p className="text-sm text-amber-700">
+  1174→                    GroCredit is an NCA-regulated credit facility. Sole proprietors receive full 
+  1175→                    affordability assessments per NCA requirements. Pty Ltd and Close Corporations 
+  1176→                    fall under commercial credit provisions.
+  1177→                  </p>
+  1178→                </div>
+  1179→              </CardContent>
+  1180→            </Card>
+  1181→
+  1182→            {facility && (
+  1183→              <Card>
+  1184→                <CardHeader className="pb-2">
+  1185→                  <CardTitle className="text-sm">Your Compliance Status</CardTitle>
+  1186→                </CardHeader>
+  1187→                <CardContent>
+  1188→                  <div className="space-y-3">
+  1189→                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+  1190→                      <div className="flex items-center gap-2">
+  1191→                        <Building2 className="h-4 w-4 text-[#757575]" />
+  1192→                        <span className="text-sm">Business Type</span>
+  1193→                      </div>
+  1194→                      <Badge className="bg-blue-100 text-blue-700 capitalize">
+  1195→                        {facility.businessType.replace('_', ' ')}
+  1196→                      </Badge>
+  1197→                    </div>
+  1198→
+  1199→                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+  1200→                      <div className="flex items-center gap-2">
+  1201→                        <BadgeCheck className="h-4 w-4 text-[#757575]" />
+  1202→                        <span className="text-sm">NCA Compliant</span>
+  1203→                      </div>
+  1204→                      <Badge className={facility.ncaCompliant ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+  1205→                        {facility.ncaCompliant ? 'Yes' : 'Pending'}
+  1206→                      </Badge>
+  1207→                    </div>
+  1208→
+  1209→                    {facility.businessType === 'sole_proprietor' && (
+  1210→                      <div className="p-3 bg-violet-50 rounded-lg border border-violet-200">
+  1211→                        <p className="text-sm font-medium text-violet-700">Sole Proprietor Requirements</p>
+  1212→                        <ul className="text-xs text-violet-600 mt-2 space-y-1">
+  1213→                          <li>✓ Affordability assessment completed</li>
+  1214→                          <li>✓ Pre-agreement disclosure provided</li>
+  1215→                          <li>✓ Credit agreement signed</li>
+  1216→                          <li>✓ Cooling-off period explained</li>
+  1217→                        </ul>
+  1218→                      </div>
+  1219→                    )}
+  1220→                  </div>
+  1221→                </CardContent>
+  1222→              </Card>
+  1223→            )}
+  1224→
+  1225→            {/* NCA Information */}
+  1226→            <Card>
+  1227→              <CardHeader className="pb-2">
+  1228→                <CardTitle className="text-sm">Consumer Rights Under NCA</CardTitle>
+  1229→              </CardHeader>
+  1230→              <CardContent>
+  1231→                <div className="space-y-2 text-sm">
+  1232→                  {[
+  1233→                    'Right to apply for credit (Section 60)',
+  1234→                    'Right to reasons for credit being refused (Section 62)',
+  1235→                    'Right to information in official language (Section 63)',
+  1236→                    'Right to access and correct credit records (Section 72)',
+  1237→                    'Right to dispute incorrect information (Section 72)',
+  1238→                    'Cooling-off period (5 business days for pre-agreement)',
+  1239→                    'Right to surrender goods (Section 127)',
+  1240→                  ].map((item, idx) => (
+  1241→                    <div key={idx} className="flex items-start gap-2">
+  1242→                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+  1243→                      <span className="text-[#757575]">{item}</span>
+  1244→                    </div>
+  1245→                  ))}
+  1246→                </div>
+  1247→              </CardContent>
+  1248→            </Card>
+  1249→
+  1250→            {/* NCR Registration */}
+  1251→            <Card>
+  1252→              <CardHeader className="pb-2">
+  1253→                <CardTitle className="text-sm">National Credit Regulator (NCR)</CardTitle>
+  1254→              </CardHeader>
+  1255→              <CardContent>
+  1256→                <div className="p-3 bg-gray-50 rounded-lg">
+  1257→                  <p className="text-sm font-medium">GroCredit is an NCR-Registered Credit Provider</p>
+  1258→                  <p className="text-xs text-[#757575] mt-1">NCRCP Registration Number: NCRCPXXXX</p>
+  1259→                  <p className="text-xs text-[#757575]">Contact: 0860 627 627 | www.ncr.org.za</p>
+  1260→                </div>
+  1261→              </CardContent>
+  1262→            </Card>
+  1263→          </div>
+  1264→        )}
+  1265→      </ScrollArea>
+  1266→
+  1267→      {/* DIALOGS */}
+  1268→      
+  1269→      {/* Draw Funds Dialog */}
+  1270→      <Dialog open={drawDialogOpen} onOpenChange={setDrawDialogOpen}>
+  1271→        <DialogContent className="sm:max-w-md">
+  1272→          <DialogHeader>
+  1273→            <DialogTitle>Draw Funds</DialogTitle>
+  1274→            <DialogDescription>
+  1275→              Available: {facility ? formatCurrency(facility.availableCredit) : 'R0.00'}
+  1276→            </DialogDescription>
+  1277→          </DialogHeader>
+  1278→          <div className="space-y-4 py-4">
+  1279→            <div>
+  1280→              <Label className="text-sm font-medium">Amount (ZAR)</Label>
+  1281→              <Input
+  1282→                type="number"
+  1283→                value={drawAmount || ''}
+  1284→                onChange={(e) => setDrawAmount(Number(e.target.value))}
+  1285→                placeholder="0.00"
+  1286→                className="mt-1"
+  1287→              />
+  1288→              {facility && (
+  1289→                <div className="flex gap-2 mt-2">
+  1290→                  {[5000, 10000, 25000, facility.availableCredit].slice(0, 3).map((amount) => (
+  1291→                    <Button
+  1292→                      key={amount}
+  1293→                      variant="outline"
+  1294→                      size="sm"
+  1295→                      className="flex-1"
+  1296→                      onClick={() => setDrawAmount(amount)}
+  1297→                    >
+  1298→                      {formatCurrency(amount)}
+  1299→                    </Button>
+  1300→                  ))}
+  1301→                </div>
+  1302→              )}
+  1303→            </div>
+  1304→
+  1305→            <div>
+  1306→              <Label className="text-sm font-medium">Purpose</Label>
+  1307→              <Select value={drawPurpose} onValueChange={setDrawPurpose}>
+  1308→                <SelectTrigger className="mt-1">
+  1309→                  <SelectValue />
+  1310→                </SelectTrigger>
+  1311→                <SelectContent>
+  1312→                  <SelectItem value="working_capital">Working Capital</SelectItem>
+  1313→                  <SelectItem value="inventory_purchase">Inventory Purchase</SelectItem>
+  1314→                  <SelectItem value="grosupply_order">GroSupply Order</SelectItem>
+  1315→                  <SelectItem value="emergency">Emergency</SelectItem>
+  1316→                </SelectContent>
+  1317→              </Select>
+  1318→            </div>
+  1319→
+  1320→            {drawAmount > 0 && facility && (
+  1321→              <div className="p-3 bg-violet-50 rounded-lg">
+  1322→                <div className="flex justify-between text-sm">
+  1323→                  <span>Interest Rate</span>
+  1324→                  <span className="font-medium">{facility.interestRate}% APR</span>
+  1325→                </div>
+  1326→                <div className="flex justify-between text-sm mt-1">
+  1327→                  <span>Est. Monthly Interest</span>
+  1328→                  <span className="font-medium text-amber-600">{formatCurrency(calculateInterest(drawAmount))}</span>
+  1329→                </div>
+  1330→                <div className="flex justify-between text-sm mt-1">
+  1331→                  <span>Repayment Date</span>
+  1332→                  <span className="font-medium">
+  1333→                    {new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString('en-ZA', { month: 'long', day: 'numeric' })}
+  1334→                  </span>
+  1335→                </div>
+  1336→              </div>
+  1337→            )}
+  1338→          </div>
+  1339→          <DialogFooter>
+  1340→            <Button variant="outline" onClick={() => setDrawDialogOpen(false)}>Cancel</Button>
+  1341→            <Button
+  1342→              className="bg-gradient-to-r from-violet-500 to-purple-500"
+  1343→              onClick={handleDraw}
+  1344→              disabled={processing || !facility || drawAmount <= 0 || drawAmount > facility.availableCredit}
+  1345→            >
+  1346→              {processing ? (
+  1347→                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+  1348→              ) : (
+  1349→                <Coins className="h-4 w-4 mr-2" />
+  1350→              )}
+  1351→              Draw {formatCurrency(drawAmount)}
+  1352→            </Button>
+  1353→          </DialogFooter>
+  1354→        </DialogContent>
+  1355→      </Dialog>
+  1356→
+  1357→      {/* Make Payment Dialog */}
+  1358→      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+  1359→        <DialogContent className="sm:max-w-md">
+  1360→          <DialogHeader>
+  1361→            <DialogTitle>Make Payment</DialogTitle>
+  1362→            <DialogDescription>
+  1363→              Outstanding: {facility ? formatCurrency(facility.usedCredit) : 'R0.00'}
+  1364→            </DialogDescription>
+  1365→          </DialogHeader>
+  1366→          <div className="space-y-4 py-4">
+  1367→            <div>
+  1368→              <Label className="text-sm font-medium">Payment Amount (ZAR)</Label>
+  1369→              <Input
+  1370→                type="number"
+  1371→                value={paymentAmount || ''}
+  1372→                onChange={(e) => setPaymentAmount(Number(e.target.value))}
+  1373→                placeholder="0.00"
+  1374→                className="mt-1"
+  1375→              />
+  1376→              {facility && (
+  1377→                <div className="flex gap-2 mt-2">
+  1378→                  {[
+  1379→                    Math.round(facility.usedCredit * 0.25),
+  1380→                    Math.round(facility.usedCredit * 0.5),
+  1381→                    facility.usedCredit
+  1382→                  ].map((amount, idx) => (
+  1383→                    <Button
+  1384→                      key={idx}
+  1385→                      variant="outline"
+  1386→                      size="sm"
+  1387→                      className="flex-1"
+  1388→                      onClick={() => setPaymentAmount(amount)}
+  1389→                    >
+  1390→                      {formatCurrency(amount)}
+  1391→                    </Button>
+  1392→                  ))}
+  1393→                </div>
+  1394→              )}
+  1395→            </div>
+  1396→          </div>
+  1397→          <DialogFooter>
+  1398→            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
+  1399→            <Button
+  1400→              className="bg-green-500 hover:bg-green-600"
+  1401→              onClick={handlePayment}
+  1402→              disabled={processing || paymentAmount <= 0}
+  1403→            >
+  1404→              {processing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+  1405→              Pay {formatCurrency(paymentAmount)}
+  1406→            </Button>
+  1407→          </DialogFooter>
+  1408→        </DialogContent>
+  1409→      </Dialog>
+  1410→
+  1411→      {/* GroSupply Order Payment Dialog */}
+  1412→      <Dialog open={groSupplyOrderDialogOpen} onOpenChange={setGroSupplyOrderDialogOpen}>
+  1413→        <DialogContent className="sm:max-w-lg">
+  1414→          <DialogHeader>
+  1415→            <DialogTitle>Pay GroSupplier with GroCredit</DialogTitle>
+  1416→            <DialogDescription>
+  1417→              Select a pending order to pay using your credit facility
+  1418→            </DialogDescription>
+  1419→          </DialogHeader>
+  1420→          <div className="py-4">
+  1421→            <div className="space-y-3">
+  1422→              {/* Mock pending orders */}
+  1423→              {[
+  1424→                { id: 'PO-2024-0921', supplier: 'ABC Distributors', amount: 15000, items: 12 },
+  1425→                { id: 'PO-2024-0925', supplier: 'Fresh Produce Ltd', amount: 8500, items: 8 },
+  1426→                { id: 'PO-2024-0928', supplier: 'National Beverages', amount: 22000, items: 25 },
+  1427→              ].map((order) => (
+  1428→                <Card key={order.id} className="cursor-pointer hover:border-violet-300" 
+  1429→                  onClick={() => handleGroSupplyPayment(order.id, order.amount)}>
+  1430→                  <CardContent className="p-3">
+  1431→                    <div className="flex items-center justify-between">
+  1432→                      <div className="flex items-center gap-3">
+  1433→                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+  1434→                          <ShoppingCart className="h-5 w-5 text-blue-600" />
+  1435→                        </div>
+  1436→                        <div>
+  1437→                          <p className="font-medium text-sm">{order.id}</p>
+  1438→                          <p className="text-xs text-[#757575]">{order.supplier} · {order.items} items</p>
+  1439→                        </div>
+  1440→                      </div>
+  1441→                      <div className="text-right">
+  1442→                        <p className="font-semibold">{formatCurrency(order.amount)}</p>
+  1443→                        <Button size="sm" variant="outline" className="mt-1">
+  1444→                          Pay Now
+  1445→                        </Button>
+  1446→                      </div>
+  1447→                    </div>
+  1448→                  </CardContent>
+  1449→                </Card>
+  1450→              ))}
+  1451→            </div>
+  1452→          </div>
+  1453→          <DialogFooter>
+  1454→            <Button variant="outline" onClick={() => setGroSupplyOrderDialogOpen(false)}>Cancel</Button>
+  1455→          </DialogFooter>
+  1456→        </DialogContent>
+  1457→      </Dialog>
+  1458→
+  1459→      {/* How It Works Dialog */}
+  1460→      <Dialog open={algorithmDialogOpen} onOpenChange={setAlgorithmDialogOpen}>
+  1461→        <DialogContent className="sm:max-w-2xl">
+  1462→          <DialogHeader>
+  1463→            <DialogTitle className="flex items-center gap-2">
+  1464→              <Brain className="h-5 w-5 text-violet-500" />
+  1465→              How GroCredit Works
+  1466→            </DialogTitle>
+  1467→          </DialogHeader>
+  1468→          <div className="py-4">
+  1469→            <div className="space-y-4">
+  1470→              <div className="grid grid-cols-4 gap-3">
+  1471→                {[
+  1472→                  { step: 1, icon: Activity, title: 'Analyze', desc: 'Monitor sales performance daily' },
+  1473→                  { step: 2, icon: Brain, title: 'Score', desc: 'Algorithm calculates creditworthiness' },
+  1474→                  { step: 3, icon: Award, title: 'Qualify', desc: 'Determine tier and limit' },
+  1475→                  { step: 4, icon: Zap, title: 'Fund', desc: 'Access working capital instantly' },
+  1476→                ].map((item) => (
+  1477→                  <div key={item.step} className="text-center p-3 bg-gray-50 rounded-lg">
+  1478→                    <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center mx-auto mb-2">
+  1479→                      <item.icon className="h-5 w-5 text-violet-600" />
+  1480→                    </div>
+  1481→                    <p className="font-medium text-sm">{item.title}</p>
+  1482→                    <p className="text-[10px] text-[#757575] mt-1">{item.desc}</p>
+  1483→                  </div>
+  1484→                ))}
+  1485→              </div>
+  1486→
+  1487→              <div className="p-4 bg-violet-50 rounded-lg">
+  1488→                <h4 className="font-medium text-violet-700 mb-2">The Algorithm Factors</h4>
+  1489→                <div className="grid grid-cols-2 gap-2 text-sm">
+  1490→                  <div className="flex items-center gap-2">
+  1491→                    <TrendingUp className="h-4 w-4 text-green-500" />
+  1492→                    <span>Sales Performance (40%)</span>
+  1493→                  </div>
+  1494→                  <div className="flex items-center gap-2">
+  1495→                    <Activity className="h-4 w-4 text-blue-500" />
+  1496→                    <span>Operational Consistency (20%)</span>
+  1497→                  </div>
+  1498→                  <div className="flex items-center gap-2">
+  1499→                    <Package className="h-4 w-4 text-amber-500" />
+  1500→                    <span>Inventory Health (20%)</span>
+  1501→                  </div>
+  1502→                  <div className="flex items-center gap-2">
+  1503→                    <Truck className="h-4 w-4 text-purple-500" />
+  1504→                    <span>Supply Reliability (20%)</span>
+  1505→                  </div>
+  1506→                </div>
+  1507→              </div>
+  1508→
+  1509→              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+  1510→                <h4 className="font-medium text-green-700 mb-2">Protecting the Lender</h4>
+  1511→                <p className="text-sm text-green-600">
+  1512→                  The algorithm protects both parties by ensuring credit limits are based on actual 
+  1513→                  business performance. If sales decline, the limit adjusts accordingly. This 
+  1514→                  prevents over-extension and ensures sustainable credit.
+  1515→                </p>
+  1516→              </div>
+  1517→            </div>
+  1518→          </div>
+  1519→          <DialogFooter>
+  1520→            <Button onClick={() => setAlgorithmDialogOpen(false)}>Got It</Button>
+  1521→          </DialogFooter>
+  1522→        </DialogContent>
+  1523→      </Dialog>
+  1524→    </div>
+  1525→  )
+  1526→}
+  1527→

@@ -1,0 +1,767 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useState, useEffect } from 'react'
+     4→     4→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+     5→     5→import { Badge } from '@/components/ui/badge'
+     6→     6→import { Button } from '@/components/ui/button'
+     7→     7→import { ScrollArea } from '@/components/ui/scroll-area'
+     8→     8→import { Progress } from '@/components/ui/progress'
+     9→     9→import { Separator } from '@/components/ui/separator'
+    10→    10→import {
+    11→    11→  TrendingUp,
+    12→    12→  TrendingDown,
+    13→    13→  Coins,
+    14→    14→  ShoppingCart,
+    15→    15→  Users,
+    16→    16→  Package,
+    17→    17→  ArrowUpRight,
+    18→    18→  ArrowDownRight,
+    19→    19→  Clock,
+    20→    20→  CreditCard,
+    21→    21→  Banknote,
+    22→    22→  QrCode,
+    23→    23→  Wallet,
+    24→    24→  RefreshCw,
+    25→    25→  Truck,
+    26→    26→  PiggyBank,
+    27→    27→  Zap,
+    28→    28→  Bot,
+    29→    29→  Target,
+    30→    30→  AlertCircle,
+    31→    31→  Lightbulb,
+    32→    32→  ExternalLink,
+    33→    33→  ArrowRight,
+    34→    34→  CheckCircle2,
+    35→    35→  Timer,
+    36→    36→  Percent,
+    37→    37→  Building2,
+    38→    38→  Plus,
+    39→    39→  HardDrive,
+    40→    40→  Smartphone,
+    41→    41→  Tablet,
+    42→    42→  Wifi,
+    43→    43→  WifiOff,
+    44→    44→  Printer,
+    45→    45→  Scan,
+    46→    46→} from 'lucide-react'
+    47→    47→
+    48→    48→interface Transaction {
+    49→    49→  id: string
+    50→    50→  time: string
+    51→    51→  amount: number
+    52→    52→  method: 'cash' | 'card' | 'qr' | 'wallet'
+    53→    53→  items: number
+    54→    54→  customer?: string
+    55→    55→}
+    56→    56→
+    57→    57→interface DashboardStats {
+    58→    58→  todaySales: number
+    59→    59→  todayTransactions: number
+    60→    60→  avgTransaction: number
+    61→    61→  topProducts: { name: string; sold: number; revenue: number }[]
+    62→    62→  hourlySales: { hour: string; amount: number }[]
+    63→    63→  paymentMethods: { method: string; count: number; amount: number }[]
+    64→    64→}
+    65→    65→
+    66→    66→interface GroSupplyData {
+    67→    67→  pendingOrders: number
+    68→    68→  lastOrderDate: string
+    69→    69→  estimatedDelivery: string
+    70→    70→  savingsThisMonth: number
+    71→    71→  lowStockItems: number
+    72→    72→  suggestedOrder: { items: number; value: number }
+    73→    73→}
+    74→    74→
+    75→    75→interface GroCreditData {
+    76→    76→  availableCredit: number
+    77→    77→  usedCredit: number
+    78→    78→  totalLimit: number
+    79→    79→  nextPaymentDate: string
+    80→    80→  nextPaymentAmount: number
+    81→    81→  creditScore: number
+    82→    82→  status: 'good' | 'fair' | 'review'
+    83→    83→}
+    84→    84→
+    85→    85→interface GroAIInsight {
+    86→    86→  id: string
+    87→    87→  type: 'opportunity' | 'alert' | 'trend' | 'recommendation'
+    88→    88→  title: string
+    89→    89→  description: string
+    90→    90→  action: string
+    91→    91→  priority: 'high' | 'medium' | 'low'
+    92→    92→  metric?: string
+    93→    93→  change?: number
+    94→    94→}
+    95→    95→
+    96→    96→interface MerchantDashboardProps {
+    97→    97→  verticalName: string
+    98→    98→  subVerticalName: string
+    99→    99→  onNewSale: () => void
+   100→   100→  onNavigate?: (view: string) => void
+   101→   101→}
+   102→   102→
+   103→   103→// Generate mock data for demo
+   104→   104→const generateMockData = (): { stats: DashboardStats; transactions: Transaction[]; groSupply: GroSupplyData; groCredit: GroCreditData; insights: GroAIInsight[] } => {
+   105→   105→  const transactions: Transaction[] = []
+   106→   106→  const methods: ('cash' | 'card' | 'qr' | 'wallet')[] = ['cash', 'card', 'qr', 'wallet']
+   107→   107→  for (let i = 0; i < 12; i++) {
+   108→   108→    const hour = 8 + Math.floor(i * 1.2)
+   109→   109→    const minute = Math.floor(Math.random() * 60)
+   110→   110→    transactions.push({
+   111→   111→      id: `TXN-${Date.now() - i * 100000}`,
+   112→   112→      time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+   113→   113→      amount: 50 + Math.floor(Math.random() * 500),
+   114→   114→      method: methods[Math.floor(Math.random() * methods.length)],
+   115→   115→      items: 1 + Math.floor(Math.random() * 5),
+   116→   116→      customer: Math.random() > 0.7 ? ['John D.', 'Sarah M.', 'Thabo K.', 'Lisa N.'][Math.floor(Math.random() * 4)] : undefined,
+   117→   117→    })
+   118→   118→  }
+   119→   119→
+   120→   120→  const todaySales = transactions.reduce((sum, t) => sum + t.amount, 0)
+   121→   121→  
+   122→   122→  return {
+   123→   123→    stats: {
+   124→   124→      todaySales,
+   125→   125→      todayTransactions: transactions.length,
+   126→   126→      avgTransaction: Math.round(todaySales / transactions.length),
+   127→   127→      topProducts: [
+   128→   128→        { name: 'Burger Combo', sold: 24, revenue: 2157.60 },
+   129→   129→        { name: 'Chicken Wings (12pc)', sold: 18, revenue: 1798.20 },
+   130→   130→        { name: 'Coca-Cola 500ml', sold: 45, revenue: 850.50 },
+   131→   131→        { name: 'Beef Burger Deluxe', sold: 15, revenue: 1048.50 },
+   132→   132→        { name: 'Milkshake Chocolate', sold: 12, revenue: 418.80 },
+   133→   133→      ],
+   134→   134→      hourlySales: [
+   135→   135→        { hour: '08:00', amount: 245.00 },
+   136→   136→        { hour: '09:00', amount: 380.50 },
+   137→   137→        { hour: '10:00', amount: 520.00 },
+   138→   138→        { hour: '11:00', amount: 890.00 },
+   139→   139→        { hour: '12:00', amount: 1450.00 },
+   140→   140→        { hour: '13:00', amount: 1200.00 },
+   141→   141→        { hour: '14:00', amount: 780.00 },
+   142→   142→        { hour: '15:00', amount: 450.00 },
+   143→   143→      ],
+   144→   144→      paymentMethods: [
+   145→   145→        { method: 'Card', count: 5, amount: 1850.00 },
+   146→   146→        { method: 'Cash', count: 4, amount: 720.00 },
+   147→   147→        { method: 'QR Pay', count: 2, amount: 480.00 },
+   148→   148→        { method: 'Wallet', count: 1, amount: 150.00 },
+   149→   149→      ],
+   150→   150→    },
+   151→   151→    transactions: transactions.sort((a, b) => b.time.localeCompare(a.time)),
+   152→   152→    groSupply: {
+   153→   153→      pendingOrders: 2,
+   154→   154→      lastOrderDate: '2026-02-14',
+   155→   155→      estimatedDelivery: '2026-02-17',
+   156→   156→      savingsThisMonth: 3450,
+   157→   157→      lowStockItems: 7,
+   158→   158→      suggestedOrder: { items: 12, value: 15670 },
+   159→   159→    },
+   160→   160→    groCredit: {
+   161→   161→      availableCredit: 75000,
+   162→   162→      usedCredit: 25000,
+   163→   163→      totalLimit: 100000,
+   164→   164→      nextPaymentDate: '2026-03-15',
+   165→   165→      nextPaymentAmount: 5250,
+   166→   166→      creditScore: 720,
+   167→   167→      status: 'good',
+   168→   168→    },
+   169→   169→    insights: [
+   170→   170→      { id: 'INS-001', type: 'opportunity', title: 'Peak Hour Approaching', description: 'Historically, 12:00-13:00 is your busiest. Ensure adequate staff.', action: 'Schedule Staff', priority: 'high', metric: 'R1,450', change: 45 },
+   171→   171→      { id: 'INS-002', type: 'alert', title: 'Low Stock Alert', description: '7 items are running low. Consider placing a GroSupply order.', action: 'Order Now', priority: 'high', metric: '7 items' },
+   172→   172→      { id: 'INS-003', type: 'trend', title: 'Customer Growth', description: 'Returning customers increased by 15% this week. Loyalty program is working!', action: 'View Report', priority: 'medium', change: 15 },
+   173→   173→      { id: 'INS-004', type: 'recommendation', title: 'GroCredit Available', description: 'R75,000 credit available. Consider investing in new equipment.', action: 'Explore Options', priority: 'low', metric: 'R75,000' },
+   174→   174→    ],
+   175→   175→  }
+   176→   176→}
+   177→   177→
+   178→   178→const paymentIcons = {
+   179→   179→  cash: Banknote,
+   180→   180→  card: CreditCard,
+   181→   181→  qr: QrCode,
+   182→   182→  wallet: Wallet,
+   183→   183→}
+   184→   184→
+   185→   185→const formatCurrency = (amount: number) => `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+   186→   186→
+   187→   187→export function MerchantDashboard({ verticalName, subVerticalName, onNewSale, onNavigate }: MerchantDashboardProps) {
+   188→   188→  const [data, setData] = useState<ReturnType<typeof generateMockData> | null>(null)
+   189→   189→  const [isLoading, setIsLoading] = useState(true)
+   190→   190→
+   191→   191→  useEffect(() => {
+   192→   192→    const timer = setTimeout(() => {
+   193→   193→      setData(generateMockData())
+   194→   194→      setIsLoading(false)
+   195→   195→    }, 500)
+   196→   196→    return () => clearTimeout(timer)
+   197→   197→  }, [])
+   198→   198→
+   199→   199→  const refreshData = () => {
+   200→   200→    setIsLoading(true)
+   201→   201→    setTimeout(() => {
+   202→   202→      setData(generateMockData())
+   203→   203→      setIsLoading(false)
+   204→   204→    }, 500)
+   205→   205→  }
+   206→   206→
+   207→   207→  if (isLoading || !data) {
+   208→   208→    return (
+   209→   209→      <div className="flex-1 p-6 flex items-center justify-center">
+   210→   210→        <div className="text-center">
+   211→   211→          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-[#00897B]" />
+   212→   212→          <p className="text-[#757575]">Loading dashboard...</p>
+   213→   213→        </div>
+   214→   214→      </div>
+   215→   215→    )
+   216→   216→  }
+   217→   217→
+   218→   218→  const { stats, transactions, groSupply, groCredit, insights } = data
+   219→   219→
+   220→   220→  return (
+   221→   221→    <ScrollArea className="flex-1">
+   222→   222→      <div className="p-6 space-y-6">
+   223→   223→        {/* Header */}
+   224→   224→        <div className="flex items-center justify-between">
+   225→   225→          <div>
+   226→   226→            <h1 className="text-2xl font-bold text-[#1A1A1A]">Dashboard</h1>
+   227→   227→            <p className="text-sm text-[#757575]">{subVerticalName} • {new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+   228→   228→          </div>
+   229→   229→          <div className="flex items-center gap-2">
+   230→   230→            <Button variant="outline" size="sm" onClick={refreshData}>
+   231→   231→              <RefreshCw className="h-4 w-4 mr-2" />
+   232→   232→              Refresh
+   233→   233→            </Button>
+   234→   234→            <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={onNewSale}>
+   235→   235→              <ShoppingCart className="h-4 w-4 mr-2" />
+   236→   236→              New Sale
+   237→   237→            </Button>
+   238→   238→          </div>
+   239→   239→        </div>
+   240→   240→
+   241→   241→        {/* Stats Cards */}
+   242→   242→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+   243→   243→          <Card className="border-l-4 border-l-[#00897B]">
+   244→   244→            <CardContent className="p-4">
+   245→   245→              <div className="flex items-center justify-between">
+   246→   246→                <div>
+   247→   247→                  <p className="text-xs text-[#757575] mb-1">Today's Sales</p>
+   248→   248→                  <p className="text-2xl font-bold text-[#1A1A1A]">{formatCurrency(stats.todaySales)}</p>
+   249→   249→                  <div className="flex items-center gap-1 mt-1">
+   250→   250→                    <TrendingUp className="h-3 w-3 text-green-500" />
+   251→   251→                    <span className="text-xs text-green-500">+12.5%</span>
+   252→   252→                    <span className="text-xs text-[#757575]">vs yesterday</span>
+   253→   253→                  </div>
+   254→   254→                </div>
+   255→   255→                <div className="w-12 h-12 rounded-full bg-[#E0F2F1] flex items-center justify-center">
+   256→   256→                  <Coins className="h-6 w-6 text-[#00897B]" />
+   257→   257→                </div>
+   258→   258→              </div>
+   259→   259→            </CardContent>
+   260→   260→          </Card>
+   261→   261→
+   262→   262→          <Card>
+   263→   263→            <CardContent className="p-4">
+   264→   264→              <div className="flex items-center justify-between">
+   265→   265→                <div>
+   266→   266→                  <p className="text-xs text-[#757575] mb-1">Transactions</p>
+   267→   267→                  <p className="text-2xl font-bold text-[#1A1A1A]">{stats.todayTransactions}</p>
+   268→   268→                  <div className="flex items-center gap-1 mt-1">
+   269→   269→                    <ArrowUpRight className="h-3 w-3 text-green-500" />
+   270→   270→                    <span className="text-xs text-green-500">+3</span>
+   271→   271→                    <span className="text-xs text-[#757575]">more today</span>
+   272→   272→                  </div>
+   273→   273→                </div>
+   274→   274→                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+   275→   275→                  <CreditCard className="h-6 w-6 text-blue-500" />
+   276→   276→                </div>
+   277→   277→              </div>
+   278→   278→            </CardContent>
+   279→   279→          </Card>
+   280→   280→
+   281→   281→          <Card>
+   282→   282→            <CardContent className="p-4">
+   283→   283→              <div className="flex items-center justify-between">
+   284→   284→                <div>
+   285→   285→                  <p className="text-xs text-[#757575] mb-1">Avg. Transaction</p>
+   286→   286→                  <p className="text-2xl font-bold text-[#1A1A1A]">{formatCurrency(stats.avgTransaction)}</p>
+   287→   287→                  <div className="flex items-center gap-1 mt-1">
+   288→   288→                    <ArrowDownRight className="h-3 w-3 text-red-500" />
+   289→   289→                    <span className="text-xs text-red-500">-2.3%</span>
+   290→   290→                    <span className="text-xs text-[#757575]">vs avg</span>
+   291→   291→                  </div>
+   292→   292→                </div>
+   293→   293→                <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center">
+   294→   294→                  <Package className="h-6 w-6 text-purple-500" />
+   295→   295→                </div>
+   296→   296→              </div>
+   297→   297→            </CardContent>
+   298→   298→          </Card>
+   299→   299→
+   300→   300→          <Card>
+   301→   301→            <CardContent className="p-4">
+   302→   302→              <div className="flex items-center justify-between">
+   303→   303→                <div>
+   304→   304→                  <p className="text-xs text-[#757575] mb-1">Customers Today</p>
+   305→   305→                  <p className="text-2xl font-bold text-[#1A1A1A]">{Math.floor(stats.todayTransactions * 0.8)}</p>
+   306→   306→                  <div className="flex items-center gap-1 mt-1">
+   307→   307→                    <span className="text-xs text-[#757575]">{Math.floor(stats.todayTransactions * 0.2)} returning</span>
+   308→   308→                  </div>
+   309→   309→                </div>
+   310→   310→                <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
+   311→   311→                  <Users className="h-6 w-6 text-orange-500" />
+   312→   312→                </div>
+   313→   313→              </div>
+   314→   314→            </CardContent>
+   315→   315→          </Card>
+   316→   316→        </div>
+   317→   317→
+   318→   318→        {/* GroSupply & GroCredit Widgets */}
+   319→   319→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   320→   320→          {/* GroSupply Widget */}
+   321→   321→          <Card className="border-l-4 border-l-blue-500">
+   322→   322→            <CardHeader className="pb-2">
+   323→   323→              <div className="flex items-center justify-between">
+   324→   324→                <CardTitle className="text-base font-semibold flex items-center gap-2">
+   325→   325→                  <Truck className="h-5 w-5 text-blue-500" />
+   326→   326→                  GroSupply
+   327→   327→                </CardTitle>
+   328→   328→                <Badge className="bg-blue-100 text-blue-700">Connected</Badge>
+   329→   329→              </div>
+   330→   330→              <CardDescription>Smart procurement & inventory sync</CardDescription>
+   331→   331→            </CardHeader>
+   332→   332→            <CardContent className="space-y-4">
+   333→   333→              <div className="grid grid-cols-2 gap-4">
+   334→   334→                <div className="p-3 bg-gray-50 rounded-lg">
+   335→   335→                  <p className="text-xs text-[#757575]">Pending Orders</p>
+   336→   336→                  <p className="text-xl font-bold text-[#1A1A1A]">{groSupply.pendingOrders}</p>
+   337→   337→                  <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+   338→   338→                    <Truck className="h-3 w-3" />
+   339→   339→                    Est. {groSupply.estimatedDelivery}
+   340→   340→                  </p>
+   341→   341→                </div>
+   342→   342→                <div className="p-3 bg-green-50 rounded-lg">
+   343→   343→                  <p className="text-xs text-[#757575]">Savings This Month</p>
+   344→   344→                  <p className="text-xl font-bold text-green-600">{formatCurrency(groSupply.savingsThisMonth)}</p>
+   345→   345→                  <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
+   346→   346→                    <TrendingUp className="h-3 w-3" />
+   347→   347→                    vs. retail prices
+   348→   348→                  </p>
+   349→   349→                </div>
+   350→   350→              </div>
+   351→   351→              
+   352→   352→              {groSupply.lowStockItems > 0 && (
+   353→   353→                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+   354→   354→                  <div className="flex items-center gap-2">
+   355→   355→                    <AlertCircle className="h-4 w-4 text-amber-600" />
+   356→   356→                    <div>
+   357→   357→                      <p className="text-sm font-medium text-amber-700">{groSupply.lowStockItems} items low on stock</p>
+   358→   358→                      <p className="text-xs text-amber-600">Suggested order value: {formatCurrency(groSupply.suggestedOrder.value)}</p>
+   359→   359→                    </div>
+   360→   360→                  </div>
+   361→   361→                </div>
+   362→   362→              )}
+   363→   363→              
+   364→   364→              <div className="flex gap-2">
+   365→   365→                <Button className="flex-1 bg-blue-500 hover:bg-blue-600" onClick={() => onNavigate?.('grosupply')}>
+   366→   366→                  <Plus className="h-4 w-4 mr-2" />
+   367→   367→                  Quick Order
+   368→   368→                </Button>
+   369→   369→                <Button variant="outline" className="flex-1" onClick={() => onNavigate?.('gromarket')}>
+   370→   370→                  View Catalog
+   371→   371→                </Button>
+   372→   372→              </div>
+   373→   373→            </CardContent>
+   374→   374→          </Card>
+   375→   375→
+   376→   376→          {/* GroCredit Widget */}
+   377→   377→          <Card className="border-l-4 border-l-purple-500">
+   378→   378→            <CardHeader className="pb-2">
+   379→   379→              <div className="flex items-center justify-between">
+   380→   380→                <CardTitle className="text-base font-semibold flex items-center gap-2">
+   381→   381→                  <PiggyBank className="h-5 w-5 text-purple-500" />
+   382→   382→                  GroCredit
+   383→   383→                </CardTitle>
+   384→   384→                <Badge className={`${groCredit.status === 'good' ? 'bg-green-100 text-green-700' : groCredit.status === 'fair' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+   385→   385→                  {groCredit.status === 'good' ? 'Good Standing' : groCredit.status === 'fair' ? 'Fair' : 'Under Review'}
+   386→   386→                </Badge>
+   387→   387→              </div>
+   388→   388→              <CardDescription>Merchant capital & financing</CardDescription>
+   389→   389→            </CardHeader>
+   390→   390→            <CardContent className="space-y-4">
+   391→   391→              <div>
+   392→   392→                <div className="flex justify-between text-sm mb-2">
+   393→   393→                  <span className="text-[#757575]">Credit Utilization</span>
+   394→   394→                  <span className="font-medium">{formatCurrency(groCredit.usedCredit)} / {formatCurrency(groCredit.totalLimit)}</span>
+   395→   395→                </div>
+   396→   396→                <Progress value={(groCredit.usedCredit / groCredit.totalLimit) * 100} className="h-3" />
+   397→   397→                <p className="text-xs text-[#757575] mt-1">{formatCurrency(groCredit.availableCredit)} available</p>
+   398→   398→              </div>
+   399→   399→              
+   400→   400→              <div className="grid grid-cols-2 gap-4">
+   401→   401→                <div className="p-3 bg-gray-50 rounded-lg">
+   402→   402→                  <p className="text-xs text-[#757575]">Credit Score</p>
+   403→   403→                  <p className="text-xl font-bold text-[#1A1A1A]">{groCredit.creditScore}</p>
+   404→   404→                  <p className="text-xs text-green-600">Excellent</p>
+   405→   405→                </div>
+   406→   406→                <div className="p-3 bg-gray-50 rounded-lg">
+   407→   407→                  <p className="text-xs text-[#757575]">Next Payment</p>
+   408→   408→                  <p className="text-xl font-bold text-[#1A1A1A]">{formatCurrency(groCredit.nextPaymentAmount)}</p>
+   409→   409→                  <p className="text-xs text-[#757575]">{groCredit.nextPaymentDate}</p>
+   410→   410→                </div>
+   411→   411→              </div>
+   412→   412→              
+   413→   413→              <div className="flex gap-2">
+   414→   414→                <Button className="flex-1 bg-purple-500 hover:bg-purple-600" onClick={() => onNavigate?.('grocredit')}>
+   415→   415→                  <Zap className="h-4 w-4 mr-2" />
+   416→   416→                  Apply for More
+   417→   417→                </Button>
+   418→   418→                <Button variant="outline" className="flex-1" onClick={() => onNavigate?.('payments')}>
+   419→   419→                  Make Payment
+   420→   420→                </Button>
+   421→   421→              </div>
+   422→   422→            </CardContent>
+   423→   423→          </Card>
+   424→   424→        </div>
+   425→   425→
+   426→   426→        {/* Settlement Status Card */}
+   427→   427→        <Card className="border-l-4 border-l-green-500">
+   428→   428→          <CardHeader className="pb-2">
+   429→   429→            <div className="flex items-center justify-between">
+   430→   430→              <CardTitle className="text-base font-semibold flex items-center gap-2">
+   431→   431→                <PiggyBank className="h-5 w-5 text-green-500" />
+   432→   432→                Settlement Status
+   433→   433→              </CardTitle>
+   434→   434→              <Badge className="bg-green-100 text-green-700">T+1 Active</Badge>
+   435→   435→            </div>
+   436→   436→            <CardDescription>Payment settlements & next payout</CardDescription>
+   437→   437→          </CardHeader>
+   438→   438→          <CardContent className="space-y-4">
+   439→   439→            {/* Next Settlement */}
+   440→   440→            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+   441→   441→              <div className="flex items-center justify-between mb-2">
+   442→   442→                <span className="text-xs text-[#757575]">Next Settlement</span>
+   443→   443→                <span className="text-xs font-medium text-green-600">Tomorrow 10:00</span>
+   444→   444→              </div>
+   445→   445→              <p className="text-2xl font-bold text-[#1A1A1A]">{formatCurrency(3850.00)}</p>
+   446→   446→              <div className="flex items-center gap-1 mt-1">
+   447→   447→                <TrendingUp className="h-3 w-3 text-green-600" />
+   448→   448→                <span className="text-xs text-green-600">+R850 from last settlement</span>
+   449→   449→              </div>
+   450→   450→            </div>
+   451→   451→            
+   452→   452→            {/* Settlement Breakdown */}
+   453→   453→            <div className="grid grid-cols-3 gap-3">
+   454→   454→              <div className="p-2 bg-gray-50 rounded-lg text-center">
+   455→   455→                <p className="text-xs text-[#757575]">Card</p>
+   456→   456→                <p className="text-sm font-bold text-[#1A1A1A]">{formatCurrency(2850)}</p>
+   457→   457→              </div>
+   458→   458→              <div className="p-2 bg-gray-50 rounded-lg text-center">
+   459→   459→                <p className="text-xs text-[#757575]">QR Pay</p>
+   460→   460→                <p className="text-sm font-bold text-[#1A1A1A]">{formatCurrency(650)}</p>
+   461→   461→              </div>
+   462→   462→              <div className="p-2 bg-gray-50 rounded-lg text-center">
+   463→   463→                <p className="text-xs text-[#757575]">EFT</p>
+   464→   464→                <p className="text-sm font-bold text-[#1A1A1A]">{formatCurrency(350)}</p>
+   465→   465→              </div>
+   466→   466→            </div>
+   467→   467→            
+   468→   468→            {/* Pending Settlements */}
+   469→   469→            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+   470→   470→              <div className="flex items-center justify-between">
+   471→   471→                <div>
+   472→   472→                  <p className="text-xs text-[#757575]">Pending Settlements</p>
+   473→   473→                  <p className="text-lg font-bold text-[#1A1A1A]">{formatCurrency(1250.00)}</p>
+   474→   474→                </div>
+   475→   475→                <div className="text-right">
+   476→   476→                  <p className="text-xs text-[#757575]">3 transactions</p>
+   477→   477→                  <p className="text-xs text-amber-600">Processing</p>
+   478→   478→                </div>
+   479→   479→              </div>
+   480→   480→            </div>
+   481→   481→            
+   482→   482→            <div className="flex gap-2">
+   483→   483→              <Button className="flex-1 bg-green-500 hover:bg-green-600" onClick={() => onNavigate?.('transactions')}>
+   484→   484→                View Settlements
+   485→   485→              </Button>
+   486→   486→              <Button variant="outline" className="flex-1" onClick={() => onNavigate?.('accounting')}>
+   487→   487→                Export Report
+   488→   488→              </Button>
+   489→   489→            </div>
+   490→   490→          </CardContent>
+   491→   491→        </Card>
+   492→   492→
+   493→   493→        {/* Hardware & Terminals Widget */}
+   494→   494→        <Card className="border-l-4 border-l-amber-500">
+   495→   495→          <CardHeader className="pb-2">
+   496→   496→            <div className="flex items-center justify-between">
+   497→   497→              <CardTitle className="text-base font-semibold flex items-center gap-2">
+   498→   498→                <HardDrive className="h-5 w-5 text-amber-500" />
+   499→   499→                Hardware & Terminals
+   500→   500→              </CardTitle>
+   501→   501→              <Badge className="bg-amber-100 text-amber-700">3 Connected</Badge>
+   502→   502→            </div>
+   503→   503→            <CardDescription>Payment terminals, printers & devices</CardDescription>
+   504→   504→          </CardHeader>
+   505→   505→          <CardContent className="space-y-4">
+   506→   506→            <div className="grid grid-cols-3 gap-3">
+   507→   507→              {/* SmartPOS */}
+   508→   508→              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+   509→   509→                <div className="flex items-center gap-2 mb-2">
+   510→   510→                  <CreditCard className="h-5 w-5 text-green-600" />
+   511→   511→                  <span className="text-xs font-medium text-green-700">SmartPOS</span>
+   512→   512→                </div>
+   513→   513→                <p className="text-sm font-bold text-[#1A1A1A]">Gropay P9</p>
+   514→   514→                <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
+   515→   515→                  <CheckCircle2 className="h-3 w-3" />
+   516→   516→                  Online
+   517→   517→                </p>
+   518→   518→              </div>
+   519→   519→              
+   520→   520→              {/* QR Terminal */}
+   521→   521→              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+   522→   522→                <div className="flex items-center gap-2 mb-2">
+   523→   523→                  <QrCode className="h-5 w-5 text-green-600" />
+   524→   524→                  <span className="text-xs font-medium text-green-700">QR Terminal</span>
+   525→   525→                </div>
+   526→   526→                <p className="text-sm font-bold text-[#1A1A1A]">Gropay Y90B</p>
+   527→   527→                <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
+   528→   528→                  <CheckCircle2 className="h-3 w-3" />
+   529→   529→                  Online
+   530→   530→                </p>
+   531→   531→              </div>
+   532→   532→              
+   533→   533→              {/* Mobile Reader */}
+   534→   534→              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+   535→   535→                <div className="flex items-center gap-2 mb-2">
+   536→   536→                  <Smartphone className="h-5 w-5 text-green-600" />
+   537→   537→                  <span className="text-xs font-medium text-green-700">mPOS Reader</span>
+   538→   538→                </div>
+   539→   539→                <p className="text-sm font-bold text-[#1A1A1A]">AF60S</p>
+   540→   540→                <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
+   541→   541→                  <CheckCircle2 className="h-3 w-3" />
+   542→   542→                  Online
+   543→   543→                </p>
+   544→   544→              </div>
+   545→   545→            </div>
+   546→   546→            
+   547→   547→            {/* Quick Device Actions */}
+   548→   548→            <div className="grid grid-cols-2 gap-3">
+   549→   549→              <div className="p-3 bg-gray-50 rounded-lg flex items-center gap-3">
+   550→   550→                <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+   551→   551→                  <Printer className="h-5 w-5" />
+   552→   552→                </div>
+   553→   553→                <div>
+   554→   554→                  <p className="text-sm font-medium text-[#1A1A1A]">Receipt Printer</p>
+   555→   555→                  <p className="text-xs text-[#757575]">Thermal 80mm</p>
+   556→   556→                </div>
+   557→   557→              </div>
+   558→   558→              <div className="p-3 bg-gray-50 rounded-lg flex items-center gap-3">
+   559→   559→                <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+   560→   560→                  <Scan className="h-5 w-5" />
+   561→   561→                </div>
+   562→   562→                <div>
+   563→   563→                  <p className="text-sm font-medium text-[#1A1A1A]">Barcode Scanner</p>
+   564→   564→                  <p className="text-xs text-[#757575]">2D Handheld</p>
+   565→   565→                </div>
+   566→   566→              </div>
+   567→   567→            </div>
+   568→   568→            
+   569→   569→            <div className="flex gap-2">
+   570→   570→              <Button 
+   571→   571→                className="flex-1 bg-amber-500 hover:bg-amber-600"
+   572→   572→                onClick={() => onNavigate?.('hardware')}
+   573→   573→              >
+   574→   574→                <HardDrive className="h-4 w-4 mr-2" />
+   575→   575→                Manage Devices
+   576→   576→              </Button>
+   577→   577→              <Button 
+   578→   578→                variant="outline" 
+   579→   579→                className="flex-1"
+   580→   580→                onClick={() => onNavigate?.('hardware')}
+   581→   581→              >
+   582→   582→                <Plus className="h-4 w-4 mr-2" />
+   583→   583→                Add Device
+   584→   584→              </Button>
+   585→   585→            </div>
+   586→   586→          </CardContent>
+   587→   587→        </Card>
+   588→   588→
+   589→   589→        {/* GroAI Insights */}
+   590→   590→        <Card className="border-l-4 border-l-[#00897B]">
+   591→   591→          <CardHeader className="pb-2">
+   592→   592→            <CardTitle className="text-sm flex items-center gap-2">
+   593→   593→              <Bot className="h-4 w-4 text-[#00897B]" />
+   594→   594→              GroAI Business Insights
+   595→   595→            </CardTitle>
+   596→   596→          </CardHeader>
+   597→   597→          <CardContent>
+   598→   598→            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+   599→   599→              {insights.map(insight => {
+   600→   600→                const typeIcons = {
+   601→   601→                  opportunity: Lightbulb,
+   602→   602→                  alert: AlertCircle,
+   603→   603→                  trend: TrendingUp,
+   604→   604→                  recommendation: Target,
+   605→   605→                }
+   606→   606→                const priorityColors = {
+   607→   607→                  high: 'border-red-200 bg-red-50',
+   608→   608→                  medium: 'border-amber-200 bg-amber-50',
+   609→   609→                  low: 'border-green-200 bg-green-50',
+   610→   610→                }
+   611→   611→                const Icon = typeIcons[insight.type]
+   612→   612→                
+   613→   613→                return (
+   614→   614→                  <div key={insight.id} className={`p-3 rounded-lg border ${priorityColors[insight.priority]}`}>
+   615→   615→                    <div className="flex items-start gap-3">
+   616→   616→                      <Icon className={`h-5 w-5 mt-0.5 ${
+   617→   617→                        insight.priority === 'high' ? 'text-red-600' : 
+   618→   618→                        insight.priority === 'medium' ? 'text-amber-600' : 'text-green-600'
+   619→   619→                      }`} />
+   620→   620→                      <div className="flex-1 min-w-0">
+   621→   621→                        <div className="flex items-center justify-between gap-2">
+   622→   622→                          <h4 className="font-medium text-sm truncate">{insight.title}</h4>
+   623→   623→                          {insight.change !== undefined && insight.change !== 0 && (
+   624→   624→                            <div className={`flex items-center gap-0.5 text-xs shrink-0 ${
+   625→   625→                              insight.change > 0 ? 'text-green-600' : 'text-red-600'
+   626→   626→                            }`}>
+   627→   627→                              {insight.change > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+   628→   628→                              {Math.abs(insight.change)}%
+   629→   629→                            </div>
+   630→   630→                          )}
+   631→   631→                        </div>
+   632→   632→                        <p className="text-xs text-[#757575] mt-1 line-clamp-2">{insight.description}</p>
+   633→   633→                        <Button size="sm" variant="outline" className="mt-2 h-7 text-xs" onClick={() => {
+   634→   634→                          // Map insight actions to views
+   635→   635→                          const actionToView: Record<string, string> = {
+   636→   636→                            'Schedule Staff': 'staff',
+   637→   637→                            'Order Now': 'grosupply',
+   638→   638→                            'View Report': 'transactions',
+   639→   639→                            'Explore Options': 'grocredit',
+   640→   640→                          }
+   641→   641→                          const view = actionToView[insight.action]
+   642→   642→                          if (view) onNavigate?.(view)
+   643→   643→                        }}>
+   644→   644→                          {insight.action}
+   645→   645→                          <ArrowRight className="h-3 w-3 ml-1" />
+   646→   646→                        </Button>
+   647→   647→                      </div>
+   648→   648→                    </div>
+   649→   649→                  </div>
+   650→   650→                )
+   651→   651→              })}
+   652→   652→            </div>
+   653→   653→          </CardContent>
+   654→   654→        </Card>
+   655→   655→
+   656→   656→        {/* Main Content Grid */}
+   657→   657→        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   658→   658→          {/* Sales Chart */}
+   659→   659→          <Card className="lg:col-span-2">
+   660→   660→            <CardHeader className="pb-2">
+   661→   661→              <CardTitle className="text-base font-semibold">Hourly Sales</CardTitle>
+   662→   662→            </CardHeader>
+   663→   663→            <CardContent>
+   664→   664→              <div className="h-48 flex items-end gap-2">
+   665→   665→                {stats.hourlySales.map((hour, i) => {
+   666→   666→                  const maxAmount = Math.max(...stats.hourlySales.map(h => h.amount))
+   667→   667→                  const height = (hour.amount / maxAmount) * 100
+   668→   668→                  return (
+   669→   669→                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+   670→   670→                      <div className="text-[10px] text-[#757575]">{formatCurrency(hour.amount)}</div>
+   671→   671→                      <div 
+   672→   672→                        className="w-full bg-gradient-to-t from-[#00897B] to-[#4CAF50] rounded-t-sm min-h-[4px] transition-all hover:from-[#00695C] hover:to-[#388E3C] cursor-pointer"
+   673→   673→                        style={{ height: `${height}%` }}
+   674→   674→                      />
+   675→   675→                      <div className="text-[10px] text-[#757575]">{hour.hour}</div>
+   676→   676→                    </div>
+   677→   677→                  )
+   678→   678→                })}
+   679→   679→              </div>
+   680→   680→            </CardContent>
+   681→   681→          </Card>
+   682→   682→
+   683→   683→          {/* Payment Methods */}
+   684→   684→          <Card>
+   685→   685→            <CardHeader className="pb-2">
+   686→   686→              <CardTitle className="text-base font-semibold">Payment Methods</CardTitle>
+   687→   687→            </CardHeader>
+   688→   688→            <CardContent className="space-y-3">
+   689→   689→              {stats.paymentMethods.map((pm, i) => {
+   690→   690→                const percentage = (pm.amount / stats.todaySales) * 100
+   691→   691→                return (
+   692→   692→                  <div key={i} className="space-y-1">
+   693→   693→                    <div className="flex items-center justify-between text-sm">
+   694→   694→                      <span className="text-[#1A1A1A]">{pm.method}</span>
+   695→   695→                      <span className="text-[#757575]">{formatCurrency(pm.amount)}</span>
+   696→   696→                    </div>
+   697→   697→                    <Progress value={percentage} className="h-2 bg-gray-100" />
+   698→   698→                  </div>
+   699→   699→                )
+   700→   700→              })}
+   701→   701→            </CardContent>
+   702→   702→          </Card>
+   703→   703→        </div>
+   704→   704→
+   705→   705→        {/* Bottom Section */}
+   706→   706→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   707→   707→          {/* Top Products */}
+   708→   708→          <Card>
+   709→   709→            <CardHeader className="pb-2">
+   710→   710→              <CardTitle className="text-base font-semibold">Top Products Today</CardTitle>
+   711→   711→            </CardHeader>
+   712→   712→            <CardContent>
+   713→   713→              <div className="space-y-3">
+   714→   714→                {stats.topProducts.map((product, i) => (
+   715→   715→                  <div key={i} className="flex items-center gap-3">
+   716→   716→                    <div className="w-6 h-6 rounded-full bg-[#E0F2F1] flex items-center justify-center text-xs font-bold text-[#00897B]">
+   717→   717→                      {i + 1}
+   718→   718→                    </div>
+   719→   719→                    <div className="flex-1 min-w-0">
+   720→   720→                      <p className="text-sm font-medium text-[#1A1A1A] truncate">{product.name}</p>
+   721→   721→                      <p className="text-xs text-[#757575]">{product.sold} sold</p>
+   722→   722→                    </div>
+   723→   723→                    <p className="text-sm font-semibold text-[#00897B]">{formatCurrency(product.revenue)}</p>
+   724→   724→                  </div>
+   725→   725→                ))}
+   726→   726→              </div>
+   727→   727→            </CardContent>
+   728→   728→          </Card>
+   729→   729→
+   730→   730→          {/* Recent Transactions */}
+   731→   731→          <Card>
+   732→   732→            <CardHeader className="pb-2">
+   733→   733→              <div className="flex items-center justify-between">
+   734→   734→                <CardTitle className="text-base font-semibold">Recent Transactions</CardTitle>
+   735→   735→                <Button variant="ghost" size="sm" className="text-xs text-[#00897B]" onClick={() => onNavigate?.('transactions')}>
+   736→   736→                  View All
+   737→   737→                </Button>
+   738→   738→              </div>
+   739→   739→            </CardHeader>
+   740→   740→            <CardContent>
+   741→   741→              <div className="space-y-3">
+   742→   742→                {transactions.slice(0, 5).map((txn, i) => {
+   743→   743→                  const PaymentIcon = paymentIcons[txn.method]
+   744→   744→                  return (
+   745→   745→                    <div key={i} className="flex items-center gap-3">
+   746→   746→                      <div className="w-8 h-8 rounded-full bg-[#F5F5F5] flex items-center justify-center">
+   747→   747→                        <PaymentIcon className="h-4 w-4 text-[#757575]" />
+   748→   748→                      </div>
+   749→   749→                      <div className="flex-1 min-w-0">
+   750→   750→                        <p className="text-sm font-medium text-[#1A1A1A]">
+   751→   751→                          {txn.customer || 'Walk-in Customer'}
+   752→   752→                        </p>
+   753→   753→                        <p className="text-xs text-[#757575]">{txn.items} items • {txn.time}</p>
+   754→   754→                      </div>
+   755→   755→                      <p className="text-sm font-semibold text-green-600">+{formatCurrency(txn.amount)}</p>
+   756→   756→                    </div>
+   757→   757→                  )
+   758→   758→                })}
+   759→   759→              </div>
+   760→   760→            </CardContent>
+   761→   761→          </Card>
+   762→   762→        </div>
+   763→   763→      </div>
+   764→   764→    </ScrollArea>
+   765→   765→  )
+   766→   766→}
+   767→   767→

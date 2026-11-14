@@ -1,0 +1,1219 @@
+   500→                    <p className="text-[8px] font-medium">{item.name}</p>
+   501→                    <p className="text-[8px] text-[#25D366] font-bold">{item.price}</p>
+   502→                  </div>
+   503→                ))}
+   504→              </div>
+   505→            </div>
+   506→            
+   507→            <div className="bg-[#DCF8C6] rounded-lg p-2 max-w-[85%] ml-auto">
+   508→              <p className="text-[10px]">Hi! I'd like to see your menu 👋</p>
+   509→              <p className="text-[8px] text-gray-500 text-right mt-0.5">10:30 AM ✓✓</p>
+   510→            </div>
+   511→          </div>
+   512→        </div>
+   513→      )
+   514→    case 'chat':
+   515→      return (
+   516→        <div className="h-full bg-[#ECE5DD]">
+   517→          <div className="bg-[#075E54] px-3 py-2 text-white">
+   518→            <div className="flex items-center gap-2">
+   519→              <ArrowLeft className="w-4 h-4" />
+   520→              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold">JD</div>
+   521→              <div>
+   522→                <p className="text-xs font-semibold">John Doe</p>
+   523→                <p className="text-[8px] opacity-80">Online</p>
+   524→              </div>
+   525→            </div>
+   526→          </div>
+   527→          
+   528→          <div className="p-2 space-y-1.5">
+   529→            <div className="bg-[#DCF8C6] rounded-lg p-2 max-w-[80%] ml-auto">
+   530→              <p className="text-[10px]">I'll take 2x Burgers please!</p>
+   531→              <p className="text-[8px] text-gray-500 text-right">10:32 AM ✓✓</p>
+   532→            </div>
+   533→            <div className="bg-white rounded-lg p-2 max-w-[85%]">
+   534→              <p className="text-[10px]">Great choice! 🎉</p>
+   535→              <div className="bg-[#E8F5E9] rounded p-1.5 mt-1">
+   536→                <p className="text-[8px] font-semibold">Order #GS-2847</p>
+   537→                <p className="text-[8px] text-gray-600">Total: R113.00</p>
+   538→              </div>
+   539→            </div>
+   540→          </div>
+   541→        </div>
+   542→      )
+   543→    default:
+   544→      return <GenericAppContent appName="GroSell" color="#25D366" />
+   545→  }
+   546→}
+   547→
+   548→// GroSupply Screen
+   549→function GroSupplyScreen({ screen }: { screen: string }) {
+   550→  return (
+   551→    <div className="p-3 space-y-2">
+   552→      <div className="flex items-center justify-between">
+   553→        <p className="text-sm font-bold text-gray-900">Marketplace</p>
+   554→        <div className="flex items-center gap-1 text-[10px] text-gray-500">
+   555→          <ShoppingCart className="w-3 h-3" />
+   556→          <span>3 items</span>
+   557→        </div>
+   558→      </div>
+   559→      
+   560→      <div className="flex gap-1.5 overflow-x-auto pb-1">
+   561→        {['All', 'F&B', 'Liquor', 'Grocery'].map((cat, idx) => (
+   562→          <button key={idx} className={`px-2.5 py-1 rounded-full text-[8px] whitespace-nowrap ${idx === 0 ? 'bg-[#FF9800] text-white' : 'bg-gray-100 text-gray-600'}`}>
+   563→            {cat}
+   564→          </button>
+   565→        ))}
+   566→      </div>
+   567→      
+   568→      <div className="grid grid-cols-2 gap-2">
+   569→        {[
+   570→          { name: 'Maize Meal 10kg', price: 'R 89.00', supplier: 'Premier Foods' },
+   571→          { name: 'Cooking Oil 5L', price: 'R 145.00', supplier: 'Willowton' },
+   572→          { name: 'Rice 20kg', price: 'R 269.00', supplier: 'Tiger Brands' },
+   573→          { name: 'Sugar 10kg', price: 'R 175.00', supplier: 'Tongaat Hulett' },
+   574→        ].map((product, idx) => (
+   575→          <div key={idx} className="bg-white rounded-lg p-2 border border-gray-100">
+   576→            <div className="w-full h-12 bg-gray-100 rounded mb-1.5" />
+   577→            <p className="text-[9px] font-medium text-gray-900 truncate">{product.name}</p>
+   578→            <p className="text-[8px] text-gray-500">{product.supplier}</p>
+   579→            <div className="flex items-center justify-between mt-1">
+   580→              <p className="text-[9px] font-bold text-[#FF9800]">{product.price}</p>
+   581→              <Button className="h-5 text-[8px] px-2 bg-[#FF9800]">Add</Button>
+   582→            </div>
+   583→          </div>
+   584→        ))}
+   585→      </div>
+   586→    </div>
+   587→  )
+   588→}
+   589→
+   590→// GoPay Screen
+   591→function GoPayScreen({ screen }: { screen: string }) {
+   592→  return (
+   593→    <div className="p-3 space-y-3">
+   594→      <div className="flex items-center justify-between">
+   595→        <p className="text-sm font-bold text-gray-900">Dashboard</p>
+   596→        <div className="w-7 h-7 rounded-full bg-[#9C27B0] flex items-center justify-center">
+   597→          <CreditCard className="w-3.5 h-3.5 text-white" />
+   598→        </div>
+   599→      </div>
+   600→      
+   601→      <div className="grid grid-cols-2 gap-2">
+   602→        <div className="bg-gradient-to-br from-[#9C27B0] to-[#7B1FA2] rounded-xl p-3 text-white">
+   603→          <p className="text-[8px] opacity-80">Today's Volume</p>
+   604→          <p className="text-lg font-bold">R 45,230</p>
+   605→          <p className="text-[8px] opacity-80">142 transactions</p>
+   606→        </div>
+   607→        <div className="bg-gray-50 rounded-xl p-3">
+   608→          <p className="text-[8px] text-gray-500">Active Devices</p>
+   609→          <p className="text-lg font-bold text-gray-900">24</p>
+   610→          <p className="text-[8px] text-green-600">All online</p>
+   611→        </div>
+   612→      </div>
+   613→      
+   614→      <div>
+   615→        <p className="text-[10px] font-semibold text-gray-900 mb-2">Recent Transactions</p>
+   616→        <div className="space-y-1.5">
+   617→          {[
+   618→            { ref: 'TXN-4827', amount: 'R 1,250.00', status: 'Success' },
+   619→            { ref: 'TXN-4826', amount: 'R 890.00', status: 'Success' },
+   620→            { ref: 'TXN-4825', amount: 'R 2,340.00', status: 'Pending' },
+   621→          ].map((tx, idx) => (
+   622→            <div key={idx} className="flex items-center justify-between bg-white rounded-lg p-2 border border-gray-100">
+   623→              <div>
+   624→                <p className="text-[9px] font-medium text-gray-900">{tx.ref}</p>
+   625→                <p className="text-[8px] text-gray-500">{tx.status}</p>
+   626→              </div>
+   627→              <p className="text-[9px] font-bold text-gray-900">{tx.amount}</p>
+   628→            </div>
+   629→          ))}
+   630→        </div>
+   631→      </div>
+   632→    </div>
+   633→  )
+   634→}
+   635→
+   636→// Generic Screen for other apps
+   637→function GenericScreen({ appName, screen, color }: { appName: string; screen: string; color: string }) {
+   638→  return (
+   639→    <div className="p-3 space-y-3">
+   640→      <div className="flex items-center justify-between">
+   641→        <p className="text-sm font-bold text-gray-900">{appName}</p>
+   642→        <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: color }}>
+   643→          <Sparkles className="w-3.5 h-3.5 text-white" />
+   644→        </div>
+   645→      </div>
+   646→      
+   647→      <div className="grid grid-cols-2 gap-2">
+   648→        {[1, 2, 3, 4].map((i) => (
+   649→          <div key={i} className="bg-gray-50 rounded-xl p-3 animate-pulse">
+   650→            <div className="w-8 h-8 bg-gray-200 rounded-lg mb-2" />
+   651→            <div className="h-2 bg-gray-200 rounded w-3/4 mb-1" />
+   652→            <div className="h-2 bg-gray-200 rounded w-1/2" />
+   653→          </div>
+   654→        ))}
+   655→      </div>
+   656→    </div>
+   657→  )
+   658→}
+   659→
+   660→// Generic App Content
+   661→function GenericAppContent({ appName, color }: { appName: string; color: string }) {
+   662→  return (
+   663→    <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+   664→      <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: `${color}20` }}>
+   665→        <Sparkles className="w-6 h-6" style={{ color }} />
+   666→      </div>
+   667→      <p className="text-sm font-semibold text-gray-900">{appName}</p>
+   668→      <p className="text-[10px] text-gray-500 mt-1">Full app experience</p>
+   669→    </div>
+   670→  )
+   671→}
+   672→
+   673→export default function GrowayLandingPage() {
+   674→  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+   675→  const [activeAppIndex, setActiveAppIndex] = useState(0)
+   676→  const [showDeployButton, setShowDeployButton] = useState(true)
+   677→  const [formData, setFormData] = useState({
+   678→    name: '',
+   679→    email: '',
+   680→    phone: '',
+   681→    enquiryType: 'consumer',
+   682→    message: '',
+   683→    businessName: '',
+   684→    businessType: ''
+   685→  })
+   686→  const [isSubmitting, setIsSubmitting] = useState(false)
+   687→  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+   688→
+   689→  // Check if deploy button was already clicked (persists across refresh)
+   690→  useEffect(() => {
+   691→    const deployDownloaded = localStorage.getItem('groway_deploy_downloaded')
+   692→    if (deployDownloaded === 'true') {
+   693→      setShowDeployButton(false)
+   694→    }
+   695→  }, [])
+   696→
+   697→  // Handle deploy button click - hide and remember
+   698→  const handleDeployClick = () => {
+   699→    localStorage.setItem('groway_deploy_downloaded', 'true')
+   700→    setShowDeployButton(false)
+   701→  }
+   702→
+   703→  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+   704→    const { name, value } = e.target
+   705→    setFormData(prev => ({ ...prev, [name]: value }))
+   706→  }
+   707→
+   708→  const handleSubmit = async (e: React.FormEvent) => {
+   709→    e.preventDefault()
+   710→    setIsSubmitting(true)
+   711→    setSubmitStatus('idle')
+   712→
+   713→    try {
+   714→      const response = await fetch('/api/contact', {
+   715→        method: 'POST',
+   716→        headers: { 'Content-Type': 'application/json' },
+   717→        body: JSON.stringify(formData)
+   718→      })
+   719→
+   720→      const result = await response.json()
+   721→
+   722→      if (response.ok && result.success) {
+   723→        setSubmitStatus('success')
+   724→        setFormData({
+   725→          name: '',
+   726→          email: '',
+   727→          phone: '',
+   728→          enquiryType: 'consumer',
+   729→          message: '',
+   730→          businessName: '',
+   731→          businessType: ''
+   732→        })
+   733→      } else {
+   734→        setSubmitStatus('error')
+   735→      }
+   736→    } catch {
+   737→      setSubmitStatus('error')
+   738→    } finally {
+   739→      setIsSubmitting(false)
+   740→    }
+   741→  }
+   742→
+   743→  const nextApp = useCallback(() => {
+   744→    setActiveAppIndex((prev) => (prev + 1) % applications.length)
+   745→  }, [])
+   746→
+   747→  const prevApp = useCallback(() => {
+   748→    setActiveAppIndex((prev) => (prev - 1 + applications.length) % applications.length)
+   749→  }, [])
+   750→
+   751→  return (
+   752→    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+   753→      {/* Navigation */}
+   754→      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/50">
+   755→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   756→          <div className="flex items-center justify-between h-16 sm:h-20">
+   757→            {/* Logo */}
+   758→            <div className="flex items-center">
+   759→              <img 
+   760→                src="/groway-logo.png" 
+   761→                alt="Groway" 
+   762→                className="h-8 sm:h-10 w-auto"
+   763→              />
+   764→            </div>
+   765→            
+   766→            {/* Desktop Navigation */}
+   767→            <div className="hidden md:flex items-center gap-8">
+   768→              <a href="#platform" className="text-sm font-medium text-[#757575] hover:text-[#00897B] transition-colors">
+   769→                Platform
+   770→              </a>
+   771→              <a href="#verticals" className="text-sm font-medium text-[#757575] hover:text-[#00897B] transition-colors">
+   772→                Business Verticals
+   773→              </a>
+   774→              <a href="#applications" className="text-sm font-medium text-[#757575] hover:text-[#00897B] transition-colors">
+   775→                Applications
+   776→              </a>
+   777→              <a href="#growth" className="text-sm font-medium text-[#757575] hover:text-[#00897B] transition-colors">
+   778→                Growth
+   779→              </a>
+   780→              <a href="#contact" className="text-sm font-medium text-[#757575] hover:text-[#00897B] transition-colors">
+   781→                Contact
+   782→              </a>
+   783→            </div>
+   784→            
+   785→            {/* Desktop CTA */}
+   786→            <div className="hidden md:flex items-center gap-3">
+   787→              <Link href="/enterprise/portal">
+   788→                <Button variant="ghost" className="text-[#1A1A1A] font-medium">
+   789→                  Enterprise Portal
+   790→                </Button>
+   791→              </Link>
+   792→              <Button className="bg-[#00897B] hover:bg-[#00695C] text-white font-medium px-5">
+   793→                Get Started
+   794→              </Button>
+   795→            </div>
+   796→
+   797→            {/* Mobile Menu Button */}
+   798→            <button 
+   799→              className="md:hidden p-2"
+   800→              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+   801→            >
+   802→              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+   803→            </button>
+   804→          </div>
+   805→        </div>
+   806→
+   807→        {/* Mobile Menu */}
+   808→        {mobileMenuOpen && (
+   809→          <div className="md:hidden bg-white border-t border-gray-200/50 py-4 px-4 space-y-4">
+   810→            <a href="#platform" className="block text-sm font-medium text-[#757575] hover:text-[#00897B]">Platform</a>
+   811→            <a href="#verticals" className="block text-sm font-medium text-[#757575] hover:text-[#00897B]">Business Verticals</a>
+   812→            <a href="#applications" className="block text-sm font-medium text-[#757575] hover:text-[#00897B]">Applications</a>
+   813→            <a href="#growth" className="block text-sm font-medium text-[#757575] hover:text-[#00897B]">Growth</a>
+   814→            <a href="#contact" className="block text-sm font-medium text-[#757575] hover:text-[#00897B]">Contact</a>
+   815→            <div className="pt-4 border-t border-gray-200/50 flex gap-3">
+   816→              <Link href="/enterprise/portal" className="flex-1">
+   817→                <Button variant="outline" className="w-full">Enterprise Portal</Button>
+   818→              </Link>
+   819→              <Button className="flex-1 bg-[#00897B] hover:bg-[#00695C] text-white">Get Started</Button>
+   820→            </div>
+   821→          </div>
+   822→        )}
+   823→      </nav>
+   824→
+   825→      {/* Hero Section */}
+   826→      <header className="relative overflow-hidden bg-gradient-to-br from-[#00695C] via-[#00897B] to-[#4CAF50] pt-12 sm:pt-16 lg:pt-20 pb-20 sm:pb-28">
+   827→        {/* Background Elements */}
+   828→        <div className="absolute inset-0 bg-grid opacity-20" />
+   829→        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/5 to-transparent" />
+   830→        <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
+   831→        <div className="absolute bottom-20 right-20 w-48 h-48 bg-green-400/20 rounded-full blur-3xl" />
+   832→        
+   833→        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   834→          <div className="text-center">
+   835→            {/* Badge */}
+   836→            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#004D40]/80 backdrop-blur-sm border border-white/30 mb-6 shadow-lg">
+   837→              <Sparkles className="h-4 w-4 text-emerald-300" />
+   838→              <span className="text-sm sm:text-base font-semibold text-white drop-shadow-sm">Africa&apos;s Integrated Financial Operating System</span>
+   839→            </div>
+   840→            
+   841→            {/* Main Headline */}
+   842→            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-5 tracking-tight leading-tight">
+   843→              One Superapp.
+   844→              <br />
+   845→              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-green-200 to-white">
+   846→                Every Financial Need.
+   847→              </span>
+   848→            </h1>
+   849→            
+   850→            {/* Sub-headlines */}
+   851→            <div className="max-w-4xl mx-auto mb-8 space-y-4">
+   852→              <p className="text-xl sm:text-2xl text-white font-semibold drop-shadow-md">
+   853→                For Individuals: Your complete financial life in one app
+   854→              </p>
+   855→              <p className="text-base sm:text-lg text-white max-w-3xl mx-auto leading-relaxed drop-shadow-sm">
+   856→                For Businesses: <span className="font-bold text-emerald-200">Multi-vertical Merchant OS</span> — 
+   857→                purpose-built for every business type, from Shisa Nyama to pharmacy.
+   858→              </p>
+   859→            </div>
+   860→            
+   861→            {/* Platform Highlights */}
+   862→            <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-8">
+   863→              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#004D40]/90 backdrop-blur-sm border border-white/30 shadow-md">
+   864→                <Smartphone className="h-4 w-4 text-emerald-300" />
+   865→                <span className="text-sm font-semibold text-white">Mobile-First</span>
+   866→              </div>
+   867→              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#004D40]/90 backdrop-blur-sm border border-white/30 shadow-md">
+   868→                <Globe className="h-4 w-4 text-emerald-300" />
+   869→                <span className="text-sm font-semibold text-white">Any Screen</span>
+   870→              </div>
+   871→              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#004D40]/90 backdrop-blur-sm border border-white/30 shadow-md">
+   872→                <Store className="h-4 w-4 text-emerald-300" />
+   873→                <span className="text-sm font-semibold text-white">12 Verticals</span>
+   874→              </div>
+   875→            </div>
+   876→            
+   877→            {/* CTA Buttons */}
+   878→            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+   879→              <Button 
+   880→                size="lg" 
+   881→                className="bg-white text-[#00897B] hover:bg-teal-50 font-semibold px-6 py-5 text-base shadow-xl hover:shadow-2xl transition-all duration-300"
+   882→              >
+   883→                <Smartphone className="mr-2 h-4 w-4" />
+   884→                Download Consumer App
+   885→              </Button>
+   886→              <Button 
+   887→                size="lg" 
+   888→                className="bg-[#E0F2F1] text-[#00695C] hover:bg-white font-semibold px-6 py-5 text-base shadow-lg transition-all duration-300"
+   889→              >
+   890→                <Store className="mr-2 h-4 w-4" />
+   891→                Start Merchant Trial
+   892→              </Button>
+   893→              {showDeployButton && (
+   894→                <a
+   895→                  href="/groway-netlify-deploy.zip"
+   896→                  download
+   897→                  onClick={handleDeployClick}
+   898→                >
+   899→                  <Button 
+   900→                    size="lg" 
+   901→                    variant="outline"
+   902→                    className="border-white/30 text-white hover:bg-white/10 font-semibold px-6 py-5 text-base shadow-lg transition-all duration-300"
+   903→                  >
+   904→                    <Download className="mr-2 h-4 w-4" />
+   905→                    Deploy to Netlify
+   906→                  </Button>
+   907→                </a>
+   908→              )}
+   909→              <a
+   910→                href="/api/download"
+   911→                download
+   912→              >
+   913→                <Button 
+   914→                  size="lg" 
+   915→                  variant="outline"
+   916→                  className="border-amber-400/50 text-amber-200 hover:bg-amber-500/20 font-semibold px-6 py-5 text-base shadow-lg transition-all duration-300"
+   917→                >
+   918→                  <Download className="mr-2 h-4 w-4" />
+   919→                  Download Pitch Deck
+   920→                </Button>
+   921→              </a>
+   922→            </div>
+   923→            
+   924→            {/* Trust Badges */}
+   925→            <div className="mt-10 flex flex-wrap justify-center gap-3 sm:gap-4">
+   926→              {complianceBadges.map((badge, index) => (
+   927→                <div key={index} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#004D40]/70 backdrop-blur-sm border border-white/25 shadow-md">
+   928→                  <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+   929→                  <span className="text-sm font-medium text-white drop-shadow-sm">{badge.name}</span>
+   930→                </div>
+   931→              ))}
+   932→            </div>
+   933→          </div>
+   934→        </div>
+   935→        
+   936→        {/* Wave Divider */}
+   937→        <div className="absolute bottom-0 left-0 right-0">
+   938→          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
+   939→            <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="#FAFAFA"/>
+   940→          </svg>
+   941→        </div>
+   942→      </header>
+   943→
+   944→      {/* Platform Stats */}
+   945→      <section id="platform" className="py-10 sm:py-14 bg-[#FAFAFA] border-b border-gray-200">
+   946→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   947→          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
+   948→            {platformStats.map((stat, index) => (
+   949→              <div key={index} className="text-center">
+   950→                <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-[#E0F2F1] text-[#00897B] mb-2">
+   951→                  <stat.icon className="h-5 w-5" />
+   952→                </div>
+   953→                <div className="text-2xl sm:text-3xl font-bold text-[#1A1A1A] mb-0.5">
+   954→                  {stat.value}
+   955→                </div>
+   956→                <div className="text-xs sm:text-sm text-[#757575]">
+   957→                  {stat.label}
+   958→                </div>
+   959→              </div>
+   960→            ))}
+   961→          </div>
+   962→        </div>
+   963→      </section>
+   964→
+   965→      {/* Multi-Vertical Section */}
+   966→      <section id="verticals" className="py-12 sm:py-20 bg-white">
+   967→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   968→          {/* Section Header */}
+   969→          <div className="text-center mb-12">
+   970→            <Badge variant="outline" className="mb-3 px-3 py-1 border-[#00897B]/30 text-[#00897B] bg-[#E0F2F1] text-xs">
+   971→              <Store className="h-3 w-3 mr-1" />
+   972→              The Groway Difference
+   973→            </Badge>
+   974→            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1A1A1A] mb-3">
+   975→              One Platform. <span className="text-[#00897B]">Every Business Type.</span>
+   976→            </h2>
+   977→            <p className="text-sm sm:text-base text-[#757575] max-w-3xl mx-auto">
+   978→              A restaurant and a Shisa Nyama are legally, operationally, and culturally different businesses. 
+   979→              Groway understands this — each vertical gets its own POS layout, SKU catalogue, compliance rules, 
+   980→              and chart of accounts.
+   981→            </p>
+   982→          </div>
+   983→
+   984→          {/* Verticals Grid - Alipay-style minimal icons */}
+   985→          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 mb-10">
+   986→            {businessVerticals.map((vertical, index) => (
+   987→              <div 
+   988→                key={index}
+   989→                className="group flex flex-col items-center text-center p-3 sm:p-4 rounded-lg bg-[#FAFAFA] hover:bg-white border border-gray-200 hover:border-[#00897B]/30 hover:shadow-md transition-all duration-200 cursor-pointer"
+   990→              >
+   991→                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#E0F2F1] text-[#00897B] flex items-center justify-center mb-2 group-hover:bg-[#00897B] group-hover:text-white transition-colors">
+   992→                  <vertical.icon className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+   993→                </div>
+   994→                <h3 className="text-[10px] sm:text-xs font-medium text-[#1A1A1A] leading-tight">
+   995→                  {vertical.name}
+   996→                </h3>
+   997→                <p className="text-[10px] text-[#757575] mt-0.5">
+   998→                  {vertical.subCount} sub-types
+   999→                </p>
+  1000→              </div>
+  1001→            ))}
+  1002→          </div>
+  1003→
+  1004→          {/* What Gets Auto-Configured */}
+  1005→          <div className="bg-gradient-to-br from-[#E0F2F1] to-[#E8F5E9] rounded-xl p-5 sm:p-8">
+  1006→            <h3 className="text-base sm:text-lg font-bold text-[#1A1A1A] mb-4 text-center">
+  1007→              What Groway Auto-Configures Per Vertical
+  1008→            </h3>
+  1009→            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+  1010→              {[
+  1011→                'Chart of Accounts',
+  1012→                'SKU Catalogue',
+  1013→                'Compliance Overlays',
+  1014→                'VAT Treatment',
+  1015→                'POS Screen Layout',
+  1016→                'Digital Menu',
+  1017→                'Geo-Discovery Tags',
+  1018→                'Loyalty Categories',
+  1019→                'Supplier Catalogue',
+  1020→                'VAS Tiles',
+  1021→              ].map((item, index) => (
+  1022→                <div key={index} className="flex items-center gap-1.5 bg-white rounded-lg px-3 py-2 shadow-sm">
+  1023→                  <CheckCircle2 className="h-3.5 w-3.5 text-[#00897B] flex-shrink-0" />
+  1024→                  <span className="text-xs text-[#1A1A1A]">{item}</span>
+  1025→                </div>
+  1026→              ))}
+  1027→            </div>
+  1028→          </div>
+  1029→        </div>
+  1030→      </section>
+  1031→
+  1032→      {/* Applications Grid with Phone Mockups */}
+  1033→      <section id="applications" className="py-12 sm:py-20 bg-[#FAFAFA]">
+  1034→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1035→          {/* Section Header */}
+  1036→          <div className="text-center mb-12">
+  1037→            <Badge variant="outline" className="mb-3 px-3 py-1 border-[#00897B]/30 text-[#00897B] bg-[#E0F2F1] text-xs">
+  1038→              <Sparkles className="h-3 w-3 mr-1" />
+  1039→              Superapp Platform
+  1040→            </Badge>
+  1041→            <h2 className="text-2xl sm:text-3xl font-bold text-[#1A1A1A] mb-3">
+  1042→              Nine Applications. One Ecosystem.
+  1043→            </h2>
+  1044→            <p className="text-sm sm:text-base text-[#757575] max-w-2xl mx-auto">
+  1045→              Each product works seamlessly together, creating an ecosystem that empowers 
+  1046→              consumers, merchants, and enterprises across Africa.
+  1047→            </p>
+  1048→          </div>
+  1049→          
+  1050→          {/* Featured App with Phone Mockup */}
+  1051→          <div className="mb-16">
+  1052→            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+  1053→              <div className="grid lg:grid-cols-2 gap-8 p-6 lg:p-8">
+  1054→                {/* Phone Mockup */}
+  1055→                <div className="flex items-center justify-center py-8 order-2 lg:order-1">
+  1056→                  <div className="relative">
+  1057→                    <PhoneMockup app={applications[activeAppIndex]} isActive={true} />
+  1058→                    
+  1059→                    {/* Navigation Arrows */}
+  1060→                    <button 
+  1061→                      onClick={prevApp}
+  1062→                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors hidden lg:flex"
+  1063→                    >
+  1064→                      <ChevronLeft className="h-5 w-5 text-gray-600" />
+  1065→                    </button>
+  1066→                    <button 
+  1067→                      onClick={nextApp}
+  1068→                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors hidden lg:flex"
+  1069→                    >
+  1070→                      <ChevronRight className="h-5 w-5 text-gray-600" />
+  1071→                    </button>
+  1072→                  </div>
+  1073→                </div>
+  1074→                
+  1075→                {/* App Info */}
+  1076→                <div className="flex flex-col justify-center order-1 lg:order-2">
+  1077→                  <div className="flex items-center gap-3 mb-4">
+  1078→                    <div 
+  1079→                      className="w-12 h-12 rounded-xl flex items-center justify-center"
+  1080→                      style={{ backgroundColor: `${applications[activeAppIndex].color}20` }}
+  1081→                    >
+  1082→                      {(() => {
+  1083→                        const IconComponent = applications[activeAppIndex].icon;
+  1084→                        return <IconComponent className="h-6 w-6" style={{ color: applications[activeAppIndex].color }} />;
+  1085→                      })()}
+  1086→                    </div>
+  1087→                    <div>
+  1088→                      <h3 className="text-xl sm:text-2xl font-bold text-[#1A1A1A]">
+  1089→                        {applications[activeAppIndex].name}
+  1090→                      </h3>
+  1091→                      <p className="text-sm text-[#00897B] font-medium">
+  1092→                        {applications[activeAppIndex].tagline}
+  1093→                      </p>
+  1094→                    </div>
+  1095→                  </div>
+  1096→                  
+  1097→                  <p className="text-sm text-[#757575] mb-6 leading-relaxed">
+  1098→                    {applications[activeAppIndex].description}
+  1099→                  </p>
+  1100→                  
+  1101→                  <div className="flex flex-wrap gap-2 mb-6">
+  1102→                    {applications[activeAppIndex].features.map((feature, idx) => (
+  1103→                      <span 
+  1104→                        key={idx}
+  1105→                        className="text-xs px-3 py-1.5 rounded-full bg-[#F5F5F5] text-[#757575] border border-gray-200"
+  1106→                      >
+  1107→                        {feature}
+  1108→                      </span>
+  1109→                    ))}
+  1110→                  </div>
+  1111→                  
+  1112→                  <div className="flex flex-col sm:flex-row gap-3">
+  1113→                    <Link href={`/${applications[activeAppIndex].id}`}>
+  1114→                      <Button 
+  1115→                        className="font-semibold px-6 text-white"
+  1116→                        style={{ backgroundColor: applications[activeAppIndex].color }}
+  1117→                      >
+  1118→                        {applications[activeAppIndex].cta}
+  1119→                        <ArrowRight className="ml-2 h-4 w-4" />
+  1120→                      </Button>
+  1121→                    </Link>
+  1122→                    <Link href={`/${applications[activeAppIndex].id}/app`}>
+  1123→                      <Button variant="outline" className="font-semibold px-6">
+  1124→                        Open App
+  1125→                      </Button>
+  1126→                    </Link>
+  1127→                  </div>
+  1128→                </div>
+  1129→              </div>
+  1130→            </div>
+  1131→            
+  1132→            {/* App Selector Dots */}
+  1133→            <div className="flex justify-center gap-2 mt-6">
+  1134→              {applications.map((app, idx) => (
+  1135→                <button
+  1136→                  key={app.id}
+  1137→                  onClick={() => setActiveAppIndex(idx)}
+  1138→                  className={`w-3 h-3 rounded-full transition-all ${
+  1139→                    activeAppIndex === idx 
+  1140→                      ? 'w-8' 
+  1141→                      : 'bg-gray-300 hover:bg-gray-400'
+  1142→                  }`}
+  1143→                  style={{ backgroundColor: activeAppIndex === idx ? app.color : undefined }}
+  1144→                />
+  1145→              ))}
+  1146→            </div>
+  1147→          </div>
+  1148→          
+  1149→          {/* All Apps Grid - Premium Cards */}
+  1150→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+  1151→            {applications.map((app) => (
+  1152→              <Link key={app.id} href={`/${app.id}`}>
+  1153→                <Card 
+  1154→                  className="group relative overflow-hidden bg-white border border-gray-100 hover:border-gray-200 hover:shadow-xl transition-all duration-500 cursor-pointer h-full"
+  1155→                >
+  1156→                  {/* Gradient overlay on hover */}
+  1157→                  <div 
+  1158→                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+  1159→                    style={{ background: `linear-gradient(135deg, ${app.color}08 0%, ${app.color}15 100%)` }}
+  1160→                  />
+  1161→                  
+  1162→                  <CardContent className="relative p-5 sm:p-6">
+  1163→                    {/* Header with Icon and User Count */}
+  1164→                    <div className="flex items-start justify-between mb-4">
+  1165→                      <div 
+  1166→                        className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-110"
+  1167→                        style={{ backgroundColor: app.color, boxShadow: `0 4px 20px ${app.color}40` }}
+  1168→                      >
+  1169→                        <app.icon className="h-6 w-6 text-white" />
+  1170→                      </div>
+  1171→                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-100">
+  1172→                        <Users className="h-3 w-3 text-[#00897B]" />
+  1173→                        <span className="text-xs font-semibold text-gray-700">{app.users}</span>
+  1174→                      </div>
+  1175→                    </div>
+  1176→                    
+  1177→                    {/* Content */}
+  1178→                    <h3 className="text-lg sm:text-xl font-bold text-[#1A1A1A] mb-1.5">
+  1179→                      {app.name}
+  1180→                    </h3>
+  1181→                    
+  1182→                    <p className="text-sm font-semibold mb-2" style={{ color: app.color }}>
+  1183→                      {app.tagline}
+  1184→                    </p>
+  1185→                    
+  1186→                    <p className="text-sm text-[#616161] mb-4 leading-relaxed line-clamp-2">
+  1187→                      {app.description}
+  1188→                    </p>
+  1189→                    
+  1190→                    {/* Features */}
+  1191→                    <div className="flex flex-wrap gap-1.5 mb-5">
+  1192→                      {app.features.map((feature, idx) => (
+  1193→                        <span 
+  1194→                          key={idx}
+  1195→                          className="text-xs px-2.5 py-1 rounded-full font-medium transition-colors"
+  1196→                          style={{ backgroundColor: `${app.color}12`, color: app.color }}
+  1197→                        >
+  1198→                          {feature}
+  1199→                        </span>
+  1200→                      ))}
+  1201→                    </div>
+  1202→                    
+  1203→                    {/* CTA */}
+  1204→                    <div 
+  1205→                      className="flex items-center gap-2 text-sm font-bold transition-all duration-300 group-hover:gap-3"
+  1206→                      style={{ color: app.color }}
+  1207→                    >
+  1208→                      <span>{app.cta}</span>
+  1209→                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+  1210→                    </div>
+  1211→                  </CardContent>
+  1212→                </Card>
+  1213→              </Link>
+  1214→            ))}
+  1215→          </div>
+  1216→        </div>
+  1217→      </section>
+  1218→
+  1219→      {/* Growth Programs Section */}
+  1220→      <section id="growth" className="py-16 sm:py-24 bg-gradient-to-b from-white to-[#FAFAFA]">
+  1221→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1222→          {/* Section Header */}
+  1223→          <div className="text-center mb-14">
+  1224→            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#00897B]/10 to-[#4CAF50]/10 border border-[#00897B]/20 mb-6">
+  1225→              <TrendingUp className="h-4 w-4 text-[#00897B]" />
+  1226→              <span className="text-sm font-semibold text-[#00897B]">Grow With Us</span>
+  1227→            </div>
+  1228→            <h2 className="text-3xl sm:text-4xl font-bold text-[#1A1A1A] mb-4">
+  1229→              Growth Programs
+  1230→            </h2>
+  1231→            <p className="text-base sm:text-lg text-[#616161] max-w-3xl mx-auto leading-relaxed">
+  1232→              Join our network and earn by helping businesses grow. Whether you&apos;re a merchant 
+  1233→              referring friends or a professional sales agent, there&apos;s an opportunity for you.
+  1234→            </p>
+  1235→          </div>
+  1236→          
+  1237→          {/* Programs Grid - Premium Cards */}
+  1238→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+  1239→            {growthPrograms.map((program, index) => (
+  1240→              <Link key={program.id} href={`/${program.id}`}>
+  1241→                <Card 
+  1242→                  className="group relative overflow-hidden bg-white border border-gray-100 hover:border-[#00897B]/30 hover:shadow-2xl transition-all duration-500 cursor-pointer h-full"
+  1243→                >
+  1244→                  {/* Decorative gradient */}
+  1245→                  <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-[#00897B]/5 to-[#4CAF50]/10 rounded-full blur-3xl transform translate-x-16 -translate-y-16 group-hover:scale-150 transition-transform duration-700" />
+  1246→                  
+  1247→                  <CardContent className="relative p-6 sm:p-8">
+  1248→                    {/* Header with Icon and Badge */}
+  1249→                    <div className="flex items-start justify-between mb-5">
+  1250→                      <div className="w-14 h-14 bg-gradient-to-br from-[#00897B] to-[#4CAF50] text-white rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+  1251→                        <program.icon className="h-7 w-7" />
+  1252→                      </div>
+  1253→                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#E0F2F1] to-[#E8F5E9] border border-[#00897B]/20">
+  1254→                        <Users className="h-3.5 w-3.5 text-[#00897B]" />
+  1255→                        <span className="text-xs font-bold text-[#00897B]">{program.users} members</span>
+  1256→                      </div>
+  1257→                    </div>
+  1258→                    
+  1259→                    {/* Content */}
+  1260→                    <h3 className="text-xl sm:text-2xl font-bold text-[#1A1A1A] mb-2">
+  1261→                      {program.name}
+  1262→                    </h3>
+  1263→                    
+  1264→                    <p className="text-base font-semibold text-[#00897B] mb-3">
+  1265→                      {program.tagline}
+  1266→                    </p>
+  1267→                    
+  1268→                    <p className="text-sm text-[#616161] mb-5 leading-relaxed">
+  1269→                      {program.description}
+  1270→                    </p>
+  1271→                    
+  1272→                    {/* Features */}
+  1273→                    <div className="flex flex-wrap gap-2 mb-6">
+  1274→                      {program.features.map((feature, idx) => (
+  1275→                        <span 
+  1276→                          key={idx}
+  1277→                          className="text-xs px-3 py-1.5 rounded-full bg-[#E0F2F1] text-[#00897B] font-semibold border border-[#00897B]/10"
+  1278→                        >
+  1279→                          {feature}
+  1280→                        </span>
+  1281→                      ))}
+  1282→                    </div>
+  1283→                    
+  1284→                    {/* CTA Button */}
+  1285→                    <div className="flex items-center gap-2 text-sm font-bold text-white bg-gradient-to-r from-[#00897B] to-[#00695C] hover:from-[#00695C] hover:to-[#004D40] rounded-xl px-5 py-3 shadow-lg hover:shadow-xl transition-all duration-300 w-fit group-hover:gap-3">
+  1286→                      <span>{program.cta}</span>
+  1287→                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+  1288→                    </div>
+  1289→                  </CardContent>
+  1290→                </Card>
+  1291→              </Link>
+  1292→            ))}
+  1293→          </div>
+  1294→        </div>
+  1295→      </section>
+  1296→
+  1297→      {/* For Individuals vs For Businesses */}
+  1298→      <section className="py-16 sm:py-24 bg-white">
+  1299→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1300→          <div className="text-center mb-14">
+  1301→            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 mb-6">
+  1302→              <Users className="h-4 w-4 text-[#1A1A1A]" />
+  1303→              <span className="text-sm font-semibold text-[#1A1A1A]">Built for Everyone</span>
+  1304→            </div>
+  1305→            <h2 className="text-3xl sm:text-4xl font-bold text-[#1A1A1A] mb-4">
+  1306→              One Platform, Two Experiences
+  1307→            </h2>
+  1308→            <p className="text-base sm:text-lg text-[#616161] max-w-3xl mx-auto leading-relaxed">
+  1309→              Whether you&apos;re managing your personal finances or running a business, 
+  1310→              Groway has you covered with purpose-built experiences.
+  1311→            </p>
+  1312→          </div>
+  1313→
+  1314→          <div className="grid lg:grid-cols-2 gap-6 sm:gap-8">
+  1315→            {/* For Individuals */}
+  1316→            <div className="group relative bg-gradient-to-br from-[#00897B] via-[#00897B] to-[#4CAF50] rounded-2xl p-6 sm:p-8 text-white overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500">
+  1317→              {/* Decorative elements */}
+  1318→              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl transform translate-x-20 -translate-y-20 group-hover:scale-110 transition-transform duration-700" />
+  1319→              <div className="absolute bottom-0 left-0 w-48 h-48 bg-green-400/20 rounded-full blur-3xl transform -translate-x-16 translate-y-16" />
+  1320→              
+  1321→              <div className="relative z-10">
+  1322→                <div className="flex items-center gap-3 mb-5">
+  1323→                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
+  1324→                    <Wallet className="h-6 w-6 text-white" />
+  1325→                  </div>
+  1326→                  <div>
+  1327→                    <h3 className="text-xl sm:text-2xl font-bold">For Individuals</h3>
+  1328→                    <p className="text-sm text-white/80">Consumer Superapp</p>
+  1329→                  </div>
+  1330→                </div>
+  1331→                
+  1332→                <p className="text-base sm:text-lg text-white/90 mb-6 leading-relaxed font-medium">
+  1333→                  Your complete financial life in one superapp — pay, send, save, and grow your money.
+  1334→                </p>
+  1335→                
+  1336→                <ul className="space-y-3 mb-8">
+  1337→                  {[
+  1338→                    { icon: QrCode, text: 'QR Payments at any Groway merchant' },
+  1339→                    { icon: Send, text: 'P2P Transfers to friends and family' },
+  1340→                    { icon: Globe, text: 'Remittance across borders' },
+  1341→                    { icon: Ticket, text: 'Bill Pay & Prepaid Services' },
+  1342→                    { icon: PiggyBank, text: 'Savings Goals & Investment' },
+  1343→                  ].map((item, index) => (
+  1344→                    <li key={index} className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2.5">
+  1345→                      <div className="w-6 h-6 bg-white/20 rounded-md flex items-center justify-center flex-shrink-0">
+  1346→                        <item.icon className="h-3.5 w-3.5 text-white" />
+  1347→                      </div>
+  1348→                      <span className="text-sm font-medium">{item.text}</span>
+  1349→                    </li>
+  1350→                  ))}
+  1351→                </ul>
+  1352→                
+  1353→                <Button className="bg-white text-[#00897B] hover:bg-teal-50 font-bold px-6 py-3 text-base shadow-lg hover:shadow-xl transition-all">
+  1354→                  <Smartphone className="mr-2 h-4 w-4" />
+  1355→                  Download the App
+  1356→                </Button>
+  1357→              </div>
+  1358→            </div>
+  1359→
+  1360→            {/* For Businesses */}
+  1361→            <div className="group relative bg-gradient-to-br from-[#1A1A1A] via-[#1A1A1A] to-[#2D2D2D] rounded-2xl p-6 sm:p-8 text-white overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500">
+  1362→              {/* Decorative elements */}
+  1363→              <div className="absolute top-0 right-0 w-64 h-64 bg-[#00897B]/20 rounded-full blur-3xl transform translate-x-20 -translate-y-20 group-hover:scale-110 transition-transform duration-700" />
+  1364→              <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#4CAF50]/10 rounded-full blur-3xl transform -translate-x-16 translate-y-16" />
+  1365→              
+  1366→              <div className="relative z-10">
+  1367→                <div className="flex items-center gap-3 mb-5">
+  1368→                  <div className="w-12 h-12 bg-[#00897B]/30 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
+  1369→                    <Store className="h-6 w-6 text-[#4CAF50]" />
+  1370→                  </div>
+  1371→                  <div>
+  1372→                    <h3 className="text-xl sm:text-2xl font-bold">For Businesses</h3>
+  1373→                    <p className="text-sm text-gray-400">Merchant OS Platform</p>
+  1374→                  </div>
+  1375→                </div>
+  1376→                
+  1377→                <p className="text-base sm:text-lg text-gray-300 mb-6 leading-relaxed font-medium">
+  1378→                  Multi-vertical Business OS — purpose-built for every business type in South Africa.
+  1379→                </p>
+  1380→                
+  1381→                <ul className="space-y-3 mb-8">
+  1382→                  {[
+  1383→                    { icon: Monitor, text: 'Vertical-specific POS layouts' },
+  1384→                    { icon: Package, text: 'Pre-loaded SKU catalogues' },
+  1385→                    { icon: BarChart3, text: 'Built-in Accounting & ERP' },
+  1386→                    { icon: QrCode, text: 'QR Digital Menu & Geo-Discovery' },
+  1387→                    { icon: Truck, text: 'GroSupply B2B Procurement' },
+  1388→                  ].map((item, index) => (
+  1389→                    <li key={index} className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-lg px-4 py-2.5 border border-white/10">
+  1390→                      <div className="w-6 h-6 bg-[#00897B]/30 rounded-md flex items-center justify-center flex-shrink-0">
+  1391→                        <item.icon className="h-3.5 w-3.5 text-[#4CAF50]" />
+  1392→                      </div>
+  1393→                      <span className="text-sm font-medium text-gray-200">{item.text}</span>
+  1394→                    </li>
+  1395→                  ))}
+  1396→                </ul>
+  1397→                
+  1398→                <Button className="bg-gradient-to-r from-[#00897B] to-[#00695C] text-white hover:from-[#00695C] hover:to-[#004D40] font-bold px-6 py-3 text-base shadow-lg hover:shadow-xl transition-all">
+  1399→                  <Store className="mr-2 h-4 w-4" />
+  1400→                  Start Free Trial
+  1401→                </Button>
+  1402→              </div>
+  1403→            </div>
+  1404→          </div>
+  1405→        </div>
+  1406→      </section>
+  1407→
+  1408→      {/* Contact Form Section */}
+  1409→      <section id="contact" className="py-12 sm:py-20 bg-white">
+  1410→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1411→          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+  1412→            {/* Contact Info */}
+  1413→            <div>
+  1414→              <Badge variant="outline" className="mb-3 px-3 py-1 border-[#00897B]/30 text-[#00897B] bg-[#E0F2F1] text-xs">
+  1415→                <Mail className="h-3 w-3 mr-1" />
+  1416→                Get in Touch
+  1417→              </Badge>
+  1418→              <h2 className="text-2xl sm:text-3xl font-bold text-[#1A1A1A] mb-4">
+  1419→                Let&apos;s Start Your Journey
+  1420→              </h2>
+  1421→              <p className="text-sm sm:text-base text-[#757575] mb-8">
+  1422→                Whether you&apos;re an individual looking to take control of your finances, 
+  1423→                a business owner ready to streamline operations, or an enterprise seeking 
+  1424→                scalable solutions — we&apos;re here to help.
+  1425→              </p>
+  1426→
+  1427→              <div className="space-y-4">
+  1428→                <div className="flex items-start gap-3">
+  1429→                  <div className="w-9 h-9 rounded-lg bg-[#E0F2F1] text-[#00897B] flex items-center justify-center flex-shrink-0">
+  1430→                    <Mail className="h-4 w-4" />
+  1431→                  </div>
+  1432→                  <div>
+  1433→                    <h4 className="text-sm font-semibold text-[#1A1A1A]">Email Us</h4>
+  1434→                    <p className="text-sm text-[#757575]">info@groway.co.za</p>
+  1435→                  </div>
+  1436→                </div>
+  1437→                <div className="flex items-start gap-3">
+  1438→                  <div className="w-9 h-9 rounded-lg bg-[#E0F2F1] text-[#00897B] flex items-center justify-center flex-shrink-0">
+  1439→                    <Phone className="h-4 w-4" />
+  1440→                  </div>
+  1441→                  <div>
+  1442→                    <h4 className="text-sm font-semibold text-[#1A1A1A]">Call Us</h4>
+  1443→                    <p className="text-sm text-[#757575]">W: +27 81 718 4013</p>
+  1444→                  </div>
+  1445→                </div>
+  1446→                <div className="flex items-start gap-3">
+  1447→                  <div className="w-9 h-9 rounded-lg bg-[#E0F2F1] text-[#00897B] flex items-center justify-center flex-shrink-0">
+  1448→                    <Globe className="h-4 w-4" />
+  1449→                  </div>
+  1450→                  <div>
+  1451→                    <h4 className="text-sm font-semibold text-[#1A1A1A]">Coverage</h4>
+  1452→                    <p className="text-sm text-[#757575]">South Africa & 6+ African countries</p>
+  1453→                  </div>
+  1454→                </div>
+  1455→              </div>
+  1456→
+  1457→              {/* Response Time */}
+  1458→              <div className="mt-8 p-4 rounded-lg bg-[#FAFAFA] border border-gray-200">
+  1459→                <p className="text-xs text-[#757575]">
+  1460→                  <span className="font-medium text-[#00897B]">Response Time:</span> We typically respond within 24-48 hours during business days.
+  1461→                </p>
+  1462→              </div>
+  1463→            </div>
+  1464→
+  1465→            {/* Contact Form */}
+  1466→            <div className="bg-[#FAFAFA] rounded-xl border border-gray-200 p-5 sm:p-8 shadow-sm">
+  1467→              <form onSubmit={handleSubmit} className="space-y-4">
+  1468→                {/* Enquiry Type */}
+  1469→                <div>
+  1470→                  <Label className="text-sm font-medium text-[#1A1A1A] mb-2 block">
+  1471→                    I&apos;m interested in...
+  1472→                  </Label>
+  1473→                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+  1474→                    {enquiryTypes.map((type) => (
+  1475→                      <button
+  1476→                        key={type.value}
+  1477→                        type="button"
+  1478→                        onClick={() => setFormData(prev => ({ ...prev, enquiryType: type.value }))}
+  1479→                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+  1480→                          formData.enquiryType === type.value
+  1481→                            ? 'bg-[#00897B] text-white'
+  1482→                            : 'bg-white text-[#757575] hover:bg-[#E0F2F1] hover:text-[#00897B]'
+  1483→                        }`}
+  1484→                      >
+  1485→                        <type.icon className="h-3.5 w-3.5" />
+  1486→                        {type.label}
+  1487→                      </button>
+  1488→                    ))}
+  1489→                  </div>
+  1490→                </div>
+  1491→
+  1492→                {/* Name & Email */}
+  1493→                <div className="grid sm:grid-cols-2 gap-4">
+  1494→                  <div>
+  1495→                    <Label htmlFor="name" className="text-sm font-medium text-[#1A1A1A] mb-1.5 block">
+  1496→                      Full Name *
+  1497→                    </Label>
+  1498→                    <Input
+  1499→                      id="name"
+  1500→                      name="name"
+  1501→                      value={formData.name}
+  1502→                      onChange={handleInputChange}
+  1503→                      placeholder="Your name"
+  1504→                      required
+  1505→                      className="h-10 bg-white"
+  1506→                    />
+  1507→                  </div>
+  1508→                  <div>
+  1509→                    <Label htmlFor="email" className="text-sm font-medium text-[#1A1A1A] mb-1.5 block">
+  1510→                      Email Address *
+  1511→                    </Label>
+  1512→                    <Input
+  1513→                      id="email"
+  1514→                      name="email"
+  1515→                      type="email"
+  1516→                      value={formData.email}
+  1517→                      onChange={handleInputChange}
+  1518→                      placeholder="your@email.com"
+  1519→                      required
+  1520→                      className="h-10 bg-white"
+  1521→                    />
+  1522→                  </div>
+  1523→                </div>
+  1524→
+  1525→                {/* Phone */}
+  1526→                <div>
+  1527→                  <Label htmlFor="phone" className="text-sm font-medium text-[#1A1A1A] mb-1.5 block">
+  1528→                    Phone Number
+  1529→                  </Label>
+  1530→                  <Input
+  1531→                    id="phone"
+  1532→                    name="phone"
+  1533→                    value={formData.phone}
+  1534→                    onChange={handleInputChange}
+  1535→                    placeholder="+27 00 000 0000"
+  1536→                    className="h-10 bg-white"
+  1537→                  />
+  1538→                </div>
+  1539→
+  1540→                {/* Business Fields - Show for merchant/enterprise */}
+  1541→                {(formData.enquiryType === 'merchant' || formData.enquiryType === 'enterprise') && (
+  1542→                  <div className="grid sm:grid-cols-2 gap-4 p-3 bg-white rounded-lg">
+  1543→                    <div>
+  1544→                      <Label htmlFor="businessName" className="text-xs font-medium text-[#1A1A1A] mb-1 block">
+  1545→                        Business Name
+  1546→                      </Label>
+  1547→                      <Input
+  1548→                        id="businessName"
+  1549→                        name="businessName"
+  1550→                        value={formData.businessName}
+  1551→                        onChange={handleInputChange}
+  1552→                        placeholder="Your business name"
+  1553→                        className="h-9 text-sm"
+  1554→                      />
+  1555→                    </div>
+  1556→                    <div>
+  1557→                      <Label htmlFor="businessType" className="text-xs font-medium text-[#1A1A1A] mb-1 block">
+  1558→                        Business Type
+  1559→                      </Label>
+  1560→                      <select
+  1561→                        id="businessType"
+  1562→                        name="businessType"
+  1563→                        value={formData.businessType}
+  1564→                        onChange={handleInputChange}
+  1565→                        className="w-full h-9 px-3 rounded-md border border-gray-300 text-sm bg-white"
+  1566→                      >
+  1567→                        <option value="">Select type...</option>
+  1568→                        {businessVerticals.map(v => (
+  1569→                          <option key={v.name} value={v.name}>{v.name}</option>
+  1570→                        ))}
+  1571→                      </select>
+  1572→                    </div>
+  1573→                  </div>
+  1574→                )}
+  1575→
+  1576→                {/* Message */}
+  1577→                <div>
+  1578→                  <Label htmlFor="message" className="text-sm font-medium text-[#1A1A1A] mb-1.5 block">
+  1579→                    Message *
+  1580→                  </Label>
+  1581→                  <Textarea
+  1582→                    id="message"
+  1583→                    name="message"
+  1584→                    value={formData.message}
+  1585→                    onChange={handleInputChange}
+  1586→                    placeholder="Tell us how we can help..."
+  1587→                    required
+  1588→                    rows={4}
+  1589→                    className="resize-none bg-white"
+  1590→                  />
+  1591→                </div>
+  1592→
+  1593→                {/* Status Messages */}
+  1594→                {submitStatus === 'success' && (
+  1595→                  <div className="p-3 rounded-lg bg-[#E8F5E9] border border-[#4CAF50]/30">
+  1596→                    <p className="text-sm text-[#2E7D32] font-medium">
+  1597→                      ✓ Thank you! Your enquiry has been submitted. We&apos;ll be in touch soon.
+  1598→                    </p>
+  1599→                  </div>
+  1600→                )}
+  1601→                {submitStatus === 'error' && (
+  1602→                  <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+  1603→                    <p className="text-sm text-red-600 font-medium">
+  1604→                      ✗ Something went wrong. Please try again.
+  1605→                    </p>
+  1606→                  </div>
+  1607→                )}
+  1608→
+  1609→                <Button 
+  1610→                  type="submit" 
+  1611→                  className="w-full bg-[#00897B] hover:bg-[#00695C] text-white font-medium py-5"
+  1612→                  disabled={isSubmitting}
+  1613→                >
+  1614→                  {isSubmitting ? 'Sending...' : 'Send Message'}
+  1615→                </Button>
+  1616→              </form>
+  1617→            </div>
+  1618→          </div>
+  1619→        </div>
+  1620→      </section>
+  1621→
+  1622→      {/* Footer */}
+  1623→      <footer className="bg-[#1A1A1A] text-white py-12 mt-auto">
+  1624→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1625→          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+  1626→            {/* Platform */}
+  1627→            <div>
+  1628→              <h4 className="text-sm font-semibold mb-4">Platform</h4>
+  1629→              <ul className="space-y-2">
+  1630→                <li><a href="#platform" className="text-sm text-gray-400 hover:text-white transition-colors">Overview</a></li>
+  1631→                <li><a href="#verticals" className="text-sm text-gray-400 hover:text-white transition-colors">Business Verticals</a></li>
+  1632→                <li><a href="#applications" className="text-sm text-gray-400 hover:text-white transition-colors">Applications</a></li>
+  1633→                <li><a href="#growth" className="text-sm text-gray-400 hover:text-white transition-colors">Growth Programs</a></li>
+  1634→              </ul>
+  1635→            </div>
+  1636→            
+  1637→            {/* Applications */}
+  1638→            <div>
+  1639→              <h4 className="text-sm font-semibold mb-4">Applications</h4>
+  1640→              <ul className="space-y-2">
+  1641→                <li><Link href="/consumer-wallet" className="text-sm text-gray-400 hover:text-white transition-colors">Consumer Wallet</Link></li>
+  1642→                <li><Link href="/merchant-os" className="text-sm text-gray-400 hover:text-white transition-colors">Merchant OS</Link></li>
+  1643→                <li><Link href="/grosell" className="text-sm text-gray-400 hover:text-white transition-colors">GroSell</Link></li>
+  1644→                <li><Link href="/grosupply" className="text-sm text-gray-400 hover:text-white transition-colors">GroSupply</Link></li>
+  1645→              </ul>
+  1646→            </div>
+  1647→            
+  1648→            {/* More Apps */}
+  1649→            <div>
+  1650→              <h4 className="text-sm font-semibold mb-4">More</h4>
+  1651→              <ul className="space-y-2">
+  1652→                <li><Link href="/gopay" className="text-sm text-gray-400 hover:text-white transition-colors">GoPay</Link></li>
+  1653→                <li><Link href="/enterprise" className="text-sm text-gray-400 hover:text-white transition-colors">Enterprise</Link></li>
+  1654→                <li><Link href="/admin-console" className="text-sm text-gray-400 hover:text-white transition-colors">Admin Console</Link></li>
+  1655→                <li><Link href="/salesforce" className="text-sm text-gray-400 hover:text-white transition-colors">Field Salesforce</Link></li>
+  1656→              </ul>
+  1657→            </div>
+  1658→            
+  1659→            {/* Company */}
+  1660→            <div>
+  1661→              <h4 className="text-sm font-semibold mb-4">Company</h4>
+  1662→              <ul className="space-y-2">
+  1663→                <li><a href="#contact" className="text-sm text-gray-400 hover:text-white transition-colors">Contact</a></li>
+  1664→                <li><span className="text-sm text-gray-400">About</span></li>
+  1665→                <li><span className="text-sm text-gray-400">Careers</span></li>
+  1666→                <li><span className="text-sm text-gray-400">Privacy</span></li>
+  1667→              </ul>
+  1668→            </div>
+  1669→            
+  1670→            {/* Deploy */}
+  1671→            {showDeployButton && (
+  1672→              <div className="col-span-2 md:col-span-4 mt-4">
+  1673→                <div className="bg-gradient-to-r from-[#00897B]/20 to-[#43A047]/20 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+  1674→                  <div>
+  1675→                    <h4 className="text-sm font-semibold text-white">Deploy Groway on Netlify</h4>
+  1676→                    <p className="text-xs text-gray-400 mt-1">Download the complete package and deploy your own instance</p>
+  1677→                  </div>
+  1678→                  <a
+  1679→                    href="/groway-netlify-deploy.zip"
+  1680→                    download
+  1681→                    onClick={handleDeployClick}
+  1682→                    className="shrink-0"
+  1683→                  >
+  1684→                    <Button className="bg-[#00897B] hover:bg-[#00695C] text-white font-medium px-4 py-2 text-sm">
+  1685→                      <Download className="mr-2 h-4 w-4" />
+  1686→                      Download (7.5 MB)
+  1687→                    </Button>
+  1688→                  </a>
+  1689→                </div>
+  1690→              </div>
+  1691→            )}
+  1692→          </div>
+  1693→          
+  1694→          <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+  1695→            <div className="flex items-center gap-3">
+  1696→              <img 
+  1697→                src="/groway-logo.png" 
+  1698→                alt="Groway" 
+  1699→                className="h-6 w-auto"
+  1700→              />
+  1701→              <span className="text-sm text-gray-400">© {new Date().getFullYear()} Groway. All rights reserved.</span>
+  1702→            </div>
+  1703→            
+  1704→            <div className="flex items-center gap-4">
+  1705→              {complianceBadges.map((badge, index) => (
+  1706→                <div key={index} className="flex items-center gap-1 text-xs text-gray-400">
+  1707→                  <CheckCircle2 className="h-3 w-3 text-[#4CAF50]" />
+  1708→                  <span>{badge.name}</span>
+  1709→                </div>
+  1710→              ))}
+  1711→            </div>
+  1712→          </div>
+  1713→        </div>
+  1714→      </footer>
+  1715→    </div>
+  1716→  )
+  1717→}
+  1718→

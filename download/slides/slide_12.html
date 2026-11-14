@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280, initial-scale=1">
+<title>Groway Merchant OS — Competitive Advantage</title>
+<link rel="stylesheet" href="global.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:var(--bg); }
+  .slide { display:flex; flex-direction:column; padding:52px 64px 46px; }
+  .headline { font-family:var(--font-heading); font-size:var(--fs-h1); font-weight:700; line-height:1.12; letter-spacing:-0.015em; color:var(--ink); margin:0; }
+  .col-label { font-family:var(--font-heading); font-size:var(--fs-h3); font-weight:600; color:var(--ink); }
+  .moat-card { background:var(--white); border:1px solid var(--line); border-radius:14px; display:flex; align-items:center; gap:22px; padding:0 26px; }
+  .moat-card.sape { border-left:3px solid var(--primary); }
+  .icon-chip { width:52px; height:52px; flex:none; border-radius:14px; background:var(--primary-soft); display:flex; align-items:center; justify-content:center; }
+  .icon-chip.solid { background:var(--primary); }
+  .moat-title { font-family:var(--font-heading); font-size:var(--fs-h3); font-weight:700; color:var(--ink); margin:0; line-height:1.25; }
+  .moat-desc { font-size:var(--fs-body); line-height:1.5; color:var(--ink-soft); margin:5px 0 0; }
+  .row-name { font-family:var(--font-heading); font-size:var(--fs-h3); font-weight:700; color:var(--ink); margin:0; }
+  .row-desc { font-size:var(--fs-small); line-height:1.55; color:var(--ink-soft); margin:7px 0 0; }
+  .chip { font-size:var(--fs-micro); font-weight:700; letter-spacing:0.02em; border-radius:9999px; padding:4px 12px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; flex:none; }
+  .chip-dot { width:6px; height:6px; border-radius:9999px; }
+  .chip-low { background:var(--primary-soft); color:var(--primary); }
+  .chip-med { background:var(--accent-soft); color:var(--ink); }
+  .chip-direct { background:var(--primary); color:var(--white); }
+  .mini-chain { display:flex; align-items:center; }
+  .mini-chain .dot { width:8px; height:8px; border-radius:9999px; background:var(--primary); box-shadow:0 0 0 3px var(--primary-soft); }
+  .mini-chain .seg { width:26px; height:1px; background:var(--line); }
+</style>
+</head>
+<body>
+<div class="slide">
+
+  <!-- Header -->
+  <header class="flex items-start justify-between">
+    <div>
+      <div class="kicker">Competitive Advantage</div>
+      <h1 class="headline mt-2">Why we win</h1>
+    </div>
+    <div class="mini-chain mt-2" aria-hidden="true" data-decor>
+      <span class="dot"></span><span class="seg"></span><span class="dot"></span><span class="seg"></span><span class="dot"></span>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <main class="flex-1 min-h-0 mt-6" style="display:grid; grid-template-columns:1.45fr 1fr; gap:28px;">
+
+    <!-- Left: three moat cards -->
+    <section class="flex flex-col min-h-0">
+      <div class="flex items-center gap-2 pb-3">
+        <i class="material-icons text-primary" aria-hidden="true" style="font-size:20px;">shield</i>
+        <span class="col-label">Our moat</span>
+      </div>
+      <div class="flex-1 flex flex-col gap-3.5 min-h-0">
+        <div class="moat-card flex-1">
+          <div class="icon-chip"><i class="material-icons text-primary" aria-hidden="true" style="font-size:26px;">cloud_off</i></div>
+          <div>
+            <h3 class="moat-title">Offline-first architecture</h3>
+            <p class="moat-desc">Works without internet, essential for rural and peri-urban trade</p>
+          </div>
+        </div>
+        <div class="moat-card flex-1">
+          <div class="icon-chip"><i class="material-icons text-primary" aria-hidden="true" style="font-size:26px;">record_voice_over</i></div>
+          <div>
+            <h3 class="moat-title">Built for the informal market</h3>
+            <p class="moat-desc">12 African languages planned, voice-guided tutorials, spaza-grade hardware tolerance</p>
+          </div>
+        </div>
+        <div class="moat-card sape flex-1">
+          <div class="icon-chip solid"><i class="material-icons" aria-hidden="true" style="font-size:26px; color:var(--white);">verified_user</i></div>
+          <div>
+            <h3 class="moat-title">SAPE trust layer</h3>
+            <p class="moat-desc">No competitor offers unit-level anti-counterfeit verification at the informal-retail till</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: competitive landscape table -->
+    <section class="card-soft flex flex-col min-h-0" style="padding:22px 28px;">
+      <div class="flex items-center justify-between">
+        <span class="col-label">Competitive landscape</span>
+        <i class="material-icons" aria-hidden="true" style="font-size:20px; color:var(--ink-faint);">leaderboard</i>
+      </div>
+      <div class="flex-1 flex flex-col mt-1 min-h-0">
+        <div class="flex-1 flex flex-col justify-center">
+          <div class="flex items-center justify-between gap-3">
+            <span class="row-name">Traditional banks</span>
+            <span class="chip chip-low"><span class="chip-dot" aria-hidden="true" style="background:var(--primary);"></span>Low threat</span>
+          </div>
+          <p class="row-desc">High barriers, do not serve informal sector</p>
+        </div>
+        <div style="height:1px; background:var(--line);" aria-hidden="true"></div>
+        <div class="flex-1 flex flex-col justify-center">
+          <div class="flex items-center justify-between gap-3">
+            <span class="row-name">Global POS vendors</span>
+            <span class="chip chip-med"><span class="chip-dot" aria-hidden="true" style="background:var(--accent);"></span>Medium threat</span>
+          </div>
+          <p class="row-desc">Expensive, not designed for informal retail</p>
+        </div>
+        <div style="height:1px; background:var(--line);" aria-hidden="true"></div>
+        <div class="flex-1 flex flex-col justify-center">
+          <div class="flex items-center justify-between gap-3">
+            <span class="row-name">Local fintechs</span>
+            <span class="chip chip-direct"><span class="chip-dot" aria-hidden="true" style="background:var(--white);"></span>Direct competition</span>
+          </div>
+          <p class="row-desc">Single-feature apps lack an integrated solution and have no provenance layer</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+</div>
+</body>
+</html>

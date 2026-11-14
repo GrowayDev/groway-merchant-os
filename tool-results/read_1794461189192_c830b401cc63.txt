@@ -1,0 +1,881 @@
+     1→     1→/**
+     2→     2→ * Repository ports for GroCore.
+     3→     3→ *
+     4→     4→ * Two implementations:
+     5→     5→ *  - InMemoryRepository: for tests and quick local runs.
+     6→     6→ *  - PrismaRepository: persists to the GroCore* tables.
+     7→     7→ *
+     8→     8→ * Each GroCore operation that needs persistence accepts a Repository.
+     9→     9→ * This keeps the core logic pure and testable, and lets us swap the
+    10→    10→ * persistence layer without changing business code.
+    11→    11→ */
+    12→    12→
+    13→    13→import { db } from '@/lib/db'
+    14→    14→import {
+    15→    15→  ConsentRecord,
+    16→    16→  ConsentInput,
+    17→    17→} from './consent'
+    18→    18→import { Money } from './currency'
+    19→    19→import { DecisionResult, ProductCode } from './decisioning'
+    20→    20→import {
+    21→    21→  LedgerAccount,
+    22→    22→  LedgerEntryInput,
+    23→    23→  LedgerEntry,
+    24→    24→  LedgerLine,
+    25→    25→} from './ledger'
+    26→    26→import { TopupAdvance } from './topup'
+    27→    27→import { CapitalSource } from './capital-grid'
+    28→    28→import { Voucher } from './vouchers'
+    29→    29→import { DeviceContract } from './device-finance'
+    30→    30→import {
+    31→    31→  GoPayCapture,
+    32→    32→  GoPaySettlement,
+    33→    33→} from './gopay'
+    34→    34→
+    35→    35→export interface GroCoreRepository {
+    36→    36→  // Ledger
+    37→    37→  getAccount(tenantId: string, code: string): Promise<LedgerAccount | null>
+    38→    38→  upsertAccount(account: LedgerAccount): Promise<LedgerAccount>
+    39→    39→  listAccounts(tenantId: string): Promise<LedgerAccount[]>
+    40→    40→  postEntry(entry: LedgerEntryInput, lines: Array<{ accountId: string; amountCents: bigint; currency: string }>): Promise<{ entry: LedgerEntry; lines: LedgerLine[] }>
+    41→    41→  getEntry(tenantId: string, entryId: string): Promise<{ entry: LedgerEntry; lines: LedgerLine[] } | null>
+    42→    42→  listEntries(tenantId: string, limit?: number): Promise<Array<{ entry: LedgerEntry; lines: LedgerLine[] }>>
+    43→    43→  listLinesForAccount(tenantId: string, accountId: string): Promise<LedgerLine[]>
+    44→    44→
+    45→    45→  // Consent
+    46→    46→  getConsent(tenantId: string, subjectId: string, purpose: string): Promise<ConsentRecord | null>
+    47→    47→  listConsents(tenantId: string, subjectId?: string): Promise<ConsentRecord[]>
+    48→    48→  saveConsent(record: ConsentRecord): Promise<ConsentRecord>
+    49→    49→
+    50→    50→  // Decisions
+    51→    51→  saveDecision(decision: {
+    52→    52→    tenantId: string
+    53→    53→    subjectId: string
+    54→    54→    subjectType: string
+    55→    55→    product: ProductCode
+    56→    56→    amountCents: bigint
+    57→    57→    currency: string
+    58→    58→    outcome: string
+    59→    59→    approvedLimitCents: bigint | null
+    60→    60→    reasonCodes: string[]
+    61→    61→    counterfactual: string | null
+    62→    62→    traceJson: string
+    63→    63→    policyVersion: string
+    64→    64→    modelVersion: string
+    65→    65→  }): Promise<{ id: string }>
+    66→    66→  listDecisions(tenantId: string, subjectId?: string): Promise<any[]>
+    67→    67→
+    68→    68→  // Advances
+    69→    69→  saveAdvance(advance: TopupAdvance): Promise<TopupAdvance>
+    70→    70→  getAdvance(tenantId: string, advanceId: string): Promise<TopupAdvance | null>
+    71→    71→  getOpenAdvanceBySubject(tenantId: string, subjectId: string): Promise<TopupAdvance | null>
+    72→    72→  listAdvances(tenantId: string, subjectId?: string): Promise<TopupAdvance[]>
+    73→    73→
+    74→    74→  // Vouchers
+    75→    75→  saveVoucher(voucher: Voucher): Promise<Voucher>
+    76→    76→  getVoucher(tenantId: string, serial: string): Promise<Voucher | null>
+    77→    77→  listVouchers(tenantId: string, filter?: { product?: string; status?: string; recipientMsisdn?: string }): Promise<Voucher[]>
+    78→    78→
+    79→    79→  // Capital sources
+    80→    80→  saveCapitalSource(source: CapitalSource): Promise<CapitalSource>
+    81→    81→  listCapitalSources(tenantId: string): Promise<CapitalSource[]>
+    82→    82→  getCapitalSource(tenantId: string, id: string): Promise<CapitalSource | null>
+    83→    83→
+    84→    84→  // GoPay
+    85→    85→  saveGoPayCapture(capture: GoPayCapture): Promise<GoPayCapture>
+    86→    86→  listGoPayCaptures(tenantId: string, merchantId?: string): Promise<GoPayCapture[]>
+    87→    87→  saveGoPaySettlement(settlement: GoPaySettlement): Promise<GoPaySettlement>
+    88→    88→  listGoPaySettlements(tenantId: string, merchantId?: string): Promise<GoPaySettlement[]>
+    89→    89→
+    90→    90→  // Device finance
+    91→    91→  saveDeviceContract(contract: DeviceContract): Promise<DeviceContract>
+    92→    92→  getDeviceContract(tenantId: string, id: string): Promise<DeviceContract | null>
+    93→    93→  listDeviceContracts(tenantId: string, customerId?: string): Promise<DeviceContract[]>
+    94→    94→}
+    95→    95→
+    96→    96→// =====================================================
+    97→    97→// In-memory implementation (for tests)
+    98→    98→// =====================================================
+    99→    99→export class InMemoryRepository implements GroCoreRepository {
+   100→   100→  private accounts = new Map<string, LedgerAccount>()
+   101→   101→  private entries = new Map<string, { entry: LedgerEntry; lines: LedgerLine[] }>()
+   102→   102→  private consents = new Map<string, ConsentRecord>()
+   103→   103→  private decisions: any[] = []
+   104→   104→  private advances = new Map<string, TopupAdvance>()
+   105→   105→  private vouchers = new Map<string, Voucher>()
+   106→   106→  private capitalSources = new Map<string, CapitalSource>()
+   107→   107→  private goPayCaptures = new Map<string, GoPayCapture>()
+   108→   108→  private goPaySettlements = new Map<string, GoPaySettlement>()
+   109→   109→  private deviceContracts = new Map<string, DeviceContract>()
+   110→   110→
+   111→   111→  async getAccount(tenantId: string, code: string): Promise<LedgerAccount | null> {
+   112→   112→    return this.accounts.get(`${tenantId}:${code}`) ?? null
+   113→   113→  }
+   114→   114→  async upsertAccount(account: LedgerAccount): Promise<LedgerAccount> {
+   115→   115→    this.accounts.set(`${account.tenantId}:${account.code}`, account)
+   116→   116→    return account
+   117→   117→  }
+   118→   118→  async listAccounts(tenantId: string): Promise<LedgerAccount[]> {
+   119→   119→    return Array.from(this.accounts.values()).filter((a) => a.tenantId === tenantId)
+   120→   120→  }
+   121→   121→  async postEntry(entry: LedgerEntryInput, lines: Array<{ accountId: string; amountCents: bigint; currency: string }>): Promise<{ entry: LedgerEntry; lines: LedgerLine[] }> {
+   122→   122→    const key = `${entry.tenantId}:${entry.entryId}`
+   123→   123→    if (this.entries.has(key)) {
+   124→   124→      return this.entries.get(key)!
+   125→   125→    }
+   126→   126→    const fullEntry: LedgerEntry = {
+   127→   127→      ...entry,
+   128→   128→      id: `e-${entry.entryId}`,
+   129→   129→      postedAt: new Date(),
+   130→   130→    }
+   131→   131→    const fullLines: LedgerLine[] = lines.map((l, i) => ({
+   132→   132→      id: `l-${entry.entryId}-${i}`,
+   133→   133→      entryId: fullEntry.id,
+   134→   134→      accountId: l.accountId,
+   135→   135→      accountCode: '',
+   136→   136→      amount: { cents: l.amountCents < 0n ? -l.amountCents : l.amountCents, currency: l.currency as any, signedCents: l.amountCents },
+   137→   137→      currency: l.currency as any,
+   138→   138→      amountCents: l.amountCents,
+   139→   139→    }))
+   140→   140→    this.entries.set(key, { entry: fullEntry, lines: fullLines })
+   141→   141→    return { entry: fullEntry, lines: fullLines }
+   142→   142→  }
+   143→   143→  async getEntry(tenantId: string, entryId: string) {
+   144→   144→    return this.entries.get(`${tenantId}:${entryId}`) ?? null
+   145→   145→  }
+   146→   146→  async listEntries(tenantId: string, limit = 100) {
+   147→   147→    return Array.from(this.entries.values())
+   148→   148→      .filter((e) => e.entry.tenantId === tenantId)
+   149→   149→      .slice(0, limit)
+   150→   150→  }
+   151→   151→  async listLinesForAccount(_t: string, accountId: string) {
+   152→   152→    const out: LedgerLine[] = []
+   153→   153→    for (const { lines } of this.entries.values()) {
+   154→   154→      out.push(...lines.filter((l) => l.accountId === accountId))
+   155→   155→    }
+   156→   156→    return out
+   157→   157→  }
+   158→   158→
+   159→   159→  async getConsent(tenantId: string, subjectId: string, purpose: string) {
+   160→   160→    return this.consents.get(`${tenantId}:${subjectId}:${purpose}`) ?? null
+   161→   161→  }
+   162→   162→  async listConsents(tenantId: string, subjectId?: string) {
+   163→   163→    return Array.from(this.consents.values()).filter((c) =>
+   164→   164→      c.tenantId === tenantId && (!subjectId || c.subjectId === subjectId),
+   165→   165→    )
+   166→   166→  }
+   167→   167→  async saveConsent(record: ConsentRecord) {
+   168→   168→    this.consents.set(`${record.tenantId}:${record.subjectId}:${record.purpose}`, record)
+   169→   169→    return record
+   170→   170→  }
+   171→   171→
+   172→   172→  async saveDecision(decision: any) {
+   173→   173→    const id = `d-${this.decisions.length + 1}`
+   174→   174→    this.decisions.push({ id, ...decision, createdAt: new Date() })
+   175→   175→    return { id }
+   176→   176→  }
+   177→   177→  async listDecisions(tenantId: string, subjectId?: string) {
+   178→   178→    return this.decisions.filter((d) =>
+   179→   179→      d.tenantId === tenantId && (!subjectId || d.subjectId === subjectId),
+   180→   180→    )
+   181→   181→  }
+   182→   182→
+   183→   183→  async saveAdvance(advance: TopupAdvance) {
+   184→   184→    this.advances.set(`${advance.tenantId}:${advance.id}`, advance)
+   185→   185→    return advance
+   186→   186→  }
+   187→   187→  async getAdvance(tenantId: string, id: string) {
+   188→   188→    return this.advances.get(`${tenantId}:${id}`) ?? null
+   189→   189→  }
+   190→   190→  async getOpenAdvanceBySubject(tenantId: string, subjectId: string) {
+   191→   191→    for (const a of this.advances.values()) {
+   192→   192→      if (a.tenantId === tenantId && a.subjectId === subjectId && a.status === 'open') return a
+   193→   193→    }
+   194→   194→    return null
+   195→   195→  }
+   196→   196→  async listAdvances(tenantId: string, subjectId?: string) {
+   197→   197→    return Array.from(this.advances.values()).filter((a) =>
+   198→   198→      a.tenantId === tenantId && (!subjectId || a.subjectId === subjectId),
+   199→   199→    )
+   200→   200→  }
+   201→   201→
+   202→   202→  async saveVoucher(voucher: Voucher) {
+   203→   203→    this.vouchers.set(`${voucher.tenantId}:${voucher.serial}`, voucher)
+   204→   204→    return voucher
+   205→   205→  }
+   206→   206→  async getVoucher(tenantId: string, serial: string) {
+   207→   207→    return this.vouchers.get(`${tenantId}:${serial}`) ?? null
+   208→   208→  }
+   209→   209→  async listVouchers(tenantId: string, filter?: { product?: string; status?: string; recipientMsisdn?: string }) {
+   210→   210→    return Array.from(this.vouchers.values()).filter((v) =>
+   211→   211→      v.tenantId === tenantId &&
+   212→   212→      (!filter?.product || v.product === filter.product) &&
+   213→   213→      (!filter?.status || v.status === filter.status) &&
+   214→   214→      (!filter?.recipientMsisdn || v.recipientMsisdn === filter.recipientMsisdn),
+   215→   215→    )
+   216→   216→  }
+   217→   217→
+   218→   218→  async saveCapitalSource(source: CapitalSource) {
+   219→   219→    this.capitalSources.set(`${source.tenantId}:${source.id}`, source)
+   220→   220→    return source
+   221→   221→  }
+   222→   222→  async listCapitalSources(tenantId: string) {
+   223→   223→    return Array.from(this.capitalSources.values()).filter((s) => s.tenantId === tenantId)
+   224→   224→  }
+   225→   225→  async getCapitalSource(tenantId: string, id: string) {
+   226→   226→    return this.capitalSources.get(`${tenantId}:${id}`) ?? null
+   227→   227→  }
+   228→   228→
+   229→   229→  async saveGoPayCapture(capture: GoPayCapture) {
+   230→   230→    this.goPayCaptures.set(`${capture.tenantId}:${capture.id}`, capture)
+   231→   231→    return capture
+   232→   232→  }
+   233→   233→  async listGoPayCaptures(tenantId: string, merchantId?: string) {
+   234→   234→    return Array.from(this.goPayCaptures.values()).filter((c) =>
+   235→   235→      c.tenantId === tenantId && (!merchantId || c.merchantId === merchantId),
+   236→   236→    )
+   237→   237→  }
+   238→   238→  async saveGoPaySettlement(settlement: GoPaySettlement) {
+   239→   239→    this.goPaySettlements.set(`${settlement.tenantId}:${settlement.id}`, settlement)
+   240→   240→    return settlement
+   241→   241→  }
+   242→   242→  async listGoPaySettlements(tenantId: string, merchantId?: string) {
+   243→   243→    return Array.from(this.goPaySettlements.values()).filter((s) =>
+   244→   244→      s.tenantId === tenantId && (!merchantId || s.merchantId === merchantId),
+   245→   245→    )
+   246→   246→  }
+   247→   247→
+   248→   248→  async saveDeviceContract(contract: DeviceContract) {
+   249→   249→    this.deviceContracts.set(`${contract.tenantId}:${contract.id}`, contract)
+   250→   250→    return contract
+   251→   251→  }
+   252→   252→  async getDeviceContract(tenantId: string, id: string) {
+   253→   253→    return this.deviceContracts.get(`${tenantId}:${id}`) ?? null
+   254→   254→  }
+   255→   255→  async listDeviceContracts(tenantId: string, customerId?: string) {
+   256→   256→    return Array.from(this.deviceContracts.values()).filter((c) =>
+   257→   257→      c.tenantId === tenantId && (!customerId || c.customerId === customerId),
+   258→   258→    )
+   259→   259→  }
+   260→   260→}
+   261→   261→
+   262→   262→// =====================================================
+   263→   263→// Prisma-backed implementation (production)
+   264→   264→// =====================================================
+   265→   265→function rowToAccount(r: any): LedgerAccount {
+   266→   266→  return {
+   267→   267→    id: r.id,
+   268→   268→    tenantId: r.tenantId,
+   269→   269→    code: r.code,
+   270→   270→    name: r.name,
+   271→   271→    kind: r.kind,
+   272→   272→    subKind: r.subKind,
+   273→   273→    currency: r.currency,
+   274→   274→    active: r.active,
+   275→   275→    metaJson: r.metaJson ?? undefined,
+   276→   276→  }
+   277→   277→}
+   278→   278→
+   279→   279→function rowToConsent(r: any): ConsentRecord {
+   280→   280→  return {
+   281→   281→    id: r.id,
+   282→   282→    tenantId: r.tenantId,
+   283→   283→    subjectId: r.subjectId,
+   284→   284→    subjectType: r.subjectType,
+   285→   285→    purpose: r.purpose,
+   286→   286→    status: r.status,
+   287→   287→    grantedAt: r.grantedAt,
+   288→   288→    revokedAt: r.revokedAt ?? null,
+   289→   289→    expiresAt: r.expiresAt ?? null,
+   290→   290→    policyVersion: r.policyVersion,
+   291→   291→    evidence: r.evidence ?? null,
+   292→   292→  }
+   293→   293→}
+   294→   294→
+   295→   295→function rowToAdvance(r: any): TopupAdvance {
+   296→   296→  return {
+   297→   297→    id: r.id,
+   298→   298→    tenantId: r.tenantId,
+   299→   299→    subjectId: r.subjectId,
+   300→   300→    product: r.product,
+   301→   301→    principal: { cents: r.principalCents, currency: r.currency },
+   302→   302→    fee: { cents: r.feeCents, currency: r.currency },
+   303→   303→    totalDue: { cents: r.totalDueCents, currency: r.currency },
+   304→   304→    paid: { cents: r.paidCents, currency: r.currency },
+   305→   305→    currency: r.currency,
+   306→   306→    status: r.status,
+   307→   307→    dueAt: r.dueAt,
+   308→   308→    createdAt: r.createdAt,
+   309→   309→    recoveredAt: r.recoveredAt ?? null,
+   310→   310→    writtenOffAt: r.writtenOffAt ?? null,
+   311→   311→    deliveryMethod: r.deliveryMethod ?? 'direct_recharge',
+   312→   312→    voucherSerial: r.voucherSerial ?? null,
+   313→   313→    decisionId: r.decisionId ?? null,
+   314→   314→  }
+   315→   315→}
+   316→   316→
+   317→   317→function rowToVoucher(r: any): Voucher {
+   318→   318→  return {
+   319→   319→    id: r.id,
+   320→   320→    tenantId: r.tenantId,
+   321→   321→    serial: r.serial,
+   322→   322→    product: r.product,
+   323→   323→    supplier: r.supplier,
+   324→   324→    faceValue: { cents: r.faceValueCents, currency: r.currency },
+   325→   325→    cost: { cents: r.costCents, currency: r.currency },
+   326→   326→    recipientMsisdn: r.recipientMsisdn ?? null,
+   327→   327→    meterNumber: r.meterNumber ?? null,
+   328→   328→    status: r.status,
+   329→   329→    deliveryMethod: r.deliveryMethod ?? 'direct_recharge',
+   330→   330→    redeemedAt: r.redeemedAt ?? null,
+   331→   331→    advanceId: r.advanceId ?? null,
+   332→   332→    qrPayload: r.qrPayload ?? null,
+   333→   333→    pin: r.pin ?? null,
+   334→   334→    createdAt: r.createdAt,
+   335→   335→  }
+   336→   336→}
+   337→   337→
+   338→   338→function rowToCapitalSource(r: any): CapitalSource {
+   339→   339→  return {
+   340→   340→    id: r.id,
+   341→   341→    tenantId: r.tenantId,
+   342→   342→    name: r.name,
+   343→   343→    type: r.type,
+   344→   344→    currency: r.currency,
+   345→   345→    committed: { cents: r.committedCents, currency: r.currency },
+   346→   346→    deployed: { cents: r.deployedCents, currency: r.currency },
+   347→   347→    costRateBps: r.costRateBps,
+   348→   348→    status: r.status,
+   349→   349→    startDate: r.startDate,
+   350→   350→    endDate: r.endDate ?? null,
+   351→   351→  }
+   352→   352→}
+   353→   353→
+   354→   354→function rowToGoPayCapture(r: any): GoPayCapture {
+   355→   355→  return {
+   356→   356→    id: r.id,
+   357→   357→    tenantId: r.tenantId,
+   358→   358→    merchantId: r.merchantId,
+   359→   359→    captureId: r.captureId,
+   360→   360→    amount: { cents: r.amountCents, currency: r.currency },
+   361→   361→    fee: { cents: r.feeCents, currency: r.currency },
+   362→   362→    paymentMethod: r.paymentMethod,
+   363→   363→    settlementId: r.settlementId ?? null,
+   364→   364→    status: r.status,
+   365→   365→    liveMode: r.liveMode,
+   366→   366→    createdAt: r.createdAt,
+   367→   367→  }
+   368→   368→}
+   369→   369→
+   370→   370→function rowToGoPaySettlement(r: any): GoPaySettlement {
+   371→   371→  return {
+   372→   372→    id: r.id,
+   373→   373→    tenantId: r.tenantId,
+   374→   374→    merchantId: r.merchantId,
+   375→   375→    batchId: r.batchId,
+   376→   376→    captureCount: r.captureCount,
+   377→   377→    gross: { cents: r.grossCents, currency: r.currency },
+   378→   378→    fee: { cents: r.feeCents, currency: r.currency },
+   379→   379→    repayment: { cents: r.repaymentCents ?? 0n, currency: r.currency },
+   380→   380→    net: { cents: r.netCents, currency: r.currency },
+   381→   381→    currency: r.currency,
+   382→   382→    status: r.status,
+   383→   383→    scheduledAt: r.scheduledAt,
+   384→   384→    processedAt: r.processedAt ?? null,
+   385→   385→    bankReference: r.bankReference ?? null,
+   386→   386→  }
+   387→   387→}
+   388→   388→
+   389→   389→function rowToDeviceContract(r: any): DeviceContract {
+   390→   390→  return {
+   391→   391→    id: r.id,
+   392→   392→    tenantId: r.tenantId,
+   393→   393→    customerId: r.customerId,
+   394→   394→    productId: r.productId,
+   395→   395→    deviceName: r.deviceName,
+   396→   396→    deviceImei: r.deviceImei ?? null,
+   397→   397→    principal: { cents: r.principalCents, currency: r.currency },
+   398→   398→    paid: { cents: r.paidCents, currency: r.currency },
+   399→   399→    dailyPayment: { cents: r.dailyPaymentCents, currency: r.currency },
+   400→   400→    currency: r.currency,
+   401→   401→    totalDays: r.totalDays,
+   402→   402→    daysPaid: r.daysPaid,
+   403→   403→    status: r.status,
+   404→   404→    locked: r.locked,
+   405→   405→    unlockedAt: r.unlockedAt ?? null,
+   406→   406→    dueAt: r.dueAt ?? null,
+   407→   407→    createdAt: r.createdAt,
+   408→   408→    updatedAt: r.updatedAt,
+   409→   409→  }
+   410→   410→}
+   411→   411→
+   412→   412→export class PrismaRepository implements GroCoreRepository {
+   413→   413→  async getAccount(tenantId: string, code: string) {
+   414→   414→    const r = await db.groCoreAccount.findUnique({ where: { tenantId_code: { tenantId, code } } })
+   415→   415→    return r ? rowToAccount(r) : null
+   416→   416→  }
+   417→   417→  async upsertAccount(account: LedgerAccount) {
+   418→   418→    const r = await db.groCoreAccount.upsert({
+   419→   419→      where: { tenantId_code: { tenantId: account.tenantId, code: account.code } },
+   420→   420→      create: {
+   421→   421→        id: account.id,
+   422→   422→        tenantId: account.tenantId,
+   423→   423→        code: account.code,
+   424→   424→        name: account.name,
+   425→   425→        kind: account.kind,
+   426→   426→        subKind: account.subKind,
+   427→   427→        currency: account.currency,
+   428→   428→        active: account.active,
+   429→   429→        metaJson: account.metaJson ?? null,
+   430→   430→      },
+   431→   431→      update: {
+   432→   432→        name: account.name,
+   433→   433→        kind: account.kind,
+   434→   434→        subKind: account.subKind,
+   435→   435→        active: account.active,
+   436→   436→        metaJson: account.metaJson ?? null,
+   437→   437→      },
+   438→   438→    })
+   439→   439→    return rowToAccount(r)
+   440→   440→  }
+   441→   441→  async listAccounts(tenantId: string) {
+   442→   442→    const rows = await db.groCoreAccount.findMany({ where: { tenantId } })
+   443→   443→    return rows.map(rowToAccount)
+   444→   444→  }
+   445→   445→  async postEntry(entry: LedgerEntryInput, lines: Array<{ accountId: string; amountCents: bigint; currency: string }>) {
+   446→   446→    const existing = await db.groCoreEntry.findUnique({
+   447→   447→      where: { tenantId_entryId: { tenantId: entry.tenantId, entryId: entry.entryId } },
+   448→   448→      include: { lines: true },
+   449→   449→    })
+   450→   450→    if (existing) {
+   451→   451→      return {
+   452→   452→        entry: {
+   453→   453→          id: existing.id,
+   454→   454→          ...entry,
+   455→   455→          postedAt: existing.postedAt,
+   456→   456→        },
+   457→   457→        lines: existing.lines.map((l) => ({
+   458→   458→          id: l.id,
+   459→   459→          entryId: existing.id,
+   460→   460→          accountId: l.accountId,
+   461→   461→          accountCode: '',
+   462→   462→          amount: { cents: l.amountCents < 0n ? -l.amountCents : l.amountCents, currency: l.currency as any, signedCents: l.amountCents },
+   463→   463→          currency: l.currency as any,
+   464→   464→          amountCents: l.amountCents,
+   465→   465→        })),
+   466→   466→      }
+   467→   467→    }
+   468→   468→    const created = await db.groCoreEntry.create({
+   469→   469→      data: {
+   470→   470→        tenantId: entry.tenantId,
+   471→   471→        entryId: entry.entryId,
+   472→   472→        sourceType: entry.sourceType,
+   473→   473→        sourceId: entry.sourceId,
+   474→   474→        description: entry.description,
+   475→   475→        currency: lines[0]?.currency ?? 'ZAR',
+   476→   476→        lines: {
+   477→   477→          create: lines.map((l) => ({
+   478→   478→            tenantId: entry.tenantId,
+   479→   479→            accountId: l.accountId,
+   480→   480→            amountCents: l.amountCents,
+   481→   481→            currency: l.currency,
+   482→   482→          })),
+   483→   483→        },
+   484→   484→      },
+   485→   485→      include: { lines: true },
+   486→   486→    })
+   487→   487→    return {
+   488→   488→      entry: {
+   489→   489→        id: created.id,
+   490→   490→        ...entry,
+   491→   491→        postedAt: created.postedAt,
+   492→   492→      },
+   493→   493→      lines: created.lines.map((l) => ({
+   494→   494→        id: l.id,
+   495→   495→        entryId: created.id,
+   496→   496→        accountId: l.accountId,
+   497→   497→        accountCode: '',
+   498→   498→        amount: { cents: l.amountCents < 0n ? -l.amountCents : l.amountCents, currency: l.currency as any, signedCents: l.amountCents },
+   499→   499→        currency: l.currency as any,
+   500→   500→        amountCents: l.amountCents,
+   501→   501→      })),
+   502→   502→    }
+   503→   503→  }
+   504→   504→  async getEntry(tenantId: string, entryId: string) {
+   505→   505→    const r = await db.groCoreEntry.findUnique({
+   506→   506→      where: { tenantId_entryId: { tenantId, entryId } },
+   507→   507→      include: { lines: true },
+   508→   508→    })
+   509→   509→    if (!r) return null
+   510→   510→    return {
+   511→   511→      entry: { id: r.id, tenantId: r.tenantId, entryId: r.entryId, sourceType: r.sourceType, sourceId: r.sourceId, description: r.description, lines: [], postedAt: r.postedAt },
+   512→   512→      lines: r.lines.map((l) => ({
+   513→   513→        id: l.id,
+   514→   514→        entryId: r.id,
+   515→   515→        accountId: l.accountId,
+   516→   516→        accountCode: '',
+   517→   517→        amount: { cents: l.amountCents < 0n ? -l.amountCents : l.amountCents, currency: l.currency as any, signedCents: l.amountCents },
+   518→   518→        currency: l.currency as any,
+   519→   519→        amountCents: l.amountCents,
+   520→   520→      })),
+   521→   521→    }
+   522→   522→  }
+   523→   523→  async listEntries(tenantId: string, limit = 100) {
+   524→   524→    const rows = await db.groCoreEntry.findMany({
+   525→   525→      where: { tenantId },
+   526→   526→      include: { lines: true },
+   527→   527→      orderBy: { postedAt: 'desc' },
+   528→   528→      take: limit,
+   529→   529→    })
+   530→   530→    return rows.map((r) => ({
+   531→   531→      entry: { id: r.id, tenantId: r.tenantId, entryId: r.entryId, sourceType: r.sourceType, sourceId: r.sourceId, description: r.description, lines: [], postedAt: r.postedAt },
+   532→   532→      lines: r.lines.map((l) => ({
+   533→   533→        id: l.id,
+   534→   534→        entryId: r.id,
+   535→   535→        accountId: l.accountId,
+   536→   536→        accountCode: '',
+   537→   537→        amount: { cents: l.amountCents < 0n ? -l.amountCents : l.amountCents, currency: l.currency as any, signedCents: l.amountCents },
+   538→   538→        currency: l.currency as any,
+   539→   539→        amountCents: l.amountCents,
+   540→   540→      })),
+   541→   541→    }))
+   542→   542→  }
+   543→   543→  async listLinesForAccount(_tenantId: string, accountId: string) {
+   544→   544→    const rows = await db.groCoreLine.findMany({ where: { accountId } })
+   545→   545→    return rows.map((l) => ({
+   546→   546→      id: l.id,
+   547→   547→      entryId: l.entryId,
+   548→   548→      accountId: l.accountId,
+   549→   549→      accountCode: '',
+   550→   550→      amount: { cents: l.amountCents < 0n ? -l.amountCents : l.amountCents, currency: l.currency as any, signedCents: l.amountCents },
+   551→   551→      currency: l.currency as any,
+   552→   552→      amountCents: l.amountCents,
+   553→   553→    }))
+   554→   554→  }
+   555→   555→
+   556→   556→  async getConsent(tenantId: string, subjectId: string, purpose: string) {
+   557→   557→    const r = await db.groCoreConsent.findUnique({
+   558→   558→      where: { tenantId_subjectId_purpose: { tenantId, subjectId, purpose } },
+   559→   559→    })
+   560→   560→    return r ? rowToConsent(r) : null
+   561→   561→  }
+   562→   562→  async listConsents(tenantId: string, subjectId?: string) {
+   563→   563→    const rows = await db.groCoreConsent.findMany({
+   564→   564→      where: { tenantId, ...(subjectId ? { subjectId } : {}) },
+   565→   565→    })
+   566→   566→    return rows.map(rowToConsent)
+   567→   567→  }
+   568→   568→  async saveConsent(record: ConsentRecord) {
+   569→   569→    const r = await db.groCoreConsent.upsert({
+   570→   570→      where: { tenantId_subjectId_purpose: { tenantId: record.tenantId, subjectId: record.subjectId, purpose: record.purpose } },
+   571→   571→      create: {
+   572→   572→        tenantId: record.tenantId,
+   573→   573→        subjectId: record.subjectId,
+   574→   574→        subjectType: record.subjectType,
+   575→   575→        purpose: record.purpose,
+   576→   576→        status: record.status,
+   577→   577→        grantedAt: record.grantedAt,
+   578→   578→        revokedAt: record.revokedAt ?? null,
+   579→   579→        expiresAt: record.expiresAt ?? null,
+   580→   580→        policyVersion: record.policyVersion,
+   581→   581→        evidence: record.evidence ?? null,
+   582→   582→      },
+   583→   583→      update: {
+   584→   584→        status: record.status,
+   585→   585→        revokedAt: record.revokedAt ?? null,
+   586→   586→        expiresAt: record.expiresAt ?? null,
+   587→   587→        policyVersion: record.policyVersion,
+   588→   588→        evidence: record.evidence ?? null,
+   589→   589→      },
+   590→   590→    })
+   591→   591→    return rowToConsent(r)
+   592→   592→  }
+   593→   593→
+   594→   594→  async saveDecision(decision: any) {
+   595→   595→    const r = await db.groCoreDecision.create({
+   596→   596→      data: {
+   597→   597→        tenantId: decision.tenantId,
+   598→   598→        subjectId: decision.subjectId,
+   599→   599→        subjectType: decision.subjectType,
+   600→   600→        product: decision.product,
+   601→   601→        amountCents: decision.amountCents,
+   602→   602→        currency: decision.currency,
+   603→   603→        outcome: decision.outcome,
+   604→   604→        approvedLimitCents: decision.approvedLimitCents ?? null,
+   605→   605→        reasonCodes: JSON.stringify(decision.reasonCodes),
+   606→   606→        counterfactual: decision.counterfactual ?? null,
+   607→   607→        traceJson: decision.traceJson,
+   608→   608→        policyVersion: decision.policyVersion,
+   609→   609→        modelVersion: decision.modelVersion,
+   610→   610→      },
+   611→   611→    })
+   612→   612→    return { id: r.id }
+   613→   613→  }
+   614→   614→  async listDecisions(tenantId: string, subjectId?: string) {
+   615→   615→    return db.groCoreDecision.findMany({
+   616→   616→      where: { tenantId, ...(subjectId ? { subjectId } : {}) },
+   617→   617→      orderBy: { createdAt: 'desc' },
+   618→   618→      take: 100,
+   619→   619→    })
+   620→   620→  }
+   621→   621→
+   622→   622→  async saveAdvance(advance: TopupAdvance) {
+   623→   623→    const r = await db.groCoreAdvance.upsert({
+   624→   624→      where: { id: advance.id },
+   625→   625→      create: {
+   626→   626→        id: advance.id,
+   627→   627→        tenantId: advance.tenantId,
+   628→   628→        subjectId: advance.subjectId,
+   629→   629→        product: advance.product,
+   630→   630→        principalCents: advance.principal.cents,
+   631→   631→        feeCents: advance.fee.cents,
+   632→   632→        totalDueCents: advance.totalDue.cents,
+   633→   633→        paidCents: advance.paid.cents,
+   634→   634→        currency: advance.currency,
+   635→   635→        status: advance.status,
+   636→   636→        dueAt: advance.dueAt,
+   637→   637→        recoveredAt: advance.recoveredAt ?? null,
+   638→   638→        writtenOffAt: advance.writtenOffAt ?? null,
+   639→   639→        decisionId: advance.decisionId ?? null,
+   640→   640→        voucherSerial: advance.voucherSerial ?? null,
+   641→   641→        deliveryMethod: advance.deliveryMethod ?? null,
+   642→   642→        metaJson: null,
+   643→   643→      },
+   644→   644→      update: {
+   645→   645→        paidCents: advance.paid.cents,
+   646→   646→        status: advance.status,
+   647→   647→        recoveredAt: advance.recoveredAt ?? null,
+   648→   648→        writtenOffAt: advance.writtenOffAt ?? null,
+   649→   649→      },
+   650→   650→    })
+   651→   651→    return rowToAdvance(r)
+   652→   652→  }
+   653→   653→  async getAdvance(tenantId: string, id: string) {
+   654→   654→    const r = await db.groCoreAdvance.findFirst({ where: { id, tenantId } })
+   655→   655→    return r ? rowToAdvance(r) : null
+   656→   656→  }
+   657→   657→  async getOpenAdvanceBySubject(tenantId: string, subjectId: string) {
+   658→   658→    const r = await db.groCoreAdvance.findFirst({
+   659→   659→      where: { tenantId, subjectId, status: 'open' },
+   660→   660→    })
+   661→   661→    return r ? rowToAdvance(r) : null
+   662→   662→  }
+   663→   663→  async listAdvances(tenantId: string, subjectId?: string) {
+   664→   664→    const rows = await db.groCoreAdvance.findMany({
+   665→   665→      where: { tenantId, ...(subjectId ? { subjectId } : {}) },
+   666→   666→      orderBy: { createdAt: 'desc' },
+   667→   667→      take: 100,
+   668→   668→    })
+   669→   669→    return rows.map(rowToAdvance)
+   670→   670→  }
+   671→   671→
+   672→   672→  async saveVoucher(voucher: Voucher) {
+   673→   673→    const r = await db.groCoreVoucher.upsert({
+   674→   674→      where: { serial: voucher.serial },
+   675→   675→      create: {
+   676→   676→        id: voucher.id,
+   677→   677→        tenantId: voucher.tenantId,
+   678→   678→        serial: voucher.serial,
+   679→   679→        product: voucher.product,
+   680→   680→        supplier: voucher.supplier,
+   681→   681→        faceValueCents: voucher.faceValue.cents,
+   682→   682→        costCents: voucher.cost.cents,
+   683→   683→        currency: voucher.faceValue.currency,
+   684→   684→        recipientMsisdn: voucher.recipientMsisdn ?? null,
+   685→   685→        meterNumber: voucher.meterNumber ?? null,
+   686→   686→        status: voucher.status,
+   687→   687→        deliveryMethod: voucher.deliveryMethod,
+   688→   688→        redeemedAt: voucher.redeemedAt ?? null,
+   689→   689→        advanceId: voucher.advanceId ?? null,
+   690→   690→        qrPayload: voucher.qrPayload ?? null,
+   691→   691→        pin: voucher.pin ?? null,
+   692→   692→        metaJson: null,
+   693→   693→      },
+   694→   694→      update: {
+   695→   695→        status: voucher.status,
+   696→   696→        redeemedAt: voucher.redeemedAt ?? null,
+   697→   697→      },
+   698→   698→    })
+   699→   699→    return rowToVoucher(r)
+   700→   700→  }
+   701→   701→  async getVoucher(tenantId: string, serial: string) {
+   702→   702→    const r = await db.groCoreVoucher.findFirst({ where: { serial, tenantId } })
+   703→   703→    return r ? rowToVoucher(r) : null
+   704→   704→  }
+   705→   705→  async listVouchers(tenantId: string, filter?: { product?: string; status?: string; recipientMsisdn?: string }) {
+   706→   706→    const rows = await db.groCoreVoucher.findMany({
+   707→   707→      where: {
+   708→   708→        tenantId,
+   709→   709→        ...(filter?.product ? { product: filter.product } : {}),
+   710→   710→        ...(filter?.status ? { status: filter.status } : {}),
+   711→   711→        ...(filter?.recipientMsisdn ? { recipientMsisdn: filter.recipientMsisdn } : {}),
+   712→   712→      },
+   713→   713→      orderBy: { createdAt: 'desc' },
+   714→   714→      take: 100,
+   715→   715→    })
+   716→   716→    return rows.map(rowToVoucher)
+   717→   717→  }
+   718→   718→
+   719→   719→  async saveCapitalSource(source: CapitalSource) {
+   720→   720→    const r = await db.groCoreCapitalSource.upsert({
+   721→   721→      where: { id: source.id },
+   722→   722→      create: {
+   723→   723→        id: source.id,
+   724→   724→        tenantId: source.tenantId,
+   725→   725→        name: source.name,
+   726→   726→        type: source.type,
+   727→   727→        currency: source.currency,
+   728→   728→        committedCents: source.committed.cents,
+   729→   729→        deployedCents: source.deployed.cents,
+   730→   730→        availableCents: source.committed.cents - source.deployed.cents,
+   731→   731→        costRateBps: source.costRateBps,
+   732→   732→        status: source.status,
+   733→   733→        startDate: source.startDate,
+   734→   734→        endDate: source.endDate ?? null,
+   735→   735→        metaJson: null,
+   736→   736→      },
+   737→   737→      update: {
+   738→   738→        deployedCents: source.deployed.cents,
+   739→   739→        availableCents: source.committed.cents - source.deployed.cents,
+   740→   740→        status: source.status,
+   741→   741→      },
+   742→   742→    })
+   743→   743→    return rowToCapitalSource(r)
+   744→   744→  }
+   745→   745→  async listCapitalSources(tenantId: string) {
+   746→   746→    const rows = await db.groCoreCapitalSource.findMany({ where: { tenantId } })
+   747→   747→    return rows.map(rowToCapitalSource)
+   748→   748→  }
+   749→   749→  async getCapitalSource(tenantId: string, id: string) {
+   750→   750→    const r = await db.groCoreCapitalSource.findFirst({ where: { id, tenantId } })
+   751→   751→    return r ? rowToCapitalSource(r) : null
+   752→   752→  }
+   753→   753→
+   754→   754→  async saveGoPayCapture(capture: GoPayCapture) {
+   755→   755→    const r = await db.groCoreGoPayCapture.upsert({
+   756→   756→      where: { captureId: capture.captureId },
+   757→   757→      create: {
+   758→   758→        tenantId: capture.tenantId,
+   759→   759→        merchantId: capture.merchantId,
+   760→   760→        captureId: capture.captureId,
+   761→   761→        amountCents: capture.amount.cents,
+   762→   762→        feeCents: capture.fee.cents,
+   763→   763→        currency: capture.currency,
+   764→   764→        paymentMethod: capture.paymentMethod,
+   765→   765→        settlementId: capture.settlementId ?? null,
+   766→   766→        status: capture.status,
+   767→   767→        liveMode: capture.liveMode,
+   768→   768→      },
+   769→   769→      update: {
+   770→   770→        status: capture.status,
+   771→   771→        settlementId: capture.settlementId ?? null,
+   772→   772→      },
+   773→   773→    })
+   774→   774→    return rowToGoPayCapture(r)
+   775→   775→  }
+   776→   776→  async listGoPayCaptures(tenantId: string, merchantId?: string) {
+   777→   777→    const rows = await db.groCoreGoPayCapture.findMany({
+   778→   778→      where: { tenantId, ...(merchantId ? { merchantId } : {}) },
+   779→   779→      orderBy: { createdAt: 'desc' },
+   780→   780→      take: 100,
+   781→   781→    })
+   782→   782→    return rows.map(rowToGoPayCapture)
+   783→   783→  }
+   784→   784→  async saveGoPaySettlement(settlement: GoPaySettlement) {
+   785→   785→    const r = await db.groCoreGoPaySettlement.upsert({
+   786→   786→      where: { batchId: settlement.batchId },
+   787→   787→      create: {
+   788→   788→        tenantId: settlement.tenantId,
+   789→   789→        merchantId: settlement.merchantId,
+   790→   790→        batchId: settlement.batchId,
+   791→   791→        captureCount: settlement.captureCount,
+   792→   792→        grossCents: settlement.gross.cents,
+   793→   793→        feeCents: settlement.fee.cents,
+   794→   794→        repaymentCents: settlement.repayment.cents,
+   795→   795→        netCents: settlement.net.cents,
+   796→   796→        currency: settlement.currency,
+   797→   797→        status: settlement.status,
+   798→   798→        scheduledAt: settlement.scheduledAt,
+   799→   799→        processedAt: settlement.processedAt ?? null,
+   800→   800→        bankReference: settlement.bankReference ?? null,
+   801→   801→        metaJson: null,
+   802→   802→      },
+   803→   803→      update: {
+   804→   804→        status: settlement.status,
+   805→   805→        processedAt: settlement.processedAt ?? null,
+   806→   806→        bankReference: settlement.bankReference ?? null,
+   807→   807→      },
+   808→   808→    })
+   809→   809→    return rowToGoPaySettlement(r)
+   810→   810→  }
+   811→   811→  async listGoPaySettlements(tenantId: string, merchantId?: string) {
+   812→   812→    const rows = await db.groCoreGoPaySettlement.findMany({
+   813→   813→      where: { tenantId, ...(merchantId ? { merchantId } : {}) },
+   814→   814→      orderBy: { scheduledAt: 'desc' },
+   815→   815→      take: 100,
+   816→   816→    })
+   817→   817→    return rows.map(rowToGoPaySettlement)
+   818→   818→  }
+   819→   819→
+   820→   820→  async saveDeviceContract(contract: DeviceContract) {
+   821→   821→    const r = await db.groCoreDeviceContract.upsert({
+   822→   822→      where: { id: contract.id },
+   823→   823→      create: {
+   824→   824→        id: contract.id,
+   825→   825→        tenantId: contract.tenantId,
+   826→   826→        customerId: contract.customerId,
+   827→   827→        productId: contract.productId,
+   828→   828→        deviceName: contract.deviceName,
+   829→   829→        deviceImei: contract.deviceImei ?? null,
+   830→   830→        principalCents: contract.principal.cents,
+   831→   831→        paidCents: contract.paid.cents,
+   832→   832→        dailyPaymentCents: contract.dailyPayment.cents,
+   833→   833→        currency: contract.currency,
+   834→   834→        totalDays: contract.totalDays,
+   835→   835→        daysPaid: contract.daysPaid,
+   836→   836→        status: contract.status,
+   837→   837→        locked: contract.locked,
+   838→   838→        unlockedAt: contract.unlockedAt ?? null,
+   839→   839→        dueAt: contract.dueAt ?? null,
+   840→   840→        metaJson: null,
+   841→   841→      },
+   842→   842→      update: {
+   843→   843→        paidCents: contract.paid.cents,
+   844→   844→        daysPaid: contract.daysPaid,
+   845→   845→        status: contract.status,
+   846→   846→        locked: contract.locked,
+   847→   847→        unlockedAt: contract.unlockedAt ?? null,
+   848→   848→      },
+   849→   849→    })
+   850→   850→    return rowToDeviceContract(r)
+   851→   851→  }
+   852→   852→  async getDeviceContract(tenantId: string, id: string) {
+   853→   853→    const r = await db.groCoreDeviceContract.findFirst({ where: { id, tenantId } })
+   854→   854→    return r ? rowToDeviceContract(r) : null
+   855→   855→  }
+   856→   856→  async listDeviceContracts(tenantId: string, customerId?: string) {
+   857→   857→    const rows = await db.groCoreDeviceContract.findMany({
+   858→   858→      where: { tenantId, ...(customerId ? { customerId } : {}) },
+   859→   859→      orderBy: { createdAt: 'desc' },
+   860→   860→      take: 100,
+   861→   861→    })
+   862→   862→    return rows.map(rowToDeviceContract)
+   863→   863→  }
+   864→   864→}
+   865→   865→
+   866→   866→/**
+   867→   867→ * Get the active repository. Defaults to Prisma in non-test environments,
+   868→   868→ * InMemory in test environments (set via GROCORE_REPO=memory).
+   869→   869→ */
+   870→   870→let cachedRepo: GroCoreRepository | null = null
+   871→   871→export function getRepository(): GroCoreRepository {
+   872→   872→  if (cachedRepo) return cachedRepo
+   873→   873→  const useMemory = process.env.GROCORE_REPO === 'memory' || process.env.NODE_ENV === 'test'
+   874→   874→  cachedRepo = useMemory ? new InMemoryRepository() : new PrismaRepository()
+   875→   875→  return cachedRepo
+   876→   876→}
+   877→   877→
+   878→   878→export function setRepository(repo: GroCoreRepository): void {
+   879→   879→  cachedRepo = repo
+   880→   880→}
+   881→   881→

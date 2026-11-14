@@ -1,0 +1,502 @@
+     1→   600→   600→  async entries(tenantId: string) {
+     2→   601→   601→    const rows = await this.db.tshepoJournalEntry.findMany({ where: { tenantId }, include, orderBy: { postedAt: 'asc' } });
+     3→   602→   602→    return rows.map(toEntry);
+     4→   603→   603→  }
+     5→   604→   604→}
+     6→   605→   605→```
+     7→   606→   606→
+     8→   607→   607→### `src/lib/tshepo/repayment/waterfall.ts`
+     9→   608→   608→
+    10→   609→   609→```ts
+    11→   610→   610→import { mulBps, minOf } from '../shared/money';
+    12→   611→   611→
+    13→   612→   612→export interface Bucket { name: string; due: bigint }
+    14→   613→   613→
+    15→   614→   614→/** Allocate a payment across buckets in the configured order. Order is product config approved by compliance. */
+    16→   615→   615→export function allocateWaterfall(amount: bigint, buckets: Bucket[]) {
+    17→   616→   616→  if (amount < 0n) throw new RangeError('amount must be non-negative');
+    18→   617→   617→  let left = amount;
+    19→   618→   618→  const allocations: Record<string, bigint> = {};
+    20→   619→   619→  for (const b of buckets) {
+    21→   620→   620→    const take = minOf(left, b.due < 0n ? 0n : b.due);
+    22→   621→   621→    allocations[b.name] = take;
+    23→   622→   622→    left -= take;
+    24→   623→   623→  }
+    25→   624→   624→  return { allocations, unapplied: left };
+    26→   625→   625→}
+    27→   626→   626→
+    28→   627→   627→/** GoPay settlement split: share of net sale, never more than the amount outstanding. */
+    29→   628→   628→export function splitAtSettlement(net: bigint, shareBps: number, outstanding: bigint): bigint {
+    30→   629→   629→  if (shareBps < 0 || shareBps > 10000) throw new RangeError('shareBps out of range');
+    31→   630→   630→  if (outstanding <= 0n || net <= 0n) return 0n;
+    32→   631→   631→  return minOf(outstanding, mulBps(net, BigInt(shareBps)));
+    33→   632→   632→}
+    34→   633→   633→```
+    35→   634→   634→
+    36→   635→   635→### `src/lib/tshepo/shared/ids.ts`
+    37→   636→   636→
+    38→   637→   637→```ts
+    39→   638→   638→import { randomBytes } from 'node:crypto';
+    40→   639→   639→
+    41→   640→   640→/** UUIDv7: 48-bit millisecond timestamp, then random bits. Sortable by creation time. */
+    42→   641→   641→export function uuidv7(now: number = Date.now()): string {
+    43→   642→   642→  const b = randomBytes(16);
+    44→   643→   643→  const ts = BigInt(now);
+    45→   644→   644→  for (let i = 0; i < 6; i++) b[i] = Number((ts >> BigInt(40 - 8 * i)) & 0xffn);
+    46→   645→   645→  b[6] = (b[6]! & 0x0f) | 0x70;
+    47→   646→   646→  b[8] = (b[8]! & 0x3f) | 0x80;
+    48→   647→   647→  const h = b.toString('hex');
+    49→   648→   648→  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+    50→   649→   649→}
+    51→   650→   650→```
+    52→   651→   651→
+    53→   652→   652→### `src/lib/tshepo/shared/money.ts`
+    54→   653→   653→
+    55→   654→   654→```ts
+    56→   655→   655→/** All money is integer minor units (cents) held as bigint. Never floating point. */
+    57→   656→   656→export type Minor = bigint;
+    58→   657→   657→
+    59→   658→   658→/** amount * bps / 10_000, rounded half-up. Amounts must be non-negative. */
+    60→   659→   659→export function mulBps(amount: Minor, bps: bigint): Minor {
+    61→   660→   660→  if (amount < 0n || bps < 0n) throw new RangeError('mulBps expects non-negative inputs');
+    62→   661→   661→  return (amount * bps + 5000n) / 10000n;
+    63→   662→   662→}
+    64→   663→   663→
+    65→   664→   664→export const minOf = (a: Minor, b: Minor): Minor => (a < b ? a : b);
+    66→   665→   665→
+    67→   666→   666→export function fmtRand(c: Minor): string {
+    68→   667→   667→  const neg = c < 0n;
+    69→   668→   668→  const abs = neg ? -c : c;
+    70→   669→   669→  const whole = (abs / 100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    71→   670→   670→  return `${neg ? '-' : ''}R${whole}.${(abs % 100n).toString().padStart(2, '0')}`;
+    72→   671→   671→}
+    73→   672→   672→```
+    74→   673→   673→
+    75→   674→   674→### `src/lib/tshepo/topup/orchestrator.ts`
+    76→   675→   675→
+    77→   676→   676→```ts
+    78→   677→   677→import { VendRequest } from '../vending/types';
+    79→   678→   678→import { VendingRouter } from '../vending/router';
+    80→   679→   679→import { History } from './products';
+    81→   680→   680→import { TopUpCredit } from './service';
+    82→   681→   681→
+    83→   682→   682→export type DeliveryResult =
+    84→   683→   683→  | { status: 'delivered'; token?: string; providerRef: string; replayed: boolean }
+    85→   684→   684→  | { status: 'pending'; reason: string }
+    86→   685→   685→  | { status: 'cancelled'; code: string }
+    87→   686→   686→  | { status: 'declined'; code: string };
+    88→   687→   687→
+    89→   688→   688→export interface AdvanceRequest {
+    90→   689→   689→  tenantId: string; subjectId: string; productId: string; amountMinor: bigint; requestId: string; history: History; now?: Date;
+    91→   690→   690→  /** Where to deliver: msisdn for airtime and data, meterNumber for electricity. */
+    92→   691→   691→  target: Pick<VendRequest, 'msisdn' | 'operator' | 'meterNumber' | 'municipality' | 'customerName'>;
+    93→   692→   692→}
+    94→   693→   693→
+    95→   694→   694→/** Issue the advance, deliver the airtime or token, and keep the books right whatever the delivery outcome. */
+    96→   695→   695→export class AdvanceDelivery {
+    97→   696→   696→  constructor(private credit: TopUpCredit, private router: VendingRouter) {}
+    98→   697→   697→
+    99→   698→   698→  async request(a: AdvanceRequest): Promise<DeliveryResult> {
+   100→   699→   699→    const p = this.credit.getProduct(a.productId);
+   101→   700→   700→    let issued;
+   102→   701→   701→    try { issued = await this.credit.issue(a); }
+   103→   702→   702→    catch (e: any) { return { status: 'declined', code: e?.code ?? 'ERROR' }; }
+   104→   703→   703→
+   105→   704→   704→    const out = await this.router.vend({
+   106→   705→   705→      reference: a.requestId, country: p.jurisdiction, commodity: p.commodity, amountMinor: a.amountMinor, currency: p.currency, ...a.target,
+   107→   706→   706→    });
+   108→   707→   707→    if (out.status === 'success') return { status: 'delivered', token: out.token, providerRef: out.providerRef, replayed: issued.replayed };
+   109→   708→   708→    if (out.status === 'failed') { await this.credit.cancel(a.tenantId, a.requestId); return { status: 'cancelled', code: out.code }; }
+   110→   709→   709→    await this.credit.markPending(a.tenantId, a.requestId);
+   111→   710→   710→    return { status: 'pending', reason: out.reason };
+   112→   711→   711→  }
+   113→   712→   712→
+   114→   713→   713→  /** Daily job and manual tool: look up deliveries whose outcome was unknown and settle them. */
+   115→   714→   714→  async settlePending(tenantId: string, requestId: string): Promise<DeliveryResult> {
+   116→   715→   715→    const out = await this.router.resolve(requestId);
+   117→   716→   716→    if (out.status === 'success') { await this.credit.confirm(tenantId, requestId); return { status: 'delivered', token: out.token, providerRef: out.providerRef, replayed: false }; }
+   118→   717→   717→    if (out.status === 'failed') { await this.credit.cancel(tenantId, requestId); return { status: 'cancelled', code: out.code }; }
+   119→   718→   718→    return { status: 'pending', reason: out.reason };
+   120→   719→   719→  }
+   121→   720→   720→}
+   122→   721→   721→```
+   123→   722→   722→
+   124→   723→   723→### `src/lib/tshepo/topup/presets.ts`
+   125→   724→   724→
+   126→   725→   725→```ts
+   127→   726→   726→import { Product } from './products';
+   128→   727→   727→
+   129→   728→   728→/**
+   130→   729→   729→ * ILLUSTRATIVE starting points taken from public product descriptions. Every number must be confirmed
+   131→   730→   730→ * with the operator or vendor and with counsel before launch (see master build document, section 16).
+   132→   731→   731→ * Amounts are minor units: rand in cents, kwacha in tambala.
+   133→   732→   732→ */
+   134→   733→   733→export const PRESETS: Product[] = [
+   135→   734→   734→  { // South Africa airtime: Vodacom-style menu, fee per R10 or part thereof, repaid in full on next recharge
+   136→   735→   735→    id: 'za-airtime', jurisdiction: 'ZA', commodity: 'airtime', currency: 'ZAR',
+   137→   736→   736→    menuMinor: [500n, 1000n, 1500n, 2000n],
+   138→   737→   737→    fee: { kind: 'per_block', blockMinor: 1000n, feePerBlockMinor: 120n },
+   139→   738→   738→    recovery: { mode: 'full_first' },
+   140→   739→   739→    minTenureDays: 90, minMonths: 3, minMonthlyRechargeMinor: 2900n, limitShareBps: 3000,
+   141→   740→   740→    dueAfterDays: 30, overdueAction: 'add_to_bill',
+   142→   741→   741→  },
+   143→   742→   742→  { // South Africa electricity: share of each future purchase goes to the advance until repaid
+   144→   743→   743→    id: 'za-electricity', jurisdiction: 'ZA', commodity: 'electricity', currency: 'ZAR',
+   145→   744→   744→    menuMinor: [5000n, 10000n, 15000n, 30000n],
+   146→   745→   745→    fee: { kind: 'percent_bps', bps: 1000 },
+   147→   746→   746→    recovery: { mode: 'capped_share', capBps: 5000 },
+   148→   747→   747→    minTenureDays: 90, minMonths: 2, minMonthlyRechargeMinor: 15000n, limitShareBps: 3000,
+   149→   748→   748→    dueAfterDays: 60, overdueAction: 'write_off',
+   150→   749→   749→  },
+   151→   750→   750→  { // Malawi airtime: kwacha menu, 10% fee, repaid on next recharge
+   152→   751→   751→    id: 'mw-airtime', jurisdiction: 'MW', commodity: 'airtime', currency: 'MWK',
+   153→   752→   752→    menuMinor: [5000n, 10000n, 20000n, 50000n, 100000n, 200000n],
+   154→   753→   753→    fee: { kind: 'percent_bps', bps: 1000 },
+   155→   754→   754→    recovery: { mode: 'full_first' },
+   156→   755→   755→    minTenureDays: 90, minMonths: 2, minMonthlyRechargeMinor: 100000n, limitShareBps: 3000,
+   157→   756→   756→    dueAfterDays: 30, overdueAction: 'write_off',
+   158→   757→   757→  },
+   159→   758→   758→  { // Malawi electricity (prepaid units): share of each purchase until repaid
+   160→   759→   759→    id: 'mw-electricity', jurisdiction: 'MW', commodity: 'electricity', currency: 'MWK',
+   161→   760→   760→    menuMinor: [500000n, 1000000n, 2000000n],
+   162→   761→   761→    fee: { kind: 'percent_bps', bps: 1000 },
+   163→   762→   762→    recovery: { mode: 'capped_share', capBps: 5000 },
+   164→   763→   763→    minTenureDays: 90, minMonths: 2, minMonthlyRechargeMinor: 500000n, limitShareBps: 3000,
+   165→   764→   764→    dueAfterDays: 60, overdueAction: 'write_off',
+   166→   765→   765→  },
+   167→   766→   766→];
+   168→   767→   767→```
+   169→   768→   768→
+   170→   769→   769→### `src/lib/tshepo/topup/products.ts`
+   171→   770→   770→
+   172→   771→   771→```ts
+   173→   772→   772→import { mulBps } from '../shared/money';
+   174→   773→   773→
+   175→   774→   774→export type Jurisdiction = 'ZA' | 'MW';
+   176→   775→   775→export type Commodity = 'airtime' | 'data' | 'electricity';
+   177→   776→   776→
+   178→   777→   777→/** How the access fee is charged. Illustrative defaults are in presets.ts and must be confirmed with each partner. */
+   179→   778→   778→export type FeeModel =
+   180→   779→   779→  | { kind: 'flat'; feeMinor: bigint }                                   // e.g. a fixed access fee per advance
+   181→   780→   780→  | { kind: 'per_block'; blockMinor: bigint; feePerBlockMinor: bigint }  // e.g. fee per R10 or part thereof
+   182→   781→   781→  | { kind: 'percent_bps'; bps: number };                                // e.g. 10% = 1000 bps
+   183→   782→   782→
+   184→   783→   783→/** full_first: the whole top-up goes to the advance until it is repaid. capped_share: only a share of each purchase. */
+   185→   784→   784→export interface RecoveryRule { mode: 'full_first' | 'capped_share'; capBps?: number }
+   186→   785→   785→
+   187→   786→   786→export interface Product {
+   188→   787→   787→  id: string;
+   189→   788→   788→  jurisdiction: Jurisdiction;
+   190→   789→   789→  commodity: Commodity;
+   191→   790→   790→  currency: string;
+   192→   791→   791→  /** The advance amounts the customer may choose from (the USSD or app menu). */
+   193→   792→   792→  menuMinor: bigint[];
+   194→   793→   793→  fee: FeeModel;
+   195→   794→   794→  /** Hard ceiling on the fee for one advance, set from the rules that apply to the product. Checked at quote time. */
+   196→   795→   795→  maxFeeMinor?: bigint;
+   197→   796→   796→  recovery: RecoveryRule;
+   198→   797→   797→  minTenureDays: number;
+   199→   798→   798→  /** Eligibility: at least minMonths of the last 3 calendar months with recharges totalling minMonthlyRechargeMinor. */
+   200→   799→   799→  minMonths: number;
+   201→   800→   800→  minMonthlyRechargeMinor: bigint;
+   202→   801→   801→  /** Largest advance as a share of average monthly recharge, in basis points. */
+   203→   802→   802→  limitShareBps: number;
+   204→   803→   803→  /** After this many days unrecovered, the overdue action applies. */
+   205→   804→   804→  dueAfterDays: number;
+   206→   805→   805→  overdueAction: 'add_to_bill' | 'write_off';
+   207→   806→   806→}
+   208→   807→   807→
+   209→   808→   808→export function quoteFee(p: Product, principal: bigint): bigint {
+   210→   809→   809→  if (principal <= 0n) throw new RangeError('principal must be positive');
+   211→   810→   810→  let fee: bigint;
+   212→   811→   811→  switch (p.fee.kind) {
+   213→   812→   812→    case 'flat': fee = p.fee.feeMinor; break;
+   214→   813→   813→    case 'per_block': fee = ((principal + p.fee.blockMinor - 1n) / p.fee.blockMinor) * p.fee.feePerBlockMinor; break;
+   215→   814→   814→    case 'percent_bps': fee = mulBps(principal, BigInt(p.fee.bps)); break;
+   216→   815→   815→  }
+   217→   816→   816→  if (p.maxFeeMinor !== undefined && fee > p.maxFeeMinor) {
+   218→   817→   817→    throw new RangeError(`fee ${fee} exceeds the product ceiling ${p.maxFeeMinor}`);
+   219→   818→   818→  }
+   220→   819→   819→  return fee;
+   221→   820→   820→}
+   222→   821→   821→
+   223→   822→   822→export interface History {
+   224→   823→   823→  tenureDays: number;
+   225→   824→   824→  recharges: { amountMinor: bigint; at: Date }[];
+   226→   825→   825→  arrearsMinor: bigint;
+   227→   826→   826→  /** Electricity: meter registered and linked to the customer. Airtime: SIM registered. */
+   228→   827→   827→  identityOk: boolean;
+   229→   828→   828→}
+   230→   829→   829→
+   231→   830→   830→export interface Eligibility { ok: boolean; maxMinor: bigint; reasons: string[] }
+   232→   831→   831→
+   233→   832→   832→export function assessEligibility(p: Product, h: History, now: Date): Eligibility {
+   234→   833→   833→  const reasons: string[] = [];
+   235→   834→   834→  if (!h.identityOk) reasons.push('IDENTITY_NOT_VERIFIED');
+   236→   835→   835→  if (h.arrearsMinor > 0n) reasons.push('ARREARS_PRESENT');
+   237→   836→   836→  if (h.tenureDays < p.minTenureDays) reasons.push('TENURE_TOO_SHORT');
+   238→   837→   837→
+   239→   838→   838→  const since = new Date(now.getTime() - 90 * 86400000);
+   240→   839→   839→  const byMonth = new Map<string, bigint>();
+   241→   840→   840→  let total = 0n;
+   242→   841→   841→  for (const r of h.recharges) {
+   243→   842→   842→    if (r.at < since || r.at > now) continue;
+   244→   843→   843→    const k = `${r.at.getUTCFullYear()}-${r.at.getUTCMonth()}`;
+   245→   844→   844→    byMonth.set(k, (byMonth.get(k) ?? 0n) + r.amountMinor);
+   246→   845→   845→    total += r.amountMinor;
+   247→   846→   846→  }
+   248→   847→   847→  const goodMonths = [...byMonth.values()].filter((v) => v >= p.minMonthlyRechargeMinor).length;
+   249→   848→   848→  if (goodMonths < p.minMonths) reasons.push('RECHARGE_HISTORY_TOO_THIN');
+   250→   849→   849→
+   251→   850→   850→  const avgMonthly = total / 3n;
+   252→   851→   851→  const cap = mulBps(avgMonthly, BigInt(p.limitShareBps));
+   253→   852→   852→  const eligibleMenu = p.menuMinor.filter((m) => m <= cap);
+   254→   853→   853→  const maxMinor = eligibleMenu.length ? eligibleMenu.reduce((a, b) => (a > b ? a : b)) : 0n;
+   255→   854→   854→  if (maxMinor === 0n && !reasons.includes('RECHARGE_HISTORY_TOO_THIN')) reasons.push('LIMIT_BELOW_SMALLEST_ADVANCE');
+   256→   855→   855→  return { ok: reasons.length === 0, maxMinor, reasons };
+   257→   856→   856→}
+   258→   857→   857→```
+   259→   858→   858→
+   260→   859→   859→### `src/lib/tshepo/topup/service.ts`
+   261→   860→   860→
+   262→   861→   861→```ts
+   263→   862→   862→import { LedgerService } from '../ledger/ledger';
+   264→   863→   863→import { uuidv7 } from '../shared/ids';
+   265→   864→   864→import { mulBps, minOf } from '../shared/money';
+   266→   865→   865→import { History, Product, assessEligibility, quoteFee } from './products';
+   267→   866→   866→
+   268→   867→   867→export interface AdvanceRecord {
+   269→   868→   868→  id: string; tenantId: string; subjectId: string; productId: string; requestId: string;
+   270→   869→   869→  principal: bigint; fee: bigint; recovered: bigint; issuedAt: Date;
+   271→   870→   870→  status: 'pending' | 'open' | 'repaid' | 'billed' | 'written_off' | 'cancelled';
+   272→   871→   871→}
+   273→   872→   872→export interface AdvanceRepo {
+   274→   873→   873→  byRequest(tenantId: string, requestId: string): Promise<AdvanceRecord | undefined>;
+   275→   874→   874→  openFor(tenantId: string, subjectId: string): Promise<AdvanceRecord | undefined>;
+   276→   875→   875→  save(r: AdvanceRecord): Promise<void>;
+   277→   876→   876→}
+   278→   877→   877→export class InMemoryAdvanceRepo implements AdvanceRepo {
+   279→   878→   878→  private rows: AdvanceRecord[] = [];
+   280→   879→   879→  async byRequest(t: string, id: string) { return this.rows.find((r) => r.tenantId === t && r.requestId === id); }
+   281→   880→   880→  async openFor(t: string, s: string) { return this.rows.find((r) => r.tenantId === t && r.subjectId === s && (r.status === 'open' || r.status === 'pending')); }
+   282→   881→   881→  async save(r: AdvanceRecord) { const i = this.rows.findIndex((x) => x.id === r.id); if (i >= 0) this.rows[i] = r; else this.rows.push(r); }
+   283→   882→   882→}
+   284→   883→   883→
+   285→   884→   884→export class TopUpCreditError extends Error {
+   286→   885→   885→  constructor(public readonly code: string, message: string) { super(message); }
+   287→   886→   886→}
+   288→   887→   887→
+   289→   888→   888→export const topupAcct = {
+   290→   889→   889→  receivable: (subject: string) => `advance_receivable:${subject}`,
+   291→   890→   890→  supplier: (commodity: string) => `supplier_payable:${commodity}`,
+   292→   891→   891→  fee: 'fee_income:topup',
+   293→   892→   892→  clearing: 'collections_clearing',
+   294→   893→   893→  badDebt: 'bad_debt_expense',
+   295→   894→   894→};
+   296→   895→   895→
+   297→   896→   896→export class TopUpCredit {
+   298→   897→   897→  private products: Map<string, Product>;
+   299→   898→   898→  constructor(private ledger: LedgerService, private repo: AdvanceRepo, products: Product[]) {
+   300→   899→   899→    this.products = new Map(products.map((p) => [p.id, p]));
+   301→   900→   900→  }
+   302→   901→   901→  getProduct(id: string) { return this.product(id); }
+   303→   902→   902→  private product(id: string) {
+   304→   903→   903→    const p = this.products.get(id);
+   305→   904→   904→    if (!p) throw new TopUpCreditError('UNKNOWN_PRODUCT', id);
+   306→   905→   905→    return p;
+   307→   906→   906→  }
+   308→   907→   907→
+   309→   908→   908→  /** Everything the customer sees before accepting: amount, fee, total to repay. */
+   310→   909→   909→  quote(productId: string, amountMinor: bigint) {
+   311→   910→   910→    const p = this.product(productId);
+   312→   911→   911→    if (!p.menuMinor.includes(amountMinor)) throw new TopUpCreditError('NOT_ON_MENU', 'amount is not an offered advance');
+   313→   912→   912→    const fee = quoteFee(p, amountMinor);
+   314→   913→   913→    return { principal: amountMinor, fee, totalDue: amountMinor + fee };
+   315→   914→   914→  }
+   316→   915→   915→
+   317→   916→   916→  /** Issue an advance. The commodity (airtime, data or a meter token) is delivered by the operator or vendor adapter. */
+   318→   917→   917→  async issue(a: { tenantId: string; subjectId: string; productId: string; amountMinor: bigint; requestId: string; history: History; now?: Date }) {
+   319→   918→   918→    const now = a.now ?? new Date();
+   320→   919→   919→    const existing = await this.repo.byRequest(a.tenantId, a.requestId);
+   321→   920→   920→    if (existing) return { record: existing, replayed: true };
+   322→   921→   921→    const p = this.product(a.productId);
+   323→   922→   922→    if (await this.repo.openFor(a.tenantId, a.subjectId)) throw new TopUpCreditError('OPEN_ADVANCE', 'one advance at a time');
+   324→   923→   923→    const el = assessEligibility(p, a.history, now);
+   325→   924→   924→    if (!el.ok) throw new TopUpCreditError('NOT_ELIGIBLE', el.reasons.join(','));
+   326→   925→   925→    if (a.amountMinor > el.maxMinor) throw new TopUpCreditError('ABOVE_LIMIT', `limit is ${el.maxMinor}`);
+   327→   926→   926→    const q = this.quote(a.productId, a.amountMinor);
+   328→   927→   927→    await this.ledger.post({
+   329→   928→   928→      tenantId: a.tenantId, idempotencyKey: `${a.requestId}:issued`, reason: 'advance_issued', correlationId: a.requestId, currency: p.currency,
+   330→   929→   929→      lines: [
+   331→   930→   930→        { account: topupAcct.receivable(a.subjectId), amount: q.totalDue },
+   332→   931→   931→        { account: topupAcct.supplier(p.commodity), amount: -q.principal },
+   333→   932→   932→        { account: topupAcct.fee, amount: -q.fee },
+   334→   933→   933→      ],
+   335→   934→   934→    });
+   336→   935→   935→    const record: AdvanceRecord = { id: uuidv7(), tenantId: a.tenantId, subjectId: a.subjectId, productId: p.id, requestId: a.requestId,
+   337→   936→   936→      principal: q.principal, fee: q.fee, recovered: 0n, issuedAt: now, status: 'open' };
+   338→   937→   937→    await this.repo.save(record);
+   339→   938→   938→    return { record, replayed: false };
+   340→   939→   939→  }
+   341→   940→   940→
+   342→   941→   941→  /**
+   343→   942→   942→   * Called on every top-up or purchase by the subject (the clawback). Takes what the product rule allows,
+   344→   943→   943→   * posts it, and tells the vending adapter how much of the purchase to pass through as normal value.
+   345→   944→   944→   */
+   346→   945→   945→  async recover(a: { tenantId: string; subjectId: string; topupRef: string; topupAmountMinor: bigint }) {
+   347→   946→   946→    if (a.topupAmountMinor <= 0n) throw new RangeError('top-up amount must be positive');
+   348→   947→   947→    const key = `${a.topupRef}:recovered`;
+   349→   948→   948→    const done = await this.ledger.get(a.tenantId, key);
+   350→   949→   949→    if (done) {
+   351→   950→   950→      const taken = -done.lines.find((l) => l.account === topupAcct.receivable(a.subjectId))!.amount;
+   352→   951→   951→      return { taken, passThrough: a.topupAmountMinor - taken, replayed: true, repaid: false };
+   353→   952→   952→    }
+   354→   953→   953→    const open = await this.repo.openFor(a.tenantId, a.subjectId);
+   355→   954→   954→    if (!open || open.status !== 'open') return { taken: 0n, passThrough: a.topupAmountMinor, replayed: false, repaid: false };
+   356→   955→   955→    const p = this.product(open.productId);
+   357→   956→   956→    const due = open.principal + open.fee - open.recovered;
+   358→   957→   957→    const room = p.recovery.mode === 'capped_share' ? mulBps(a.topupAmountMinor, BigInt(p.recovery.capBps ?? 10000)) : a.topupAmountMinor;
+   359→   958→   958→    const taken = minOf(due, room);
+   360→   959→   959→    if (taken > 0n) {
+   361→   960→   960→      await this.ledger.post({
+   362→   961→   961→        tenantId: a.tenantId, idempotencyKey: key, reason: 'advance_recovered', correlationId: a.topupRef, currency: p.currency,
+   363→   962→   962→        lines: [{ account: topupAcct.clearing, amount: taken }, { account: topupAcct.receivable(a.subjectId), amount: -taken }],
+   364→   963→   963→      });
+   365→   964→   964→      open.recovered += taken;
+   366→   965→   965→      if (open.recovered === open.principal + open.fee) open.status = 'repaid';
+   367→   966→   966→      await this.repo.save(open);
+   368→   967→   967→    }
+   369→   968→   968→    return { taken, passThrough: a.topupAmountMinor - taken, replayed: false, repaid: open.status === 'repaid' };
+   370→   969→   969→  }
+   371→   970→   970→
+   372→   971→   971→  /** Delivery outcome unknown: keep the advance, block a second one, and do not recover until delivery is confirmed. */
+   373→   972→   972→  async markPending(tenantId: string, requestId: string) {
+   374→   973→   973→    const r = await this.repo.byRequest(tenantId, requestId);
+   375→   974→   974→    if (r && r.status === 'open') { r.status = 'pending'; await this.repo.save(r); }
+   376→   975→   975→    return r;
+   377→   976→   976→  }
+   378→   977→   977→  /** Delivery confirmed after an unknown outcome. */
+   379→   978→   978→  async confirm(tenantId: string, requestId: string) {
+   380→   979→   979→    const r = await this.repo.byRequest(tenantId, requestId);
+   381→   980→   980→    if (r && r.status === 'pending') { r.status = 'open'; await this.repo.save(r); }
+   382→   981→   981→    return r;
+   383→   982→   982→  }
+   384→   983→   983→  /** Delivery definitely failed: reverse the issue entry exactly, so nothing is owed. Not allowed once any recovery has happened. */
+   385→   984→   984→  async cancel(tenantId: string, requestId: string) {
+   386→   985→   985→    const r = await this.repo.byRequest(tenantId, requestId);
+   387→   986→   986→    if (!r || r.status === 'cancelled') return r;
+   388→   987→   987→    if (r.recovered > 0n || (r.status !== 'open' && r.status !== 'pending')) throw new TopUpCreditError('CANNOT_CANCEL', 'advance already in repayment or closed');
+   389→   988→   988→    const p = this.product(r.productId);
+   390→   989→   989→    await this.ledger.post({
+   391→   990→   990→      tenantId, idempotencyKey: `${requestId}:cancelled`, reason: 'advance_cancelled', correlationId: requestId, currency: p.currency,
+   392→   991→   991→      lines: [
+   393→   992→   992→        { account: topupAcct.supplier(p.commodity), amount: r.principal },
+   394→   993→   993→        { account: topupAcct.fee, amount: r.fee },
+   395→   994→   994→        { account: topupAcct.receivable(r.subjectId), amount: -(r.principal + r.fee) },
+   396→   995→   995→      ],
+   397→   996→   996→    });
+   398→   997→   997→    r.status = 'cancelled'; await this.repo.save(r);
+   399→   998→   998→    return r;
+   400→   999→   999→  }
+   401→  1000→  1000→
+   402→  1001→  1001→  /** Daily job: what to do with advances not recovered within the product's period. */
+   403→  1002→  1002→  async applyOverdue(tenantId: string, subjectId: string, now: Date) {
+   404→  1003→  1003→    const open = await this.repo.openFor(tenantId, subjectId);
+   405→  1004→  1004→    if (!open || open.status !== 'open') return { action: 'none' as const };
+   406→  1005→  1005→    const p = this.product(open.productId);
+   407→  1006→  1006→    if (now.getTime() - open.issuedAt.getTime() < p.dueAfterDays * 86400000) return { action: 'none' as const };
+   408→  1007→  1007→    const owing = open.principal + open.fee - open.recovered;
+   409→  1008→  1008→    if (p.overdueAction === 'add_to_bill') {
+   410→  1009→  1009→      open.status = 'billed'; await this.repo.save(open);
+   411→  1010→  1010→      return { action: 'add_to_bill' as const, amountMinor: owing };
+   412→  1011→  1011→    }
+   413→  1012→  1012→    await this.ledger.post({
+   414→  1013→  1013→      tenantId, idempotencyKey: `${open.requestId}:written_off`, reason: 'advance_written_off', correlationId: open.requestId, currency: p.currency,
+   415→  1014→  1014→      lines: [{ account: topupAcct.badDebt, amount: owing }, { account: topupAcct.receivable(subjectId), amount: -owing }],
+   416→  1015→  1015→    });
+   417→  1016→  1016→    open.status = 'written_off'; await this.repo.save(open);
+   418→  1017→  1017→    return { action: 'write_off' as const, amountMinor: owing };
+   419→  1018→  1018→  }
+   420→  1019→  1019→}
+   421→  1020→  1020→```
+   422→  1021→  1021→
+   423→  1022→  1022→### `src/lib/tshepo/vending/catalogue.ts`
+   424→  1023→  1023→
+   425→  1024→  1024→```ts
+   426→  1025→  1025→import { Country, VendCommodity } from './types';
+   427→  1026→  1026→
+   428→  1027→  1027→export interface ProviderProfile {
+   429→  1028→  1028→  id: string; name: string; country: Country | 'ZA+MW'; role: 'aggregator' | 'operator' | 'utility' | 'network';
+   430→  1029→  1029→  commodities: VendCommodity[];
+   431→  1030→  1030→  integration: 'adapter_built' | 'public_docs' | 'partner_gated' | 'in_negotiation';
+   432→  1031→  1031→  notes: string;
+   433→  1032→  1032→}
+   434→  1033→  1033→
+   435→  1034→  1034→/** Providers named in public sources (see master build document, section 17). Commercial terms and API access must be confirmed with each. */
+   436→  1035→  1035→export const PROVIDERS: ProviderProfile[] = [
+   437→  1036→  1036→  { id: 'blue-label', name: 'Blue Label Telecoms (Cigicell platform, Ringas)', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'partner_gated', notes: 'Reported to handle over 60% of prepaid top-ups; also runs BlueAdvance, a competing advance product' },
+   438→  1037→  1037→  { id: 'easypay', name: 'EasyPay (Lesaka group)', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'partner_gated', notes: 'Switching and bill payments; named as an electricity aggregator' },
+   439→  1038→  1038→  { id: 'kazang', name: 'Kazang (Connect Group)', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'partner_gated', notes: 'About 68,000 active devices; also sells international electricity vouchers including Malawi ESCOM; corporate integration offered' },
+   440→  1039→  1039→  { id: 'flash', name: 'Flash', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'partner_gated', notes: 'Named as a national prepaid competitor' },
+   441→  1040→  1040→  { id: 'prepaid24', name: 'Prepaid24', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'public_docs', notes: 'Electricity for over 94% of municipalities; offers API integration for platforms' },
+   442→  1041→  1041→  { id: 'syntell', name: 'Syntell', country: 'ZA', role: 'aggregator', commodities: ['electricity'], integration: 'partner_gated', notes: 'Named as an electricity vending aggregator' },
+   443→  1042→  1042→  { id: 'contour', name: 'Contour', country: 'ZA', role: 'aggregator', commodities: ['electricity'], integration: 'partner_gated', notes: 'Named as an electricity vending aggregator' },
+   444→  1043→  1043→  { id: 'ontec', name: 'Ontec', country: 'ZA', role: 'aggregator', commodities: ['electricity'], integration: 'partner_gated', notes: 'Named as an electricity vending aggregator' },
+   445→  1044→  1044→  { id: 'ipay', name: 'iPay', country: 'ZA', role: 'aggregator', commodities: ['electricity'], integration: 'partner_gated', notes: 'Named as an electricity vending aggregator' },
+   446→  1045→  1045→  { id: 'pay-at', name: 'Pay@', country: 'ZA', role: 'aggregator', commodities: ['electricity'], integration: 'partner_gated', notes: 'Municipal bill payments' },
+   447→  1046→  1046→  { id: 'cellair', name: 'CellAir', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Named as a prepaid player' },
+   448→  1047→  1047→  { id: 'ra-cellular', name: 'RA Cellular', country: 'ZA', role: 'aggregator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Named as a prepaid player' },
+   449→  1048→  1048→  { id: 'vodacom', name: 'Vodacom (direct)', country: 'ZA', role: 'operator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Runs Airtime Advance already; direct supply for the later operator-embedded model' },
+   450→  1049→  1049→  { id: 'mtn-za', name: 'MTN South Africa (direct)', country: 'ZA', role: 'operator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'XtraTime; reported to be reducing advances' },
+   451→  1050→  1050→  { id: 'cell-c', name: 'Cell C (direct)', country: 'ZA', role: 'operator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Fixed fee per advance, no interest' },
+   452→  1051→  1051→  { id: 'telkom', name: 'Telkom Mobile (direct)', country: 'ZA', role: 'operator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Reported to lean on airtime advances' },
+   453→  1052→  1052→  { id: 'eskom-vendors', name: 'Eskom national vendors and municipal vending systems', country: 'ZA', role: 'utility', commodities: ['electricity'], integration: 'partner_gated', notes: 'Tokens are requested in real time from the utility vending server through contracted vendors' },
+   454→  1053→  1053→  { id: 'tnm', name: 'TNM (Telekom Networks Malawi) and TNM Mpamba', country: 'MW', role: 'operator', commodities: ['airtime', 'data'], integration: 'in_negotiation', notes: 'In discussions; runs Pasavute with Net1 and Supa Pesa today' },
+   455→  1054→  1054→  { id: 'airtel-mw', name: 'Airtel Malawi and Airtel Money', country: 'MW', role: 'operator', commodities: ['airtime', 'data'], integration: 'partner_gated', notes: 'Runs Kutapa and Kutchova' },
+   456→  1055→  1055→  { id: 'escom', name: 'ESCOM (Electricity Supply Corporation of Malawi)', country: 'MW', role: 'utility', commodities: ['electricity'], integration: 'in_negotiation', notes: 'Negotiations under way; prepaid tokens' },
+   457→  1056→  1056→  { id: 'paychangu', name: 'PayChangu bill payments', country: 'MW', role: 'aggregator', commodities: ['airtime', 'data', 'electricity'], integration: 'adapter_built', notes: 'Documented API for Airtel and TNM airtime and ESCOM tokens, paid from a pre-funded wallet' },
+   458→  1057→  1057→];
+   459→  1058→  1058→```
+   460→  1059→  1059→
+   461→  1060→  1060→### `src/lib/tshepo/vending/http-adapter.ts`
+   462→  1061→  1061→
+   463→  1062→  1062→```ts
+   464→  1063→  1063→import { Country, MeterInfo, VendCommodity, VendOutcome, VendRequest, VendingProvider } from './types';
+   465→  1064→  1064→
+   466→  1065→  1065→export interface HttpCall { method: 'GET' | 'POST'; path: string; body?: unknown }
+   467→  1066→  1066→
+   468→  1067→  1067→/**
+   469→  1068→  1068→ * A provider integration is configuration: how to build each call and how to read each reply.
+   470→  1069→  1069→ * Onboarding a new aggregator means writing one config object once its partner documentation is in hand.
+   471→  1070→  1070→ */
+   472→  1071→  1071→export interface HttpAdapterConfig {
+   473→  1072→  1072→  id: string;
+   474→  1073→  1073→  baseUrl: string;
+   475→  1074→  1074→  headers: () => Record<string, string>;
+   476→  1075→  1075→  supported: { commodity: VendCommodity; country: Country }[];
+   477→  1076→  1076→  buildVend(req: VendRequest): HttpCall;
+   478→  1077→  1077→  mapVend(httpStatus: number, body: any, req: VendRequest): VendOutcome;
+   479→  1078→  1078→  buildStatus?(reference: string): HttpCall;
+   480→  1079→  1079→  mapStatus?(httpStatus: number, body: any, reference: string): VendOutcome;
+   481→  1080→  1080→  buildValidate?(meterNumber: string, country: Country, municipality?: string): HttpCall;
+   482→  1081→  1081→  mapValidate?(httpStatus: number, body: any): MeterInfo;
+   483→  1082→  1082→  timeoutMs?: number;
+   484→  1083→  1083→  fetchImpl?: typeof fetch;
+   485→  1084→  1084→}
+   486→  1085→  1085→
+   487→  1086→  1086→export class HttpVendingAdapter implements VendingProvider {
+   488→  1087→  1087→  readonly id: string;
+   489→  1088→  1088→  constructor(private cfg: HttpAdapterConfig) { this.id = cfg.id; }
+   490→  1089→  1089→
+   491→  1090→  1090→  supports(c: VendCommodity, country: Country) { return this.cfg.supported.some((s) => s.commodity === c && s.country === country); }
+   492→  1091→  1091→
+   493→  1092→  1092→  private async call(c: HttpCall): Promise<{ status: number; body: any }> {
+   494→  1093→  1093→    const f = this.cfg.fetchImpl ?? fetch;
+   495→  1094→  1094→    const ctl = new AbortController();
+   496→  1095→  1095→    const timer = setTimeout(() => ctl.abort(), this.cfg.timeoutMs ?? 15_000);
+   497→  1096→  1096→    try {
+   498→  1097→  1097→      const res = await f(this.cfg.baseUrl + c.path, {
+   499→  1098→  1098→        method: c.method, signal: ctl.signal,
+   500→  1099→  1099→        headers: { 'content-type': 'application/json', accept: 'application/json', ...this.cfg.headers() },
+
+[showing lines 1-500 of 502; use offset=501 with limit to continue reading]

@@ -1,0 +1,672 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useState, useEffect } from 'react'
+     4→     4→import Link from 'next/link'
+     5→     5→import { 
+     6→     6→  Store, 
+     7→     7→  ArrowRight,
+     8→     8→  ArrowLeft,
+     9→     9→  Smartphone,
+    10→    10→  Zap,
+    11→    11→  TrendingUp,
+    12→    12→  BarChart3,
+    13→    13→  Users,
+    14→    14→  Package,
+    15→    15→  Calculator,
+    16→    16→  Megaphone,
+    17→    17→  Utensils,
+    18→    18→  ShoppingBag,
+    19→    19→  Scissors,
+    20→    20→  Pill,
+    21→    21→  Hotel,
+    22→    22→  Wrench,
+    23→    23→  Wine,
+    24→    24→  Shirt,
+    25→    25→  Dumbbell,
+    26→    26→  Baby,
+    27→    27→  Building2,
+    28→    28→  CheckCircle2,
+    29→    29→  Menu,
+    30→    30→  X,
+    31→    31→  QrCode,
+    32→    32→  MapPin,
+    33→    33→  Globe,
+    34→    34→  Truck,
+    35→    35→  CreditCard,
+    36→    36→  Sparkles,
+    37→    37→  Database,
+    38→    38→  PieChart,
+    39→    39→  FileText,
+    40→    40→  MessageSquare,
+    41→    41→  Ticket,
+    42→    42→  Gift,
+    43→    43→  Receipt,
+    44→    44→  Wallet,
+    45→    45→  Landmark,
+    46→    46→  Clock,
+    47→    47→  Target,
+    48→    48→  UserCheck,
+    49→    49→  Banknote,
+    50→    50→  RefreshCw,
+    51→    51→  Crown,
+    52→    52→  Star,
+    53→    53→  Download,
+    54→    54→  Building,
+    55→    55→  User,
+    56→    56→  Loader2
+    57→    57→} from 'lucide-react'
+    58→    58→import { Button } from '@/components/ui/button'
+    59→    59→import { Card, CardContent } from '@/components/ui/card'
+    60→    60→import { Badge } from '@/components/ui/badge'
+    61→    61→
+    62→    62→// Subscription Plans with pricing
+    63→    63→const subscriptionPlans = [
+    64→    64→  {
+    65→    65→    id: 'starter',
+    66→    66→    code: 'starter',
+    67→    67→    name: 'Starter',
+    68→    68→    price: 299,
+    69→    69→    description: 'Perfect for small businesses getting started',
+    70→    70→    color: '#6B7280',
+    71→    71→    icon: Store,
+    72→    72→    features: [
+    73→    73→      'Point of Sale (POS)',
+    74→    74→      'Inventory Management',
+    75→    75→      'Basic Reports',
+    76→    76→      'Customer Management',
+    77→    77→      'Mobile App Access',
+    78→    78→      'Up to 2 Users',
+    79→    79→      '1 Location',
+    80→    80→      'Email Support'
+    81→    81→    ],
+    82→    82→    limits: { users: 2, branches: 1, products: 500 },
+    83→    83→    trialDays: 14
+    84→    84→  },
+    85→    85→  {
+    86→    86→    id: 'pro',
+    87→    87→    code: 'pro',
+    88→    88→    name: 'Pro',
+    89→    89→    price: 499,
+    90→    90→    description: 'For growing businesses with advanced needs',
+    91→    91→    color: '#00897B',
+    92→    92→    icon: Zap,
+    93→    93→    isPopular: true,
+    94→    94→    features: [
+    95→    95→      'Everything in Starter',
+    96→    96→      'Accounting & Finance',
+    97→    97→      'Multi-Location Support',
+    98→    98→      'Staff Management',
+    99→    99→      'Integrations',
+   100→   100→      'Loyalty Program',
+   101→   101→      'Online Store',
+   102→   102→      'Up to 10 Users',
+   103→   103→      '3 Locations',
+   104→   104→      'Priority Support'
+   105→   105→    ],
+   106→   106→    limits: { users: 10, branches: 3, products: 5000 },
+   107→   107→    trialDays: 14
+   108→   108→  },
+   109→   109→  {
+   110→   110→    id: 'enterprise',
+   111→   111→    code: 'enterprise',
+   112→   112→    name: 'Enterprise',
+   113→   113→    price: 999,
+   114→   114→    description: 'For large operations with unlimited features',
+   115→   115→    color: '#7C3AED',
+   116→   116→    icon: Crown,
+   117→   117→    features: [
+   118→   118→      'Everything in Pro',
+   119→   119→      'API Access',
+   120→   120→      'White Label Options',
+   121→   121→      'Dedicated Support',
+   122→   122→      'Custom Reports',
+   123→   123→      'Audit Logs',
+   124→   124→      'GroSupply Pro',
+   125→   125→      'GroCredit Access',
+   126→   126→      'Up to 50 Users',
+   127→   127→      '10 Locations',
+   128→   128→      'SSO Authentication'
+   129→   129→    ],
+   130→   130→    limits: { users: 50, branches: 10, products: 50000 },
+   131→   131→    trialDays: 30
+   132→   132→  }
+   133→   133→]
+   134→   134→
+   135→   135→// Business Verticals
+   136→   136→const businessVerticals = [
+   137→   137→  { name: 'Food & Beverage', icon: Utensils, subCount: 8 },
+   138→   138→  { name: 'Liquor & Nightlife', icon: Wine, subCount: 6 },
+   139→   139→  { name: 'Grocery & FMCG', icon: ShoppingBag, subCount: 7 },
+   140→   140→  { name: 'Health & Beauty', icon: Scissors, subCount: 7 },
+   141→   141→  { name: 'Fashion & Apparel', icon: Shirt, subCount: 6 },
+   142→   142→  { name: 'Health & Pharmacy', icon: Pill, subCount: 6 },
+   143→   143→  { name: 'Hospitality', icon: Hotel, subCount: 7 },
+   144→   144→  { name: 'Hardware & Building', icon: Wrench, subCount: 6 },
+   145→   145→  { name: 'Electronics & Tech', icon: Smartphone, subCount: 4 },
+   146→   146→  { name: 'Sport & Leisure', icon: Dumbbell, subCount: 6 },
+   147→   147→  { name: 'Childcare & Education', icon: Baby, subCount: 5 },
+   148→   148→  { name: 'Professional Services', icon: Building2, subCount: 6 },
+   149→   149→]
+   150→   150→
+   151→   151→// Core Features
+   152→   152→const coreFeatures = [
+   153→   153→  { id: 'smart-pos', name: 'Smart POS', tagline: 'Vertical-Specific POS Layouts', description: 'Every business type gets a purpose-built POS screen layout.', icon: Store, color: '#00897B' },
+   154→   154→  { id: 'inventory', name: 'Inventory Management', tagline: 'Vertical-Aware Stock Control', description: 'Pre-loaded SKU catalogues with 3,930+ items.', icon: Package, color: '#00897B' },
+   155→   155→  { id: 'accounting', name: 'ERP & Accounting', tagline: 'Comprehensive Financial Management', description: 'Full double-entry ledger with vertical-specific chart of accounts.', icon: Calculator, color: '#00897B' },
+   156→   156→  { id: 'crm', name: 'CRM & Loyalty', tagline: 'Customer Engagement Engine', description: 'RFM customer analytics. Loyalty programme with 4 tiers.', icon: Users, color: '#00897B' },
+   157→   157→  { id: 'analytics', name: 'Analytics Dashboard', tagline: 'AI-Powered Business Insights', description: 'Real-time revenue dashboards. Peak hours analysis.', icon: BarChart3, color: '#00897B' },
+   158→   158→  { id: 'hrm-payroll', name: 'HRM & Payroll', tagline: 'Complete Workforce Management', description: 'PAYE/UIF/SDL calculations. Payslip generation.', icon: UserCheck, color: '#00897B' },
+   159→   159→]
+   160→   160→
+   161→   161→// EFT Payment Details
+   162→   162→const eftDetails = {
+   163→   163→  bankName: 'FNB Bank',
+   164→   164→  accountHolder: 'Groway (Pty) Ltd',
+   165→   165→  accountNumber: '63100111169',
+   166→   166→  accountType: 'Business Cheque Account',
+   167→   167→  branchCode: '250655',
+   168→   168→  referencePrefix: 'GRO'
+   169→   169→}
+   170→   170→
+   171→   171→// Generate unique EFT reference
+   172→   172→function generateEFTReference(businessName: string): string {
+   173→   173→  const date = new Date().toISOString().split('T')[0].replace(/-/g, '')
+   174→   174→  const cleanName = businessName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10)
+   175→   175→  return `GRO-${cleanName}-${date}`
+   176→   176→}
+   177→   177→
+   178→   178→export default function MerchantOSLanding() {
+   179→   179→  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+   180→   180→  const [selectedPlan, setSelectedPlan] = useState(subscriptionPlans[1]) // Default to Pro
+   181→   181→
+   182→   182→  return (
+   183→   183→    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+   184→   184→      {/* Navigation */}
+   185→   185→      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-lg border-b border-gray-200/50">
+   186→   186→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   187→   187→          <div className="flex items-center justify-between h-16 sm:h-20">
+   188→   188→            <Link href="/" className="flex items-center gap-2">
+   189→   189→              <img src="/groway-logo.png" alt="Groway" className="h-8 sm:h-10 w-auto" />
+   190→   190→              <Badge variant="outline" className="hidden sm:inline-flex text-[10px] border-[#00897B]/30 text-[#00897B]">
+   191→   191→                Merchant OS
+   192→   192→              </Badge>
+   193→   193→            </Link>
+   194→   194→            
+   195→   195→            <div className="hidden md:flex items-center gap-6">
+   196→   196→              <a href="#pricing" className="text-sm font-medium text-[#757575] hover:text-[#00897B]">Pricing</a>
+   197→   197→              <a href="#features" className="text-sm font-medium text-[#757575] hover:text-[#00897B]">Features</a>
+   198→   198→              <a href="#verticals" className="text-sm font-medium text-[#757575] hover:text-[#00897B]">Verticals</a>
+   199→   199→              <a href="#payment" className="text-sm font-medium text-[#757575] hover:text-[#00897B]">Payment</a>
+   200→   200→            </div>
+   201→   201→            
+   202→   202→            <div className="hidden md:flex items-center gap-3">
+   203→   203→              <Link href="/merchant-os/login">
+   204→   204→                <Button variant="ghost" className="text-[#1A1A1A] font-medium">Sign In</Button>
+   205→   205→              </Link>
+   206→   206→              <Link href="/merchant-os/signup">
+   207→   207→                <Button className="bg-[#00897B] hover:bg-[#00695C] text-white font-medium px-5">
+   208→   208→                  Start Free Trial
+   209→   209→                </Button>
+   210→   210→              </Link>
+   211→   211→            </div>
+   212→   212→
+   213→   213→            <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+   214→   214→              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+   215→   215→            </button>
+   216→   216→          </div>
+   217→   217→        </div>
+   218→   218→
+   219→   219→        {mobileMenuOpen && (
+   220→   220→          <div className="md:hidden bg-white border-t border-gray-200/50 py-4 px-4 space-y-4">
+   221→   221→            <a href="#pricing" className="block text-sm font-medium text-[#757575]">Pricing</a>
+   222→   222→            <a href="#features" className="block text-sm font-medium text-[#757575]">Features</a>
+   223→   223→            <a href="#verticals" className="block text-sm font-medium text-[#757575]">Verticals</a>
+   224→   224→            <a href="#payment" className="block text-sm font-medium text-[#757575]">Payment</a>
+   225→   225→            <div className="pt-4 border-t border-gray-200/50 flex gap-3">
+   226→   226→              <Link href="/merchant-os/login" className="flex-1">
+   227→   227→                <Button variant="outline" className="w-full">Sign In</Button>
+   228→   228→              </Link>
+   229→   229→              <Link href="/merchant-os/signup" className="flex-1">
+   230→   230→                <Button className="w-full bg-[#00897B] hover:bg-[#00695C] text-white">Sign Up</Button>
+   231→   231→              </Link>
+   232→   232→            </div>
+   233→   233→          </div>
+   234→   234→        )}
+   235→   235→      </nav>
+   236→   236→
+   237→   237→      {/* Hero Section */}
+   238→   238→      <header className="relative overflow-hidden bg-gradient-to-br from-[#00695C] via-[#00897B] to-[#4CAF50] pt-10 sm:pt-16 lg:pt-20 pb-16 sm:pb-24">
+   239→   239→        <div className="absolute inset-0 bg-grid opacity-20" />
+   240→   240→        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/5 to-transparent" />
+   241→   241→        
+   242→   242→        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   243→   243→          <div className="text-center">
+   244→   244→            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
+   245→   245→              <Store className="h-3.5 w-3.5 text-green-300" />
+   246→   246→              <span className="text-xs sm:text-sm font-medium text-white">Multi-Vertical Business Operating System</span>
+   247→   247→            </div>
+   248→   248→            
+   249→   249→            <p className="text-lg sm:text-xl font-medium text-teal-200 mb-4">
+   250→   250→              Grow your Business, your way
+   251→   251→            </p>
+   252→   252→            
+   253→   253→            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-5 tracking-tight leading-tight">
+   254→   254→              One Platform.
+   255→   255→              <br />
+   256→   256→              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-green-200 to-white">
+   257→   257→                Every Business Type.
+   258→   258→              </span>
+   259→   259→            </h1>
+   260→   260→            
+   261→   261→            <p className="text-base sm:text-lg text-teal-100/90 max-w-3xl mx-auto mb-8">
+   262→   262→              From Shisa Nyama to pharmacy, from spaza shop to hotel — each vertical gets 
+   263→   263→              its own POS layout, SKU catalogue, compliance rules, and chart of accounts.
+   264→   264→            </p>
+   265→   265→            
+   266→   266→            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+   267→   267→              <Link href="/merchant-os/signup">
+   268→   268→                <Button size="lg" className="bg-white text-[#00897B] hover:bg-teal-50 font-semibold px-8 py-6 text-base shadow-xl">
+   269→   269→                  <Store className="mr-2 h-4 w-4" />
+   270→   270→                  Start Free Trial
+   271→   271→                </Button>
+   272→   272→              </Link>
+   273→   273→              <Link href="#pricing">
+   274→   274→                <Button size="lg" variant="outline" className="bg-transparent text-white border-white/30 hover:bg-white/10 font-semibold px-8 py-6">
+   275→   275→                  View Pricing
+   276→   276→                </Button>
+   277→   277→              </Link>
+   278→   278→            </div>
+   279→   279→            
+   280→   280→            <p className="text-sm text-teal-200/80 mt-4">
+   281→   281→              Free 14-day trial • No credit card required • Cancel anytime
+   282→   282→            </p>
+   283→   283→          </div>
+   284→   284→        </div>
+   285→   285→        
+   286→   286→        <div className="absolute bottom-0 left-0 right-0">
+   287→   287→          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
+   288→   288→            <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="#FAFAFA"/>
+   289→   289→          </svg>
+   290→   290→        </div>
+   291→   291→      </header>
+   292→   292→
+   293→   293→      {/* Pricing Section */}
+   294→   294→      <section id="pricing" className="py-12 sm:py-20 bg-[#FAFAFA]">
+   295→   295→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   296→   296→          <div className="text-center mb-12">
+   297→   297→            <Badge variant="outline" className="mb-3 px-3 py-1 border-[#00897B]/30 text-[#00897B] bg-[#E0F2F1] text-xs">
+   298→   298→              <CreditCard className="h-3 w-3 mr-1" />
+   299→   299→              Simple Pricing
+   300→   300→            </Badge>
+   301→   301→            <h2 className="text-2xl sm:text-3xl font-bold text-[#1A1A1A] mb-3">
+   302→   302→              Choose Your <span className="text-[#00897B]">Plan</span>
+   303→   303→            </h2>
+   304→   304→            <p className="text-sm sm:text-base text-[#757575] max-w-2xl mx-auto">
+   305→   305→              Start with a free trial. Upgrade when you&apos;re ready. No hidden fees.
+   306→   306→            </p>
+   307→   307→          </div>
+   308→   308→          
+   309→   309→          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+   310→   310→            {subscriptionPlans.map((plan) => (
+   311→   311→              <div
+   312→   312→                key={plan.code}
+   313→   313→                className={`relative rounded-xl border-2 transition-all ${
+   314→   314→                  plan.isPopular 
+   315→   315→                    ? 'border-[#00897B] shadow-xl scale-105' 
+   316→   316→                    : 'border-gray-200 hover:border-[#00897B]/50'
+   317→   317→                }`}
+   318→   318→              >
+   319→   319→                {plan.isPopular && (
+   320→   320→                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+   321→   321→                    <Badge className="bg-[#00897B] text-white px-3 py-1">
+   322→   322→                      <Star className="h-3 w-3 mr-1" />
+   323→   323→                      Most Popular
+   324→   324→                    </Badge>
+   325→   325→                  </div>
+   326→   326→                )}
+   327→   327→                
+   328→   328→                <div className="p-6 text-center">
+   329→   329→                  <div 
+   330→   330→                    className="w-12 h-12 mx-auto mb-3 rounded-xl flex items-center justify-center"
+   331→   331→                    style={{ backgroundColor: `${plan.color}20`, color: plan.color }}
+   332→   332→                  >
+   333→   333→                    <plan.icon className="h-6 w-6" />
+   334→   334→                  </div>
+   335→   335→                  
+   336→   336→                  <h3 className="text-xl font-bold text-[#1A1A1A]">{plan.name}</h3>
+   337→   337→                  <p className="text-xs text-[#757575] mt-1 mb-4">{plan.description}</p>
+   338→   338→                  
+   339→   339→                  <div className="mb-6">
+   340→   340→                    <span className="text-4xl font-bold text-[#1A1A1A]">R{plan.price}</span>
+   341→   341→                    <span className="text-[#757575]">/month</span>
+   342→   342→                  </div>
+   343→   343→                  
+   344→   344→                  <div className="space-y-2 text-left mb-6">
+   345→   345→                    {plan.features.slice(0, 6).map((feature, idx) => (
+   346→   346→                      <div key={idx} className="flex items-center gap-2 text-sm text-[#424242]">
+   347→   347→                        <CheckCircle2 className="h-4 w-4 text-[#00897B] flex-shrink-0" />
+   348→   348→                        <span>{feature}</span>
+   349→   349→                      </div>
+   350→   350→                    ))}
+   351→   351→                    {plan.features.length > 6 && (
+   352→   352→                      <div className="text-xs text-[#757575] text-center pt-2">
+   353→   353→                        +{plan.features.length - 6} more features
+   354→   354→                      </div>
+   355→   355→                    )}
+   356→   356→                  </div>
+   357→   357→                  
+   358→   358→                  <div className="text-xs text-[#757575] border-t border-gray-200 pt-4 mb-4">
+   359→   359→                    {plan.limits.users} users • {plan.limits.branches} location{plan.limits.branches > 1 ? 's' : ''} • {plan.limits.products.toLocaleString()} products
+   360→   360→                  </div>
+   361→   361→                  
+   362→   362→                  <Link href={`/merchant-os/signup?plan=${plan.code}`}>
+   363→   363→                    <Button 
+   364→   364→                      className={`w-full py-5 font-medium ${
+   365→   365→                        plan.isPopular 
+   366→   366→                          ? 'bg-[#00897B] hover:bg-[#00695C] text-white' 
+   367→   367→                          : 'bg-gray-100 hover:bg-gray-200 text-[#1A1A1A]'
+   368→   368→                      }`}
+   369→   369→                    >
+   370→   370→                      Start {plan.trialDays}-Day Free Trial
+   371→   371→                    </Button>
+   372→   372→                  </Link>
+   373→   373→                </div>
+   374→   374→              </div>
+   375→   375→            ))}
+   376→   376→          </div>
+   377→   377→        </div>
+   378→   378→      </section>
+   379→   379→
+   380→   380→      {/* How Signup Works */}
+   381→   381→      <section className="py-12 sm:py-16 bg-white">
+   382→   382→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   383→   383→          <div className="text-center mb-10">
+   384→   384→            <h2 className="text-2xl sm:text-3xl font-bold text-[#1A1A1A] mb-3">
+   385→   385→              How to Get Started
+   386→   386→            </h2>
+   387→   387→            <p className="text-sm sm:text-base text-[#757575]">
+   388→   388→              Sign up in minutes. No technical knowledge required.
+   389→   389→            </p>
+   390→   390→          </div>
+   391→   391→          
+   392→   392→          <div className="grid md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+   393→   393→            {[
+   394→   394→              { step: '1', title: 'Choose Plan', desc: 'Select Starter, Pro, or Enterprise based on your needs.', icon: CreditCard, color: '#6B7280' },
+   395→   395→              { step: '2', title: 'Create Account', desc: 'Sign up with Gmail, Apple, or your email address.', icon: User, color: '#00897B' },
+   396→   396→              { step: '3', title: 'Setup Business', desc: 'Tell us your business name and choose your vertical.', icon: Store, color: '#7C3AED' },
+   397→   397→              { step: '4', title: 'Start Selling', desc: 'Your POS is pre-configured. Start accepting payments!', icon: TrendingUp, color: '#4CAF50' },
+   398→   398→            ].map((item, index) => (
+   399→   399→              <div key={index} className="relative text-center p-5 bg-[#FAFAFA] rounded-xl border border-gray-200">
+   400→   400→                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ backgroundColor: item.color }}>
+   401→   401→                  {item.step}
+   402→   402→                </div>
+   403→   403→                <div className="w-10 h-10 mx-auto mb-3 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${item.color}20`, color: item.color }}>
+   404→   404→                  <item.icon className="h-5 w-5" />
+   405→   405→                </div>
+   406→   406→                <h3 className="text-sm font-semibold text-[#1A1A1A] mb-1">{item.title}</h3>
+   407→   407→                <p className="text-xs text-[#757575]">{item.desc}</p>
+   408→   408→              </div>
+   409→   409→            ))}
+   410→   410→          </div>
+   411→   411→        </div>
+   412→   412→      </section>
+   413→   413→
+   414→   414→      {/* Features Section */}
+   415→   415→      <section id="features" className="py-12 sm:py-20 bg-[#FAFAFA]">
+   416→   416→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   417→   417→          <div className="text-center mb-12">
+   418→   418→            <Badge variant="outline" className="mb-3 px-3 py-1 border-[#00897B]/30 text-[#00897B] bg-[#E0F2F1] text-xs">
+   419→   419→              <Sparkles className="h-3 w-3 mr-1" />
+   420→   420→              Complete Business OS
+   421→   421→            </Badge>
+   422→   422→            <h2 className="text-2xl sm:text-3xl font-bold text-[#1A1A1A] mb-3">
+   423→   423→              Everything You Need to Run Your Business
+   424→   424→            </h2>
+   425→   425→            <p className="text-sm sm:text-base text-[#757575] max-w-2xl mx-auto">
+   426→   426→              Merchant OS replaces your POS, accounting, payroll, CRM, and inventory systems — all integrated.
+   427→   427→            </p>
+   428→   428→          </div>
+   429→   429→          
+   430→   430→          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+   431→   431→            {coreFeatures.map((feature) => (
+   432→   432→              <Card key={feature.id} className="group bg-white border border-gray-200 hover:border-[#00897B]/30 hover:shadow-lg transition-all">
+   433→   433→                <CardContent className="p-5 sm:p-6">
+   434→   434→                  <div className="w-10 h-10 mb-4 bg-[#E0F2F1] text-[#00897B] rounded-lg flex items-center justify-center group-hover:bg-[#00897B] group-hover:text-white transition-colors">
+   435→   435→                    <feature.icon className="h-5 w-5" />
+   436→   436→                  </div>
+   437→   437→                  <h3 className="text-base sm:text-lg font-bold text-[#1A1A1A] mb-1">{feature.name}</h3>
+   438→   438→                  <p className="text-xs sm:text-sm font-medium text-[#00897B] mb-2">{feature.tagline}</p>
+   439→   439→                  <p className="text-xs text-[#757575]">{feature.description}</p>
+   440→   440→                </CardContent>
+   441→   441→              </Card>
+   442→   442→            ))}
+   443→   443→          </div>
+   444→   444→        </div>
+   445→   445→      </section>
+   446→   446→
+   447→   447→      {/* Verticals Section */}
+   448→   448→      <section id="verticals" className="py-12 sm:py-20 bg-white">
+   449→   449→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   450→   450→          <div className="text-center mb-10">
+   451→   451→            <Badge variant="outline" className="mb-3 px-3 py-1 border-[#00897B]/30 text-[#00897B] bg-[#E0F2F1] text-xs">
+   452→   452→              <Store className="h-3 w-3 mr-1" />
+   453→   453→              12 Verticals · 47 Sub-Verticals
+   454→   454→            </Badge>
+   455→   455→            <h2 className="text-2xl sm:text-3xl font-bold text-[#1A1A1A] mb-3">
+   456→   456→              Purpose-Built for <span className="text-[#00897B]">Every Business Type</span>
+   457→   457→            </h2>
+   458→   458→          </div>
+   459→   459→
+   460→   460→          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+   461→   461→            {businessVerticals.map((vertical, index) => (
+   462→   462→              <div key={index} className="group flex flex-col items-center text-center p-3 sm:p-4 rounded-lg bg-[#FAFAFA] hover:bg-white border border-gray-200 hover:border-[#00897B]/30 hover:shadow-md transition-all cursor-pointer">
+   463→   463→                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#E0F2F1] text-[#00897B] flex items-center justify-center mb-2 group-hover:bg-[#00897B] group-hover:text-white transition-colors">
+   464→   464→                  <vertical.icon className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+   465→   465→                </div>
+   466→   466→                <h3 className="text-[10px] sm:text-xs font-medium text-[#1A1A1A] leading-tight">
+   467→   467→                  {vertical.name}
+   468→   468→                </h3>
+   469→   469→                <p className="text-[10px] text-[#757575] mt-0.5">{vertical.subCount} sub-types</p>
+   470→   470→              </div>
+   471→   471→            ))}
+   472→   472→          </div>
+   473→   473→        </div>
+   474→   474→      </section>
+   475→   475→
+   476→   476→      {/* Payment Options Section */}
+   477→   477→      <section id="payment" className="py-12 sm:py-20 bg-[#FAFAFA]">
+   478→   478→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   479→   479→          <div className="text-center mb-10">
+   480→   480→            <Badge variant="outline" className="mb-3 px-3 py-1 border-[#00897B]/30 text-[#00897B] bg-[#E0F2F1] text-xs">
+   481→   481→              <Landmark className="h-3 w-3 mr-1" />
+   482→   482→              Payment Options
+   483→   483→            </Badge>
+   484→   484→            <h2 className="text-2xl sm:text-3xl font-bold text-[#1A1A1A] mb-3">
+   485→   485→              Pay Your <span className="text-[#00897B]">Subscription</span>
+   486→   486→            </h2>
+   487→   487→            <p className="text-sm sm:text-base text-[#757575] max-w-2xl mx-auto">
+   488→   488→              Choose how you want to pay for your subscription. EFT or Paystack.
+   489→   489→            </p>
+   490→   490→          </div>
+   491→   491→          
+   492→   492→          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+   493→   493→            {/* EFT Option */}
+   494→   494→            <Card className="bg-white border border-gray-200">
+   495→   495→              <CardContent className="p-6">
+   496→   496→                <div className="flex items-center gap-3 mb-4">
+   497→   497→                  <div className="w-10 h-10 rounded-lg bg-[#00897B]/10 text-[#00897B] flex items-center justify-center">
+   498→   498→                    <Building className="h-5 w-5" />
+   499→   499→                  </div>
+   500→   500→                  <div>
+   501→   501→                    <h3 className="text-lg font-bold text-[#1A1A1A]">EFT / Bank Transfer</h3>
+   502→   502→                    <p className="text-xs text-[#757575]">Direct bank deposit</p>
+   503→   503→                  </div>
+   504→   504→                </div>
+   505→   505→                
+   506→   506→                <div className="bg-[#F5F5F5] rounded-lg p-4 space-y-2 mb-4">
+   507→   507→                  <div className="flex justify-between text-sm">
+   508→   508→                    <span className="text-[#757575]">Bank:</span>
+   509→   509→                    <span className="font-medium text-[#1A1A1A]">{eftDetails.bankName}</span>
+   510→   510→                  </div>
+   511→   511→                  <div className="flex justify-between text-sm">
+   512→   512→                    <span className="text-[#757575]">Account Holder:</span>
+   513→   513→                    <span className="font-medium text-[#1A1A1A]">{eftDetails.accountHolder}</span>
+   514→   514→                  </div>
+   515→   515→                  <div className="flex justify-between text-sm">
+   516→   516→                    <span className="text-[#757575]">Account Number:</span>
+   517→   517→                    <span className="font-medium text-[#1A1A1A] font-mono">{eftDetails.accountNumber}</span>
+   518→   518→                  </div>
+   519→   519→                  <div className="flex justify-between text-sm">
+   520→   520→                    <span className="text-[#757575]">Branch Code:</span>
+   521→   521→                    <span className="font-medium text-[#1A1A1A] font-mono">{eftDetails.branchCode}</span>
+   522→   522→                  </div>
+   523→   523→                </div>
+   524→   524→                
+   525→   525→                <div className="bg-[#E0F2F1] rounded-lg p-3 mb-4">
+   526→   526→                  <p className="text-xs text-[#00897B] font-medium mb-1">Payment Reference Format:</p>
+   527→   527→                  <p className="text-sm font-mono text-[#1A1A1A]">GRO-[CompanyName]-[YYYYMMDD]</p>
+   528→   528→                  <p className="text-[10px] text-[#757575] mt-1">Example: GRO-BURGERKING-20250115</p>
+   529→   529→                </div>
+   530→   530→                
+   531→   531→                <p className="text-xs text-[#757575]">
+   532→   532→                  Use your company name and today&apos;s date in the reference. Email proof of payment to accounts@groway.co.za
+   533→   533→                </p>
+   534→   534→              </CardContent>
+   535→   535→            </Card>
+   536→   536→            
+   537→   537→            {/* Paystack Option */}
+   538→   538→            <Card className="bg-white border border-gray-200">
+   539→   539→              <CardContent className="p-6">
+   540→   540→                <div className="flex items-center gap-3 mb-4">
+   541→   541→                  <div className="w-10 h-10 rounded-lg bg-[#6B7280]/10 text-[#6B7280] flex items-center justify-center">
+   542→   542→                    <CreditCard className="h-5 w-5" />
+   543→   543→                  </div>
+   544→   544→                  <div>
+   545→   545→                    <h3 className="text-lg font-bold text-[#1A1A1A]">Paystack</h3>
+   546→   546→                    <p className="text-xs text-[#757575]">Card, EFT, QR, USSD</p>
+   547→   547→                  </div>
+   548→   548→                </div>
+   549→   549→                
+   550→   550→                <div className="space-y-3 mb-4">
+   551→   551→                  <div className="flex items-center gap-2 text-sm text-[#424242]">
+   552→   552→                    <CheckCircle2 className="h-4 w-4 text-[#00897B]" />
+   553→   553→                    <span>Pay with Card (Visa, Mastercard)</span>
+   554→   554→                  </div>
+   555→   555→                  <div className="flex items-center gap-2 text-sm text-[#424242]">
+   556→   556→                    <CheckCircle2 className="h-4 w-4 text-[#00897B]" />
+   557→   557→                    <span>Instant EFT from major banks</span>
+   558→   558→                  </div>
+   559→   559→                  <div className="flex items-center gap-2 text-sm text-[#424242]">
+   560→   560→                    <CheckCircle2 className="h-4 w-4 text-[#00897B]" />
+   561→   561→                    <span>QR code payment</span>
+   562→   562→                  </div>
+   563→   563→                  <div className="flex items-center gap-2 text-sm text-[#424242]">
+   564→   564→                    <CheckCircle2 className="h-4 w-4 text-[#00897B]" />
+   565→   565→                    <span>USSD for mobile banking</span>
+   566→   566→                  </div>
+   567→   567→                </div>
+   568→   568→                
+   569→   569→                <div className="bg-[#F5F5F5] rounded-lg p-3">
+   570→   570→                  <p className="text-xs text-[#757575]">
+   571→   571→                    Paystack is a secure payment gateway. Your card details are encrypted and never stored on our servers.
+   572→   572→                  </p>
+   573→   573→                </div>
+   574→   574→                
+   575→   575→                <Badge variant="outline" className="mt-4 text-[10px] border-green-500/30 text-green-600">
+   576→   576→                  Instant activation
+   577→   577→                </Badge>
+   578→   578→              </CardContent>
+   579→   579→            </Card>
+   580→   580→          </div>
+   581→   581→        </div>
+   582→   582→      </section>
+   583→   583→
+   584→   584→      {/* Compliance */}
+   585→   585→      <section className="py-10 sm:py-14 bg-white">
+   586→   586→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   587→   587→          <div className="bg-[#1A1A1A] rounded-xl p-6 sm:p-8 text-white">
+   588→   588→            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+   589→   589→              <div>
+   590→   590→                <h3 className="text-lg sm:text-xl font-bold mb-2">Compliance Built-In</h3>
+   591→   591→                <p className="text-sm text-gray-400">POPIA · FICA · BCEA · VAT · NCA · PCI-DSS Level 1</p>
+   592→   592→              </div>
+   593→   593→              <div className="flex flex-wrap gap-3">
+   594→   594→                {['PCI-DSS L1', 'POPIA', 'SARB', 'NCR', 'FSCA'].map((badge, index) => (
+   595→   595→                  <div key={index} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 border border-white/10">
+   596→   596→                    <CheckCircle2 className="h-3.5 w-3.5 text-[#4CAF50]" />
+   597→   597→                    <span className="text-xs font-medium">{badge}</span>
+   598→   598→                  </div>
+   599→   599→                ))}
+   600→   600→              </div>
+   601→   601→            </div>
+   602→   602→          </div>
+   603→   603→        </div>
+   604→   604→      </section>
+   605→   605→
+   606→   606→      {/* CTA Section */}
+   607→   607→      <section className="py-12 sm:py-20 bg-[#FAFAFA]">
+   608→   608→        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+   609→   609→          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#00695C] via-[#00897B] to-[#4CAF50] p-6 sm:p-10 text-center">
+   610→   610→            <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+   611→   611→            
+   612→   612→            <div className="relative z-10">
+   613→   613→              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+   614→   614→                Ready to Transform Your Business?
+   615→   615→              </h2>
+   616→   616→              <p className="text-sm sm:text-base text-teal-100 mb-6">
+   617→   617→                Join thousands of South African businesses using Groway Merchant OS.
+   618→   618→              </p>
+   619→   619→              
+   620→   620→              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+   621→   621→                <Link href="/merchant-os/signup">
+   622→   622→                  <Button size="lg" className="bg-white text-[#00897B] hover:bg-teal-50 font-semibold px-8 py-5 shadow-lg">
+   623→   623→                    <Store className="mr-2 h-4 w-4" />
+   624→   624→                    Start Free Trial
+   625→   625→                  </Button>
+   626→   626→                </Link>
+   627→   627→                <Link href="/merchant-os/login">
+   628→   628→                  <Button size="lg" variant="outline" className="bg-transparent text-white border-white/30 hover:bg-white/10 font-semibold px-8 py-5">
+   629→   629→                    Sign In
+   630→   630→                  </Button>
+   631→   631→                </Link>
+   632→   632→              </div>
+   633→   633→            </div>
+   634→   634→          </div>
+   635→   635→        </div>
+   636→   636→      </section>
+   637→   637→
+   638→   638→      {/* Footer */}
+   639→   639→      <footer className="mt-auto py-8 sm:py-10 bg-white border-t border-gray-200">
+   640→   640→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   641→   641→          <div className="flex flex-col gap-6">
+   642→   642→            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+   643→   643→              <div className="flex flex-col sm:flex-row items-center gap-2">
+   644→   644→                <img src="/groway-logo.png" alt="Groway" className="h-7 w-auto" />
+   645→   645→                <span className="text-xs text-[#757575]">© 2025 Groway (Pty) Ltd. All rights reserved.</span>
+   646→   646→              </div>
+   647→   647→              
+   648→   648→              <div className="flex items-center gap-5 text-xs text-[#757575]">
+   649→   649→                <Link href="/" className="hover:text-[#00897B] transition-colors flex items-center gap-1">
+   650→   650→                  <ArrowLeft className="h-3 w-3" />
+   651→   651→                  Home
+   652→   652→                </Link>
+   653→   653→                <a href="#" className="hover:text-[#00897B] transition-colors">Privacy Policy</a>
+   654→   654→                <a href="#" className="hover:text-[#00897B] transition-colors">Terms of Service</a>
+   655→   655→                <a href="#" className="hover:text-[#00897B] transition-colors">Contact</a>
+   656→   656→              </div>
+   657→   657→            </div>
+   658→   658→            
+   659→   659→            <div className="flex flex-wrap justify-center gap-2">
+   660→   660→              {['PCI-DSS L1', 'POPIA', 'SARB', 'NCR', 'FSCA'].map((badge, index) => (
+   661→   661→                <Badge key={index} variant="outline" className="text-[10px] border-[#00897B]/30 text-[#00897B] py-0.5">
+   662→   662→                  {badge}
+   663→   663→                </Badge>
+   664→   664→              ))}
+   665→   665→            </div>
+   666→   666→          </div>
+   667→   667→        </div>
+   668→   668→      </footer>
+   669→   669→    </div>
+   670→   670→  )
+   671→   671→}
+   672→   672→

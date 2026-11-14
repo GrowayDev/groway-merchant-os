@@ -1,0 +1,822 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect } from 'react'
+     4→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     5→import { Badge } from '@/components/ui/badge'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Input } from '@/components/ui/input'
+     8→import { ScrollArea } from '@/components/ui/scroll-area'
+     9→import { Progress } from '@/components/ui/progress'
+    10→import { Separator } from '@/components/ui/separator'
+    11→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    12→import {
+    13→  Dialog,
+    14→  DialogContent,
+    15→  DialogFooter,
+    16→  DialogHeader,
+    17→  DialogTitle,
+    18→} from '@/components/ui/dialog'
+    19→import {
+    20→  Select,
+    21→  SelectContent,
+    22→  SelectItem,
+    23→  SelectTrigger,
+    24→  SelectValue,
+    25→} from '@/components/ui/select'
+    26→import {
+    27→  Table,
+    28→  TableBody,
+    29→  TableCell,
+    30→  TableHead,
+    31→  TableHeader,
+    32→  TableRow,
+    33→} from '@/components/ui/table'
+    34→import {
+    35→  FileBarChart,
+    36→  Users,
+    37→  TrendingUp,
+    38→  DollarSign,
+    39→  Download,
+    40→  Plus,
+    41→  Calendar,
+    42→  Search,
+    43→  Filter,
+    44→  Building2,
+    45→  Mail,
+    46→  Phone,
+    47→  PieChart,
+    48→  BarChart3,
+    49→  Eye,
+    50→  Share2,
+    51→  Clock,
+    52→  CheckCircle2,
+    53→  AlertCircle,
+    54→} from 'lucide-react'
+    55→
+    56→// ============================================
+    57→// TYPES
+    58→// ============================================
+    59→
+    60→interface Stakeholder {
+    61→  id: string
+    62→  name: string
+    63→  email: string
+    64→  phone: string
+    65→  role: 'investor' | 'advisor' | 'board' | 'member'
+    66→  company: string
+    67→  stakePercentage: number
+    68→  status: 'active' | 'inactive' | 'pending'
+    69→  joinDate: string
+    70→  lastContact: string
+    71→}
+    72→
+    73→interface Report {
+    74→  id: string
+    75→  title: string
+    76→  type: 'financial' | 'operational' | 'compliance' | 'summary'
+    77→  period: string
+    78→  status: 'draft' | 'published' | 'shared'
+    79→  generatedDate: string
+    80→  generatedBy: string
+    81→}
+    82→
+    83→interface FinancialSummary {
+    84→  revenue: number
+    85→  expenses: number
+    86→  profitMargin: number
+    87→  revenueGrowth: number
+    88→  topCategory: string
+    89→  topCategoryAmount: number
+    90→}
+    91→
+    92→// ============================================
+    93→// MOCK DATA
+    94→// ============================================
+    95→
+    96→const mockStakeholders: Stakeholder[] = [
+    97→  { id: 'sh-001', name: 'John Mokoena', email: 'john.mokoena@invest.co.za', phone: '+27 82 345 6789', role: 'investor', company: 'Mokoena Capital Partners', stakePercentage: 25.5, status: 'active', joinDate: '2022-03-15', lastContact: '2025-01-10' },
+    98→  { id: 'sh-002', name: 'Sarah van der Merwe', email: 'sarah@vdm-advisory.co.za', phone: '+27 83 456 7890', role: 'advisor', company: 'VDM Advisory Services', stakePercentage: 5.0, status: 'active', joinDate: '2022-06-01', lastContact: '2025-01-08' },
+    99→  { id: 'sh-003', name: 'Thabo Nkosi', email: 'thabo.nkosi@boardtrust.co.za', phone: '+27 84 567 8901', role: 'board', company: 'Nkosi Holdings', stakePercentage: 18.0, status: 'active', joinDate: '2021-11-20', lastContact: '2025-01-12' },
+   100→  { id: 'sh-004', name: 'Priya Govender', email: 'priya@govender-invest.co.za', phone: '+27 85 678 9012', role: 'investor', company: 'Govender Family Trust', stakePercentage: 15.0, status: 'active', joinDate: '2023-01-10', lastContact: '2025-01-05' },
+   101→  { id: 'sh-005', name: 'David Botha', email: 'david.botha@retail.co.za', phone: '+27 86 789 0123', role: 'member', company: 'Botha Retail Group', stakePercentage: 10.0, status: 'active', joinDate: '2023-04-22', lastContact: '2024-12-28' },
+   102→  { id: 'sh-006', name: 'Nomsa Dlamini', email: 'nomsa@fmcg-consult.co.za', phone: '+27 87 890 1234', role: 'advisor', company: 'FMCG Solutions Consulting', stakePercentage: 0, status: 'active', joinDate: '2023-07-15', lastContact: '2025-01-11' },
+   103→  { id: 'sh-007', name: 'Michael du Plessis', email: 'michael@dp-fund.co.za', phone: '+27 88 901 2345', role: 'investor', company: 'Du Plessis Investment Fund', stakePercentage: 12.5, status: 'inactive', joinDate: '2022-09-01', lastContact: '2024-10-15' },
+   104→  { id: 'sh-008', name: 'Aisha Mohammed', email: 'aisha@supplychain.co.za', phone: '+27 89 012 3456', role: 'board', company: 'National Supply Chain Group', stakePercentage: 8.0, status: 'pending', joinDate: '2024-11-30', lastContact: '2024-12-20' },
+   105→]
+   106→
+   107→const mockReports: Report[] = [
+   108→  { id: 'rpt-001', title: 'Q4 2024 Financial Report', type: 'financial', period: 'Q4 2024', status: 'published', generatedDate: '2025-01-05', generatedBy: 'Finance Team' },
+   109→  { id: 'rpt-002', title: 'Annual Operational Summary 2024', type: 'operational', period: 'FY 2024', status: 'published', generatedDate: '2025-01-08', generatedBy: 'Operations' },
+   110→  { id: 'rpt-003', title: 'Compliance Audit Report - December', type: 'compliance', period: 'Dec 2024', status: 'shared', generatedDate: '2025-01-02', generatedBy: 'Compliance' },
+   111→  { id: 'rpt-004', title: 'Monthly Stakeholder Summary - January', type: 'summary', period: 'Jan 2025', status: 'draft', generatedDate: '2025-01-13', generatedBy: 'Admin' },
+   112→  { id: 'rpt-005', title: 'Q3 2024 Financial Review', type: 'financial', period: 'Q3 2024', status: 'published', generatedDate: '2024-10-15', generatedBy: 'Finance Team' },
+   113→  { id: 'rpt-006', title: 'Inventory & Supply Chain Report', type: 'operational', period: 'Dec 2024', status: 'shared', generatedDate: '2024-12-30', generatedBy: 'Supply Chain' },
+   114→  { id: 'rpt-007', title: 'Tax Compliance Filing Preview', type: 'compliance', period: 'FY 2024', status: 'draft', generatedDate: '2025-01-10', generatedBy: 'Finance Team' },
+   115→]
+   116→
+   117→const mockFinancialSummary: FinancialSummary = {
+   118→  revenue: 4250000,
+   119→  expenses: 3180000,
+   120→  profitMargin: 25.2,
+   121→  revenueGrowth: 12.4,
+   122→  topCategory: 'Fresh Produce',
+   123→  topCategoryAmount: 1275000,
+   124→}
+   125→
+   126→// ============================================
+   127→// COMPONENT
+   128→// ============================================
+   129→
+   130→export function StakeholderReportingView() {
+   131→  const [activeTab, setActiveTab] = useState('overview')
+   132→  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([])
+   133→  const [reports, setReports] = useState<Report[]>([])
+   134→  const [financialData, setFinancialData] = useState<FinancialSummary | null>(null)
+   135→  const [isLoading, setIsLoading] = useState(true)
+   136→  const [searchQuery, setSearchQuery] = useState('')
+   137→  const [roleFilter, setRoleFilter] = useState('all')
+   138→  const [reportTypeFilter, setReportTypeFilter] = useState('all')
+   139→  const [generateDialogOpen, setGenerateDialogOpen] = useState(false)
+   140→  const [newReportType, setNewReportType] = useState('')
+   141→  const [newReportPeriod, setNewReportPeriod] = useState('')
+   142→  const [selectedPeriod, setSelectedPeriod] = useState('month')
+   143→
+   144→  useEffect(() => {
+   145→    // Simulate API fetch with mock data
+   146→    const timer = setTimeout(() => {
+   147→      setStakeholders(mockStakeholders)
+   148→      setReports(mockReports)
+   149→      setFinancialData(mockFinancialSummary)
+   150→      setIsLoading(false)
+   151→    }, 600)
+   152→    return () => clearTimeout(timer)
+   153→  }, [])
+   154→
+   155→  const formatCurrency = (amount: number) =>
+   156→    `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+   157→
+   158→  const getStatusBadge = (status: string) => {
+   159→    switch (status) {
+   160→      case 'active':
+   161→        return <Badge className="bg-green-100 text-green-700"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>
+   162→      case 'inactive':
+   163→        return <Badge className="bg-red-100 text-red-700"><AlertCircle className="h-3 w-3 mr-1" />Inactive</Badge>
+   164→      case 'pending':
+   165→        return <Badge className="bg-amber-100 text-amber-700"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
+   166→      default:
+   167→        return <Badge>{status}</Badge>
+   168→    }
+   169→  }
+   170→
+   171→  const getRoleBadge = (role: string) => {
+   172→    switch (role) {
+   173→      case 'investor':
+   174→        return <Badge className="bg-[#E0F2F1] text-[#00695C]"><DollarSign className="h-3 w-3 mr-1" />Investor</Badge>
+   175→      case 'advisor':
+   176→        return <Badge className="bg-blue-100 text-blue-700"><FileBarChart className="h-3 w-3 mr-1" />Advisor</Badge>
+   177→      case 'board':
+   178→        return <Badge className="bg-purple-100 text-purple-700"><Building2 className="h-3 w-3 mr-1" />Board</Badge>
+   179→      case 'member':
+   180→        return <Badge className="bg-gray-100 text-gray-700"><Users className="h-3 w-3 mr-1" />Member</Badge>
+   181→      default:
+   182→        return <Badge>{role}</Badge>
+   183→    }
+   184→  }
+   185→
+   186→  const getReportStatusBadge = (status: string) => {
+   187→    switch (status) {
+   188→      case 'published':
+   189→        return <Badge className="bg-green-100 text-green-700"><CheckCircle2 className="h-3 w-3 mr-1" />Published</Badge>
+   190→      case 'shared':
+   191→        return <Badge className="bg-blue-100 text-blue-700"><Share2 className="h-3 w-3 mr-1" />Shared</Badge>
+   192→      case 'draft':
+   193→        return <Badge className="bg-amber-100 text-amber-700"><Clock className="h-3 w-3 mr-1" />Draft</Badge>
+   194→      default:
+   195→        return <Badge>{status}</Badge>
+   196→    }
+   197→  }
+   198→
+   199→  const getReportTypeBadge = (type: string) => {
+   200→    switch (type) {
+   201→      case 'financial':
+   202→        return <Badge variant="outline" className="border-[#00897B] text-[#00695C]"><DollarSign className="h-3 w-3 mr-1" />Financial</Badge>
+   203→      case 'operational':
+   204→        return <Badge variant="outline" className="border-blue-400 text-blue-600"><BarChart3 className="h-3 w-3 mr-1" />Operational</Badge>
+   205→      case 'compliance':
+   206→        return <Badge variant="outline" className="border-purple-400 text-purple-600"><CheckCircle2 className="h-3 w-3 mr-1" />Compliance</Badge>
+   207→      case 'summary':
+   208→        return <Badge variant="outline" className="border-gray-400 text-gray-600"><PieChart className="h-3 w-3 mr-1" />Summary</Badge>
+   209→      default:
+   210→        return <Badge variant="outline">{type}</Badge>
+   211→    }
+   212→  }
+   213→
+   214→  const filteredStakeholders = stakeholders.filter(s => {
+   215→    const matchesSearch = searchQuery === '' ||
+   216→      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+   217→      s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+   218→      s.company.toLowerCase().includes(searchQuery.toLowerCase())
+   219→    const matchesRole = roleFilter === 'all' || s.role === roleFilter
+   220→    return matchesSearch && matchesRole
+   221→  })
+   222→
+   223→  const filteredReports = reports.filter(r => {
+   224→    const matchesType = reportTypeFilter === 'all' || r.type === reportTypeFilter
+   225→    return matchesType
+   226→  })
+   227→
+   228→  const totalStake = stakeholders.reduce((sum, s) => sum + s.stakePercentage, 0)
+   229→  const activeInvestors = stakeholders.filter(s => s.role === 'investor' && s.status === 'active').length
+   230→
+   231→  const handleGenerateReport = () => {
+   232→    if (!newReportType || !newReportPeriod) return
+   233→    const typeLabels: Record<string, string> = { financial: 'Financial', operational: 'Operational', compliance: 'Compliance', summary: 'Summary' }
+   234→    const newReport: Report = {
+   235→      id: `rpt-${Date.now()}`,
+   236→      title: `${typeLabels[newReportType] || newReportType} Report - ${newReportPeriod}`,
+   237→      type: newReportType as Report['type'],
+   238→      period: newReportPeriod,
+   239→      status: 'draft',
+   240→      generatedDate: new Date().toISOString().split('T')[0],
+   241→      generatedBy: 'Admin',
+   242→    }
+   243→    setReports(prev => [newReport, ...prev])
+   244→    setGenerateDialogOpen(false)
+   245→    setNewReportType('')
+   246→    setNewReportPeriod('')
+   247→    setActiveTab('reports')
+   248→  }
+   249→
+   250→  // ============================================
+   251→  // LOADING STATE
+   252→  // ============================================
+   253→  if (isLoading) {
+   254→    return (
+   255→      <div className="flex-1 p-6 flex items-center justify-center">
+   256→        <div className="text-center">
+   257→          <FileBarChart className="h-8 w-8 animate-spin mx-auto mb-4 text-[#00897B]" />
+   258→          <p className="text-[#757575]">Loading stakeholder data...</p>
+   259→        </div>
+   260→      </div>
+   261→    )
+   262→  }
+   263→
+   264→  // ============================================
+   265→  // RENDER
+   266→  // ============================================
+   267→  return (
+   268→    <div className="flex flex-col h-full bg-white">
+   269→      {/* Header */}
+   270→      <div className="border-b border-gray-200 px-6 py-4">
+   271→        <div className="flex items-center justify-between flex-wrap gap-4">
+   272→          <div>
+   273→            <h1 className="text-xl font-semibold text-[#1A1A1A] flex items-center gap-2">
+   274→              <FileBarChart className="h-5 w-5 text-[#00897B]" />
+   275→              Stakeholder Reporting
+   276→            </h1>
+   277→            <p className="text-sm text-[#757575]">Manage stakeholders, generate reports & track financial performance</p>
+   278→          </div>
+   279→          <div className="flex items-center gap-2">
+   280→            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+   281→              <SelectTrigger className="w-36">
+   282→                <Calendar className="h-4 w-4 mr-2" />
+   283→                <SelectValue />
+   284→              </SelectTrigger>
+   285→              <SelectContent>
+   286→                <SelectItem value="today">Today</SelectItem>
+   287→                <SelectItem value="week">This Week</SelectItem>
+   288→                <SelectItem value="month">This Month</SelectItem>
+   289→                <SelectItem value="quarter">This Quarter</SelectItem>
+   290→                <SelectItem value="year">This Year</SelectItem>
+   291→              </SelectContent>
+   292→            </Select>
+   293→            <Button variant="outline" size="sm">
+   294→              <Download className="h-4 w-4 mr-2" />
+   295→              Export
+   296→            </Button>
+   297→            <Button className="bg-[#00897B] hover:bg-[#00695C]" size="sm" onClick={() => setGenerateDialogOpen(true)}>
+   298→              <Plus className="h-4 w-4 mr-2" />
+   299→              Generate Report
+   300→            </Button>
+   301→          </div>
+   302→        </div>
+   303→      </div>
+   304→
+   305→      {/* Tabs */}
+   306→      <div className="border-b border-gray-200 px-6">
+   307→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+   308→          <TabsList className="h-12 bg-transparent">
+   309→            <TabsTrigger value="overview" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   310→              Overview
+   311→            </TabsTrigger>
+   312→            <TabsTrigger value="stakeholders" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   313→              Stakeholders
+   314→            </TabsTrigger>
+   315→            <TabsTrigger value="reports" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   316→              Reports
+   317→            </TabsTrigger>
+   318→            <TabsTrigger value="financial" className="data-[state=active]:border-b-2 data-[state=active]:border-[#00897B] data-[state=active]:shadow-none rounded-none">
+   319→              Financial Summary
+   320→            </TabsTrigger>
+   321→          </TabsList>
+   322→
+   323→          {/* ============================================
+   324→              OVERVIEW TAB
+   325→              ============================================ */}
+   326→          <TabsContent value="overview" className="m-0 p-6">
+   327→            <ScrollArea className="h-[calc(100vh-280px)]">
+   328→              {/* Stats Cards */}
+   329→              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+   330→                <Card className="shadow-sm">
+   331→                  <CardHeader className="pb-2">
+   332→                    <CardTitle className="text-sm font-medium text-[#757575]">Total Stakeholders</CardTitle>
+   333→                  </CardHeader>
+   334→                  <CardContent>
+   335→                    <div className="flex items-center gap-3">
+   336→                      <div className="p-2 rounded-lg bg-[#E0F2F1]">
+   337→                        <Users className="h-5 w-5 text-[#00897B]" />
+   338→                      </div>
+   339→                      <div>
+   340→                        <p className="text-2xl font-bold text-[#1A1A1A]">{stakeholders.length}</p>
+   341→                        <p className="text-xs text-[#757575]">{activeInvestors} active investors</p>
+   342→                      </div>
+   343→                    </div>
+   344→                  </CardContent>
+   345→                </Card>
+   346→                <Card className="shadow-sm">
+   347→                  <CardHeader className="pb-2">
+   348→                    <CardTitle className="text-sm font-medium text-[#757575]">Reports Generated</CardTitle>
+   349→                  </CardHeader>
+   350→                  <CardContent>
+   351→                    <div className="flex items-center gap-3">
+   352→                      <div className="p-2 rounded-lg bg-blue-50">
+   353→                        <FileBarChart className="h-5 w-5 text-blue-600" />
+   354→                      </div>
+   355→                      <div>
+   356→                        <p className="text-2xl font-bold text-[#1A1A1A]">{reports.length}</p>
+   357→                        <p className="text-xs text-[#757575]">{reports.filter(r => r.status === 'published').length} published</p>
+   358→                      </div>
+   359→                    </div>
+   360→                  </CardContent>
+   361→                </Card>
+   362→                <Card className="shadow-sm">
+   363→                  <CardHeader className="pb-2">
+   364→                    <CardTitle className="text-sm font-medium text-[#757575]">This Month&apos;s Revenue</CardTitle>
+   365→                  </CardHeader>
+   366→                  <CardContent>
+   367→                    <div className="flex items-center gap-3">
+   368→                      <div className="p-2 rounded-lg bg-green-50">
+   369→                        <TrendingUp className="h-5 w-5 text-green-600" />
+   370→                      </div>
+   371→                      <div>
+   372→                        <p className="text-2xl font-bold text-[#1A1A1A]">{financialData ? formatCurrency(financialData.revenue) : 'R0'}</p>
+   373→                        <p className="text-xs text-green-600 flex items-center gap-1">
+   374→                          <TrendingUp className="h-3 w-3" />
+   375→                          {financialData?.revenueGrowth}% growth
+   376→                        </p>
+   377→                      </div>
+   378→                    </div>
+   379→                  </CardContent>
+   380→                </Card>
+   381→                <Card className="shadow-sm">
+   382→                  <CardHeader className="pb-2">
+   383→                    <CardTitle className="text-sm font-medium text-[#757575]">Active Investors</CardTitle>
+   384→                  </CardHeader>
+   385→                  <CardContent>
+   386→                    <div className="flex items-center gap-3">
+   387→                      <div className="p-2 rounded-lg bg-amber-50">
+   388→                        <PieChart className="h-5 w-5 text-amber-600" />
+   389→                      </div>
+   390→                      <div>
+   391→                        <p className="text-2xl font-bold text-[#1A1A1A]">{activeInvestors}</p>
+   392→                        <p className="text-xs text-[#757575]">{totalStake.toFixed(1)}% total stake</p>
+   393→                      </div>
+   394→                    </div>
+   395→                  </CardContent>
+   396→                </Card>
+   397→              </div>
+   398→
+   399→              {/* Financial Overview Quick Peek */}
+   400→              <Card className="shadow-sm mb-6">
+   401→                <CardHeader>
+   402→                  <CardTitle className="text-base font-semibold text-[#1A1A1A] flex items-center gap-2">
+   403→                    <BarChart3 className="h-4 w-4 text-[#00897B]" />
+   404→                    Financial Quick View
+   405→                  </CardTitle>
+   406→                </CardHeader>
+   407→                <CardContent>
+   408→                  {financialData && (
+   409→                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+   410→                      <div className="text-center p-4 rounded-lg bg-gray-50">
+   411→                        <p className="text-sm text-[#757575] mb-1">Revenue</p>
+   412→                        <p className="text-xl font-bold text-[#1A1A1A]">{formatCurrency(financialData.revenue)}</p>
+   413→                        <Progress value={100} className="mt-2 h-2 bg-gray-200" />
+   414→                      </div>
+   415→                      <div className="text-center p-4 rounded-lg bg-gray-50">
+   416→                        <p className="text-sm text-[#757575] mb-1">Expenses</p>
+   417→                        <p className="text-xl font-bold text-[#1A1A1A]">{formatCurrency(financialData.expenses)}</p>
+   418→                        <Progress value={Math.round((financialData.expenses / financialData.revenue) * 100)} className="mt-2 h-2 bg-gray-200 [&>div]:bg-amber-500" />
+   419→                      </div>
+   420→                      <div className="text-center p-4 rounded-lg bg-gray-50">
+   421→                        <p className="text-sm text-[#757575] mb-1">Profit Margin</p>
+   422→                        <p className="text-xl font-bold text-green-600">{financialData.profitMargin}%</p>
+   423→                        <Progress value={financialData.profitMargin} className="mt-2 h-2 bg-gray-200 [&>div]:bg-[#00897B]" />
+   424→                      </div>
+   425→                    </div>
+   426→                  )}
+   427→                </CardContent>
+   428→              </Card>
+   429→
+   430→              {/* Recent Reports */}
+   431→              <Card className="shadow-sm">
+   432→                <CardHeader>
+   433→                  <div className="flex items-center justify-between">
+   434→                    <CardTitle className="text-base font-semibold text-[#1A1A1A]">Recent Reports</CardTitle>
+   435→                    <Button variant="ghost" size="sm" className="text-[#00897B]" onClick={() => setActiveTab('reports')}>
+   436→                      View All
+   437→                    </Button>
+   438→                  </div>
+   439→                </CardHeader>
+   440→                <CardContent>
+   441→                  <div className="space-y-3">
+   442→                    {reports.slice(0, 4).map(report => (
+   443→                      <div key={report.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
+   444→                        <div className="flex items-center gap-3">
+   445→                          <div className="p-2 rounded-lg bg-gray-100">
+   446→                            <FileBarChart className="h-4 w-4 text-[#757575]" />
+   447→                          </div>
+   448→                          <div>
+   449→                            <p className="text-sm font-medium text-[#1A1A1A]">{report.title}</p>
+   450→                            <p className="text-xs text-[#757575]">{report.period} &middot; {report.generatedDate}</p>
+   451→                          </div>
+   452→                        </div>
+   453→                        <div className="flex items-center gap-2">
+   454→                          {getReportStatusBadge(report.status)}
+   455→                          <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+   456→                        </div>
+   457→                      </div>
+   458→                    ))}
+   459→                  </div>
+   460→                </CardContent>
+   461→              </Card>
+   462→            </ScrollArea>
+   463→          </TabsContent>
+   464→
+   465→          {/* ============================================
+   466→              STAKEHOLDERS TAB
+   467→              ============================================ */}
+   468→          <TabsContent value="stakeholders" className="m-0 p-6">
+   469→            <ScrollArea className="h-[calc(100vh-280px)]">
+   470→              {/* Filters */}
+   471→              <div className="flex items-center gap-3 mb-4 flex-wrap">
+   472→                <div className="relative flex-1 min-w-[200px] max-w-md">
+   473→                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#757575]" />
+   474→                  <Input
+   475→                    placeholder="Search stakeholders..."
+   476→                    className="pl-9"
+   477→                    value={searchQuery}
+   478→                    onChange={(e) => setSearchQuery(e.target.value)}
+   479→                  />
+   480→                </div>
+   481→                <Select value={roleFilter} onValueChange={setRoleFilter}>
+   482→                  <SelectTrigger className="w-40">
+   483→                    <Filter className="h-4 w-4 mr-2" />
+   484→                    <SelectValue />
+   485→                  </SelectTrigger>
+   486→                  <SelectContent>
+   487→                    <SelectItem value="all">All Roles</SelectItem>
+   488→                    <SelectItem value="investor">Investors</SelectItem>
+   489→                    <SelectItem value="advisor">Advisors</SelectItem>
+   490→                    <SelectItem value="board">Board Members</SelectItem>
+   491→                    <SelectItem value="member">Members</SelectItem>
+   492→                  </SelectContent>
+   493→                </Select>
+   494→              </div>
+   495→
+   496→              {/* Stakeholder Table */}
+   497→              <Card className="shadow-sm">
+   498→                <CardContent className="p-0">
+   499→                  <Table>
+   500→                    <TableHeader>
+   501→                      <TableRow>
+   502→                        <TableHead>Name</TableHead>
+   503→                        <TableHead className="hidden md:table-cell">Email</TableHead>
+   504→                        <TableHead>Role</TableHead>
+   505→                        <TableHead className="hidden lg:table-cell">Company</TableHead>
+   506→                        <TableHead className="hidden sm:table-cell">Stake</TableHead>
+   507→                        <TableHead>Status</TableHead>
+   508→                        <TableHead className="text-right">Actions</TableHead>
+   509→                      </TableRow>
+   510→                    </TableHeader>
+   511→                    <TableBody>
+   512→                      {filteredStakeholders.map(stakeholder => (
+   513→                        <TableRow key={stakeholder.id} className="hover:bg-gray-50">
+   514→                          <TableCell>
+   515→                            <div className="flex items-center gap-3">
+   516→                              <div className="h-8 w-8 rounded-full bg-[#E0F2F1] flex items-center justify-center text-[#00897B] font-semibold text-sm">
+   517→                                {stakeholder.name.split(' ').map(n => n[0]).join('')}
+   518→                              </div>
+   519→                              <div>
+   520→                                <p className="font-medium text-[#1A1A1A] text-sm">{stakeholder.name}</p>
+   521→                                <p className="text-xs text-[#757575] md:hidden">{stakeholder.email}</p>
+   522→                              </div>
+   523→                            </div>
+   524→                          </TableCell>
+   525→                          <TableCell className="hidden md:table-cell">
+   526→                            <div className="flex items-center gap-1 text-sm text-[#757575]">
+   527→                              <Mail className="h-3 w-3" />
+   528→                              {stakeholder.email}
+   529→                            </div>
+   530→                          </TableCell>
+   531→                          <TableCell>{getRoleBadge(stakeholder.role)}</TableCell>
+   532→                          <TableCell className="hidden lg:table-cell text-sm text-[#757575]">{stakeholder.company}</TableCell>
+   533→                          <TableCell className="hidden sm:table-cell">
+   534→                            {stakeholder.stakePercentage > 0 ? (
+   535→                              <span className="text-sm font-medium">{stakeholder.stakePercentage}%</span>
+   536→                            ) : (
+   537→                              <span className="text-sm text-gray-400">--</span>
+   538→                            )}
+   539→                          </TableCell>
+   540→                          <TableCell>{getStatusBadge(stakeholder.status)}</TableCell>
+   541→                          <TableCell className="text-right">
+   542→                            <div className="flex items-center justify-end gap-1">
+   543→                              <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+   544→                              <Button variant="ghost" size="sm"><Share2 className="h-4 w-4" /></Button>
+   545→                            </div>
+   546→                          </TableCell>
+   547→                        </TableRow>
+   548→                      ))}
+   549→                    </TableBody>
+   550→                  </Table>
+   551→                </CardContent>
+   552→              </Card>
+   553→            </ScrollArea>
+   554→          </TabsContent>
+   555→
+   556→          {/* ============================================
+   557→              REPORTS TAB
+   558→              ============================================ */}
+   559→          <TabsContent value="reports" className="m-0 p-6">
+   560→            <ScrollArea className="h-[calc(100vh-280px)]">
+   561→              {/* Filters */}
+   562→              <div className="flex items-center gap-3 mb-4 flex-wrap">
+   563→                <Select value={reportTypeFilter} onValueChange={setReportTypeFilter}>
+   564→                  <SelectTrigger className="w-44">
+   565→                    <Filter className="h-4 w-4 mr-2" />
+   566→                    <SelectValue />
+   567→                  </SelectTrigger>
+   568→                  <SelectContent>
+   569→                    <SelectItem value="all">All Types</SelectItem>
+   570→                    <SelectItem value="financial">Financial</SelectItem>
+   571→                    <SelectItem value="operational">Operational</SelectItem>
+   572→                    <SelectItem value="compliance">Compliance</SelectItem>
+   573→                    <SelectItem value="summary">Summary</SelectItem>
+   574→                  </SelectContent>
+   575→                </Select>
+   576→                <div className="ml-auto">
+   577→                  <Button className="bg-[#00897B] hover:bg-[#00695C]" size="sm" onClick={() => setGenerateDialogOpen(true)}>
+   578→                    <Plus className="h-4 w-4 mr-2" />
+   579→                    New Report
+   580→                  </Button>
+   581→                </div>
+   582→              </div>
+   583→
+   584→              {/* Reports List */}
+   585→              <div className="space-y-3">
+   586→                {filteredReports.map(report => (
+   587→                  <Card key={report.id} className="shadow-sm hover:shadow-md transition-shadow">
+   588→                    <CardContent className="p-4">
+   589→                      <div className="flex items-center justify-between flex-wrap gap-3">
+   590→                        <div className="flex items-center gap-3">
+   591→                          <div className="p-2 rounded-lg bg-[#E0F2F1]">
+   592→                            {report.type === 'financial' && <DollarSign className="h-4 w-4 text-[#00897B]" />}
+   593→                            {report.type === 'operational' && <BarChart3 className="h-4 w-4 text-blue-600" />}
+   594→                            {report.type === 'compliance' && <CheckCircle2 className="h-4 w-4 text-purple-600" />}
+   595→                            {report.type === 'summary' && <PieChart className="h-4 w-4 text-gray-600" />}
+   596→                          </div>
+   597→                          <div>
+   598→                            <p className="font-medium text-[#1A1A1A] text-sm">{report.title}</p>
+   599→                            <div className="flex items-center gap-3 mt-1">
+   600→                              <span className="text-xs text-[#757575] flex items-center gap-1">
+   601→                                <Calendar className="h-3 w-3" />
+   602→                                {report.period}
+   603→                              </span>
+   604→                              <span className="text-xs text-[#757575]">by {report.generatedBy}</span>
+   605→                              <span className="text-xs text-[#757575]">{report.generatedDate}</span>
+   606→                            </div>
+   607→                          </div>
+   608→                        </div>
+   609→                        <div className="flex items-center gap-2">
+   610→                          {getReportTypeBadge(report.type)}
+   611→                          {getReportStatusBadge(report.status)}
+   612→                          <Separator orientation="vertical" className="h-6 mx-1" />
+   613→                          <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+   614→                          <Button variant="ghost" size="sm"><Share2 className="h-4 w-4" /></Button>
+   615→                          <Button variant="ghost" size="sm"><Download className="h-4 w-4" /></Button>
+   616→                        </div>
+   617→                      </div>
+   618→                    </CardContent>
+   619→                  </Card>
+   620→                ))}
+   621→                {filteredReports.length === 0 && (
+   622→                  <div className="text-center py-12">
+   623→                    <FileBarChart className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+   624→                    <p className="text-[#757575]">No reports found for this filter.</p>
+   625→                  </div>
+   626→                )}
+   627→              </div>
+   628→            </ScrollArea>
+   629→          </TabsContent>
+   630→
+   631→          {/* ============================================
+   632→              FINANCIAL SUMMARY TAB
+   633→              ============================================ */}
+   634→          <TabsContent value="financial" className="m-0 p-6">
+   635→            <ScrollArea className="h-[calc(100vh-280px)]">
+   636→              {financialData && (
+   637→                <>
+   638→                  {/* Key Metrics */}
+   639→                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+   640→                    <Card className="shadow-sm">
+   641→                      <CardHeader className="pb-2">
+   642→                        <CardTitle className="text-sm font-medium text-[#757575]">Total Revenue</CardTitle>
+   643→                      </CardHeader>
+   644→                      <CardContent>
+   645→                        <p className="text-3xl font-bold text-[#1A1A1A]">{formatCurrency(financialData.revenue)}</p>
+   646→                        <p className="text-sm text-green-600 flex items-center gap-1 mt-1">
+   647→                          <TrendingUp className="h-4 w-4" />
+   648→                          {financialData.revenueGrowth}% vs last period
+   649→                        </p>
+   650→                      </CardContent>
+   651→                    </Card>
+   652→                    <Card className="shadow-sm">
+   653→                      <CardHeader className="pb-2">
+   654→                        <CardTitle className="text-sm font-medium text-[#757575]">Total Expenses</CardTitle>
+   655→                      </CardHeader>
+   656→                      <CardContent>
+   657→                        <p className="text-3xl font-bold text-[#1A1A1A]">{formatCurrency(financialData.expenses)}</p>
+   658→                        <Progress value={Math.round((financialData.expenses / financialData.revenue) * 100)} className="mt-2 h-2 bg-gray-200 [&>div]:bg-amber-500" />
+   659→                        <p className="text-xs text-[#757575] mt-1">{Math.round((financialData.expenses / financialData.revenue) * 100)}% of revenue</p>
+   660→                      </CardContent>
+   661→                    </Card>
+   662→                    <Card className="shadow-sm">
+   663→                      <CardHeader className="pb-2">
+   664→                        <CardTitle className="text-sm font-medium text-[#757575]">Net Profit Margin</CardTitle>
+   665→                      </CardHeader>
+   666→                      <CardContent>
+   667→                        <p className="text-3xl font-bold text-[#00897B]">{financialData.profitMargin}%</p>
+   668→                        <p className="text-sm text-[#757575] mt-1">{formatCurrency(financialData.revenue - financialData.expenses)} net profit</p>
+   669→                      </CardContent>
+   670→                    </Card>
+   671→                  </div>
+   672→
+   673→                  {/* Detailed Breakdown */}
+   674→                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+   675→                    <Card className="shadow-sm">
+   676→                      <CardHeader>
+   677→                        <CardTitle className="text-base font-semibold text-[#1A1A1A] flex items-center gap-2">
+   678→                          <PieChart className="h-4 w-4 text-[#00897B]" />
+   679→                          Revenue by Category
+   680→                        </CardTitle>
+   681→                      </CardHeader>
+   682→                      <CardContent>
+   683→                        <div className="space-y-4">
+   684→                          {[
+   685→                            { name: 'Fresh Produce', amount: 1275000, pct: 30, color: 'bg-[#00897B]' },
+   686→                            { name: 'Dry Goods & Staples', amount: 850000, pct: 20, color: 'bg-blue-500' },
+   687→                            { name: 'Dairy & Cold Chain', amount: 637500, pct: 15, color: 'bg-purple-500' },
+   688→                            { name: 'Beverages', amount: 552500, pct: 13, color: 'bg-amber-500' },
+   689→                            { name: 'Household & Personal Care', amount: 425000, pct: 10, color: 'bg-pink-500' },
+   690→                            { name: 'Other', amount: 510000, pct: 12, color: 'bg-gray-400' },
+   691→                          ].map(cat => (
+   692→                            <div key={cat.name} className="space-y-1">
+   693→                              <div className="flex items-center justify-between text-sm">
+   694→                                <span className="text-[#1A1A1A]">{cat.name}</span>
+   695→                                <span className="text-[#757575]">{formatCurrency(cat.amount)} ({cat.pct}%)</span>
+   696→                              </div>
+   697→                              <div className="h-2 bg-gray-100 rounded-full">
+   698→                                <div className={`h-2 rounded-full ${cat.color}`} style={{ width: `${cat.pct}%` }} />
+   699→                              </div>
+   700→                            </div>
+   701→                          ))}
+   702→                        </div>
+   703→                      </CardContent>
+   704→                    </Card>
+   705→                    <Card className="shadow-sm">
+   706→                      <CardHeader>
+   707→                        <CardTitle className="text-base font-semibold text-[#1A1A1A] flex items-center gap-2">
+   708→                          <BarChart3 className="h-4 w-4 text-[#00897B]" />
+   709→                          Expense Breakdown
+   710→                        </CardTitle>
+   711→                      </CardHeader>
+   712→                      <CardContent>
+   713→                        <div className="space-y-4">
+   714→                          {[
+   715→                            { name: 'Cost of Goods Sold', amount: 1908000, pct: 60, color: 'bg-red-400' },
+   716→                            { name: 'Staff Salaries', amount: 574800, pct: 18, color: 'bg-blue-400' },
+   717→                            { name: 'Rent & Utilities', amount: 318000, pct: 10, color: 'bg-amber-400' },
+   718→                            { name: 'Logistics & Distribution', amount: 254400, pct: 8, color: 'bg-purple-400' },
+   719→                            { name: 'Marketing & Admin', amount: 127200, pct: 4, color: 'bg-gray-400' },
+   720→                          ].map(item => (
+   721→                            <div key={item.name} className="space-y-1">
+   722→                              <div className="flex items-center justify-between text-sm">
+   723→                                <span className="text-[#1A1A1A]">{item.name}</span>
+   724→                                <span className="text-[#757575]">{formatCurrency(item.amount)} ({item.pct}%)</span>
+   725→                              </div>
+   726→                              <div className="h-2 bg-gray-100 rounded-full">
+   727→                                <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${item.pct}%` }} />
+   728→                              </div>
+   729→                            </div>
+   730→                          ))}
+   731→                        </div>
+   732→                      </CardContent>
+   733→                    </Card>
+   734→                  </div>
+   735→
+   736→                  {/* Top Performing Category */}
+   737→                  <Card className="shadow-sm">
+   738→                    <CardHeader>
+   739→                      <CardTitle className="text-base font-semibold text-[#1A1A1A] flex items-center gap-2">
+   740→                        <TrendingUp className="h-4 w-4 text-[#00897B]" />
+   741→                        Top Performing Category
+   742→                      </CardTitle>
+   743→                    </CardHeader>
+   744→                    <CardContent>
+   745→                      <div className="flex items-center justify-between p-4 rounded-lg bg-[#E0F2F1]">
+   746→                        <div>
+   747→                          <p className="text-lg font-semibold text-[#00695C]">{financialData.topCategory}</p>
+   748→                          <p className="text-sm text-[#757575]">Highest revenue contributor this period</p>
+   749→                        </div>
+   750→                        <div className="text-right">
+   751→                          <p className="text-2xl font-bold text-[#00897B]">{formatCurrency(financialData.topCategoryAmount)}</p>
+   752→                          <p className="text-sm text-[#757575]">{Math.round((financialData.topCategoryAmount / financialData.revenue) * 100)}% of total revenue</p>
+   753→                        </div>
+   754→                      </div>
+   755→                    </CardContent>
+   756→                  </Card>
+   757→                </>
+   758→              )}
+   759→            </ScrollArea>
+   760→          </TabsContent>
+   761→        </Tabs>
+   762→      </div>
+   763→
+   764→      {/* ============================================
+   765→          GENERATE REPORT DIALOG
+   766→          ============================================ */}
+   767→      <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
+   768→        <DialogContent>
+   769→          <DialogHeader>
+   770→            <DialogTitle className="flex items-center gap-2">
+   771→              <Plus className="h-5 w-5 text-[#00897B]" />
+   772→              Generate New Report
+   773→            </DialogTitle>
+   774→          </DialogHeader>
+   775→          <div className="space-y-4">
+   776→            <div className="space-y-2">
+   777→              <label className="text-sm font-medium text-[#1A1A1A]">Report Type</label>
+   778→              <Select value={newReportType} onValueChange={setNewReportType}>
+   779→                <SelectTrigger>
+   780→                  <SelectValue placeholder="Select report type" />
+   781→                </SelectTrigger>
+   782→                <SelectContent>
+   783→                  <SelectItem value="financial">Financial Report</SelectItem>
+   784→                  <SelectItem value="operational">Operational Report</SelectItem>
+   785→                  <SelectItem value="compliance">Compliance Report</SelectItem>
+   786→                  <SelectItem value="summary">Stakeholder Summary</SelectItem>
+   787→                </SelectContent>
+   788→              </Select>
+   789→            </div>
+   790→            <div className="space-y-2">
+   791→              <label className="text-sm font-medium text-[#1A1A1A]">Report Period</label>
+   792→              <Select value={newReportPeriod} onValueChange={setNewReportPeriod}>
+   793→                <SelectTrigger>
+   794→                  <SelectValue placeholder="Select period" />
+   795→                </SelectTrigger>
+   796→                <SelectContent>
+   797→                  <SelectItem value="Dec 2024">December 2024</SelectItem>
+   798→                  <SelectItem value="Jan 2025">January 2025</SelectItem>
+   799→                  <SelectItem value="Q4 2024">Q4 2024</SelectItem>
+   800→                  <SelectItem value="Q1 2025">Q1 2025</SelectItem>
+   801→                  <SelectItem value="FY 2024">Full Year 2024</SelectItem>
+   802→                </SelectContent>
+   803→              </Select>
+   804→            </div>
+   805→          </div>
+   806→          <DialogFooter>
+   807→            <Button variant="outline" onClick={() => setGenerateDialogOpen(false)}>Cancel</Button>
+   808→            <Button
+   809→              className="bg-[#00897B] hover:bg-[#00695C]"
+   810→              onClick={handleGenerateReport}
+   811→              disabled={!newReportType || !newReportPeriod}
+   812→            >
+   813→              <FileBarChart className="h-4 w-4 mr-2" />
+   814→              Generate
+   815→            </Button>
+   816→          </DialogFooter>
+   817→        </DialogContent>
+   818→      </Dialog>
+   819→    </div>
+   820→  )
+   821→}
+   822→

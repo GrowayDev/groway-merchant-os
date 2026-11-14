@@ -1,0 +1,593 @@
+     1→/**
+     2→ * Groway Consumer Wallet v2 — Fresh Seed
+     3→ * Seeds: merchant OS demo (minimal) + full consumer wallet financial dataset.
+     4→ * Schema-accurate (BigInt cents, Int kycLevel, correct relation wiring).
+     5→ * Idempotent: clears consumer scope, then creates.
+     6→ */
+     7→import { PrismaClient } from '@prisma/client';
+     8→import { hash } from 'bcryptjs';
+     9→import { createHash, randomBytes } from 'crypto';
+    10→
+    11→const base = new PrismaClient();
+    12→const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
+    13→
+    14→// Auto-fill updatedAt on all writes (models lack a DB default for it)
+    15→const prisma = base.$extends({
+    16→  query: {
+    17→    $allModels: {
+    18→      async $allOperations({ args, query }) {
+    19→        const fill = (row: unknown) => {
+    20→          if (row && typeof row === 'object' && !Array.isArray(row) && (row as Record<string, unknown>).updatedAt === undefined) {
+    21→            (row as Record<string, unknown>).updatedAt = new Date();
+    22→          }
+    23→        };
+    24→        const d = (args as Record<string, unknown> | undefined)?.data;
+    25→        if (d !== undefined) {
+    26→          if (Array.isArray(d)) d.forEach(fill); else fill(d);
+    27→        }
+    28→        return query(args as never);
+    29→      },
+    30→    },
+    31→  },
+    32→}) as unknown as PrismaClient;
+    33→
+    34→
+    35→const id = (p: string) => `${p}-${randomBytes(8).toString('hex')}`;
+    36→const daysAgo = (n: number, h = 10) => new Date(Date.now() - n * 86400000 + h * 3600000);
+    37→const daysAhead = (n: number) => new Date(Date.now() + n * 86400000);
+    38→
+    39→const CONSUMER_PHONE = '+27821234567';
+    40→const CONSUMER_PIN = '1234';
+    41→
+    42→async function seedMerchantOs() {
+    43→  const passwordHash = await hash('demo1234', 10);
+    44→  const user = await prisma.user.upsert({
+    45→    where: { id: 'user-demo' },
+    46→    update: { passwordHash },
+    47→    create: {
+    48→      id: 'user-demo',
+    49→      email: 'demo@groway.co.za',
+    50→      name: 'Demo User',
+    51→      passwordHash,
+    52→      role: 'admin',
+    53→      emailVerified: new Date(),
+    54→      createdAt: new Date(),
+    55→      updatedAt: new Date(),
+    56→    },
+    57→  });
+    58→
+    59→  const merchant = await prisma.merchant.upsert({
+    60→    where: { id: 'merchant-grocery' },
+    61→    update: {},
+    62→    create: {
+    63→      id: 'merchant-grocery',
+    64→      code: 'GRW-DEMO-001',
+    65→      name: 'Demo Grocery Store',
+    66→      tradingName: 'Demo Grocery Store',
+    67→      email: 'demo@groway.co.za',
+    68→      phone: '+27112345678',
+    69→      vertical: 'grocery',
+    70→      status: 'active',
+    71→      city: 'Johannesburg',
+    72→      province: 'Gauteng',
+    73→      createdAt: new Date(),
+    74→      updatedAt: new Date(),
+    75→    },
+    76→  });
+    77→
+    78→  await prisma.branch.upsert({
+    79→    where: { id: 'branch-merchant-grocery' },
+    80→    update: {},
+    81→    create: {
+    82→      id: 'branch-merchant-grocery',
+    83→      merchantId: merchant.id,
+    84→      code: 'MAIN',
+    85→      name: 'Main Branch',
+    86→      type: 'store',
+    87→      phone: '+27112345678',
+    88→      addressLine1: '12 Vilakazi Street, Orlando West',
+    89→      city: 'Soweto',
+    90→      province: 'Gauteng',
+    91→      isDefault: true,
+    92→      isActive: true,
+    93→      createdAt: new Date(),
+    94→      updatedAt: new Date(),
+    95→    },
+    96→  });
+    97→
+    98→  await prisma.merchantUser.upsert({
+    99→    where: { id: 'mu-user-demo-merchant-grocery' },
+   100→    update: {},
+   101→    create: {
+   102→      id: 'mu-user-demo-merchant-grocery',
+   103→      userId: user.id,
+   104→      merchantId: merchant.id,
+   105→      role: 'owner',
+   106→      branchId: 'branch-merchant-grocery',
+   107→      isActive: true,
+   108→      createdAt: new Date(),
+   109→      updatedAt: new Date(),
+   110→    },
+   111→  });
+   112→
+   113→  console.log('✓ Merchant OS demo seeded (demo@groway.co.za / demo1234)');
+   114→  return merchant;
+   115→}
+   116→
+   117→async function seedConsumer(merchantId: string) {
+   118→  // ---- Consumer identity --------------------------------------------------
+   119→  await prisma.consumerTransaction.deleteMany({});
+   120→  await prisma.stokvelPayout.deleteMany({});
+   121→  await prisma.stokvelContribution.deleteMany({});
+   122→  await prisma.stokvelMember.deleteMany({});
+   123→  await prisma.stokvelGroup.deleteMany({});
+   124→  await prisma.savingsPocket.deleteMany({});
+   125→  await prisma.consumerEWATransaction.deleteMany({});
+   126→  await prisma.consumerEWA.deleteMany({});
+   127→  await prisma.consumerBNPLInstalment.deleteMany({});
+   128→  await prisma.consumerBNPLPlan.deleteMany({});
+   129→  await prisma.consumerBNPL.deleteMany({});
+   130→  await prisma.consumerLoanApplication.deleteMany({});
+   131→  await prisma.consumerLoan.deleteMany({});
+   132→  await prisma.consumerCreditScore.deleteMany({});
+   133→  await prisma.consumerSASSAGrant.deleteMany({});
+   134→  await prisma.consumerSASSAApplication.deleteMany({});
+   135→  await prisma.consumerSASSA.deleteMany({});
+   136→  await prisma.consumerInsurance.deleteMany({});
+   137→  await prisma.consumerCard.deleteMany({});
+   138→  await prisma.consumerLoyalty.deleteMany({});
+   139→  await prisma.consumerQR.deleteMany({});
+   140→  await prisma.billPayment.deleteMany({});
+   141→  await prisma.billProvider.deleteMany({});
+   142→  await prisma.payShapRecipient.deleteMany({});
+   143→  await prisma.beneficiary.deleteMany({});
+   144→  await prisma.consumerWallet.deleteMany({});
+   145→  await prisma.consumerUser.deleteMany({});
+   146→
+   147→  const consumer = await prisma.consumerUser.create({
+   148→    data: {
+   149→      id: 'consumer-demo-thandi',
+   150→      phone: CONSUMER_PHONE,
+   151→      email: 'thandi.demo@wallet.co.za',
+   152→      firstName: 'Thandi',
+   153→      lastName: 'Mkhize',
+   154→      idNumber: '9005140268085',
+   155→      idType: 'sa_id',
+   156→      dateOfBirth: '1990-05-14',
+   157→      nationality: 'ZA',
+   158→      kycLevel: 2,
+   159→      kycStatus: 'verified',
+   160→      kycVerifiedAt: daysAgo(120),
+   161→      pinHash: sha256(CONSUMER_PIN),
+   162→      languagePreference: 'en',
+   163→      accountStatus: 'active',
+   164→    },
+   165→  });
+   166→
+   167→  const wallet = await prisma.consumerWallet.create({
+   168→    data: {
+   169→      id: 'wallet-demo-thandi',
+   170→      userId: consumer.id,
+   171→      balanceCents: 854750,
+   172→      reservedCents: 0,
+   173→      pendingCents: 0,
+   174→      dailySpendLimit: 500000,
+   175→      monthlySpendLimit: 5000000,
+   176→      dailySpentCents: 12450,
+   177→      monthlySpentCents: 342800,
+   178→      totalReceivedCents: 4123000,
+   179→      totalSentCents: 2710500,
+   180→      totalTopupsCents: 1500000,
+   181→      totalWithdrawalsCents: 500000,
+   182→    },
+   183→  });
+   184→
+   185→  await prisma.consumerLoyalty.create({
+   186→    data: {
+   187→      id: 'loyalty-demo-thandi',
+   188→      userId: consumer.id,
+   189→      tier: 'gold',
+   190→      points: 4820,
+   191→      totalEarned: 6200,
+   192→      totalRedeemed: 1380,
+   193→      pointsToNextTier: 1180,
+   194→      tierProgress: 0.72,
+   195→      tierAchievedAt: daysAgo(60),
+   196→    },
+   197→  });
+   198→
+   199→  await prisma.consumerCreditScore.create({
+   200→    data: {
+   201→      id: 'cscore-demo-thandi',
+   202→      userId: consumer.id,
+   203→      score: 682,
+   204→      lastUpdated: daysAgo(3),
+   205→      factors: JSON.stringify([
+   206→        { name: 'Payment history', impact: 'positive', weight: 0.35, detail: 'No missed payments in 12 months' },
+   207→        { name: 'Wallet activity', impact: 'positive', weight: 0.25, detail: 'Healthy transaction volume' },
+   208→        { name: 'Savings behaviour', impact: 'positive', weight: 0.2, detail: '3 active savings pockets' },
+   209→        { name: 'Credit utilisation', impact: 'neutral', weight: 0.2, detail: '38% of available credit used' },
+   210→      ]),
+   211→      history: JSON.stringify([
+   212→        { month: '2025-05', score: 641 }, { month: '2025-06', score: 655 },
+   213→        { month: '2025-07', score: 649 }, { month: '2025-08', score: 663 },
+   214→        { month: '2025-09', score: 671 }, { month: '2025-10', score: 682 },
+   215→      ]),
+   216→    },
+   217→  });
+   218→
+   219→  // ---- Credit / loans ------------------------------------------------------
+   220→  await prisma.consumerLoan.create({
+   221→    data: {
+   222→      id: 'loan-demo-thandi-1',
+   223→      userId: consumer.id,
+   224→      lenderId: 'groway-credit',
+   225→      lenderName: 'Groway Credit',
+   226→      loanType: 'personal',
+   227→      amount: 15000,
+   228→      outstanding: 6250,
+   229→      monthlyPayment: 1450,
+   230→      interestRate: 19.5,
+   231→      termMonths: 12,
+   232→      monthsRemaining: 5,
+   233→      status: 'active',
+   234→    },
+   235→  });
+   236→  await prisma.consumerLoanApplication.create({
+   237→    data: {
+   238→      id: 'loanapp-demo-thandi-1',
+   239→      userId: consumer.id,
+   240→      lenderId: 'groway-credit',
+   241→      lenderName: 'Groway Credit',
+   242→      amount: 8000,
+   243→      term: 6,
+   244→      loanType: 'personal',
+   245→      purpose: 'Stock purchase for side business',
+   246→      status: 'approved',
+   247→    },
+   248→  });
+   249→
+   250→  // ---- BNPL (plan.userId -> ConsumerBNPL.id) -------------------------------
+   251→  const bnpl = await prisma.consumerBNPL.create({
+   252→    data: {
+   253→      id: 'bnpl-demo-thandi',
+   254→      userId: consumer.id,
+   255→      eligible: true,
+   256→      creditScore: 682,
+   257→      limit: 8000,
+   258→      used: 1450,
+   259→      available: 6550,
+   260→    },
+   261→  });
+   262→  const bnplPlan = await prisma.consumerBNPLPlan.create({
+   263→    data: {
+   264→      id: 'bnplplan-demo-thandi-1',
+   265→      userId: bnpl.id,
+   266→      merchant: 'Demo Grocery Store',
+   267→      purchaseAmount: 4350,
+   268→      instalmentAmount: 1450,
+   269→      paidInstalments: 2,
+   270→      totalInstalments: 3,
+   271→      nextDueDate: daysAhead(9),
+   272→      status: 'active',
+   273→    },
+   274→  });
+   275→  await prisma.consumerBNPLInstalment.createMany({
+   276→    data: [
+   277→      { id: 'bnpli-1', planId: bnplPlan.id, number: 1, amount: 1450, dueDate: daysAgo(40), status: 'paid', paidAt: daysAgo(40) },
+   278→      { id: 'bnpli-2', planId: bnplPlan.id, number: 2, amount: 1450, dueDate: daysAgo(10), status: 'paid', paidAt: daysAgo(10) },
+   279→      { id: 'bnpli-3', planId: bnplPlan.id, number: 3, amount: 1450, dueDate: daysAhead(9), status: 'pending' },
+   280→    ],
+   281→  });
+   282→
+   283→  // ---- EWA (tx.userId -> ConsumerEWA.id) ------------------------------------
+   284→  const ewa = await prisma.consumerEWA.create({
+   285→    data: {
+   286→      id: 'ewa-demo-thandi',
+   287→      userId: consumer.id,
+   288→      employeeId: 'EMP-2847',
+   289→      employer: 'Siyakhana Logistics (Pty) Ltd',
+   290→      monthlySalary: 14500,
+   291→      payDay: 25,
+   292→      accruedSalary: 9733.33,
+   293→      availableAdvance: 7300,
+   294→      usedThisMonth: 1200,
+   295→      limit: 10950,
+   296→      eligible: true,
+   297→      nextPayDay: daysAhead(12),
+   298→    },
+   299→  });
+   300→  await prisma.consumerEWATransaction.create({
+   301→    data: {
+   302→      id: 'ewatx-demo-thandi-1',
+   303→      userId: ewa.id,
+   304→      amount: 1200,
+   305→      fee: 24,
+   306→      netAmount: 1176,
+   307→      reason: 'Transport emergency',
+   308→      status: 'settled',
+   309→      repaymentDate: daysAhead(12),
+   310→      requestedAt: daysAgo(6),
+   311→      settledAt: daysAgo(6),
+   312→    },
+   313→  });
+   314→
+   315→  // ---- SASSA ----------------------------------------------------------------
+   316→  const sassa = await prisma.consumerSASSA.create({
+   317→    data: {
+   318→      id: 'sassa-demo-thandi',
+   319→      userId: consumer.id,
+   320→      linked: true,
+   321→      idNumber: '9005140268085',
+   322→      status: 'active',
+   323→      totalMonthlyIncome: 1060,
+   324→    },
+   325→  });
+   326→  await prisma.consumerSASSAGrant.createMany({
+   327→    data: [
+   328→      {
+   329→        id: 'sassag-1', sassaId: sassa.id, grantType: 'child_support',
+   330→        grantName: 'Child Support Grant', amount: 530, beneficiaries: 2,
+   331→        totalAmount: 1060, status: 'approved',
+   332→        nextPayment: daysAhead(8), lastPayment: daysAgo(22),
+   333→      },
+   334→    ],
+   335→  });
+   336→
+   337→  // ---- Insurance ------------------------------------------------------------
+   338→  await prisma.consumerInsurance.createMany({
+   339→    data: [
+   340→      {
+   341→        id: 'ins-1', userId: consumer.id, productType: 'funeral',
+   342→        provider: 'Groway Protect', coverAmount: 5000000, premium: 18900,
+   343→        startDate: '2024-11-01', status: 'active', nextPaymentDate: '2025-11-01',
+   344→        beneficiaries: JSON.stringify([{ name: 'Sipho Mkhize', relationship: 'spouse', share: 50 }, { name: 'Lerato Mkhize', relationship: 'daughter', share: 50 }]),
+   345→      },
+   346→      {
+   347→        id: 'ins-2', userId: consumer.id, productType: 'hospital_cash',
+   348→        provider: 'Groway Protect', coverAmount: 3000000, premium: 9900,
+   349→        startDate: '2025-03-01', status: 'active', nextPaymentDate: '2025-11-01', beneficiaries: '[]',
+   350→      },
+   351→    ],
+   352→  });
+   353→
+   354→  // ---- Cards ------------------------------------------------------------------
+   355→  await prisma.consumerCard.createMany({
+   356→    data: [
+   357→      {
+   358→        id: 'card-virtual-1', userId: consumer.id, cardType: 'visa', cardCategory: 'virtual',
+   359→        cardDesign: 'groway-teal', lastFourDigits: '4821', cardToken: 'tok_' + randomBytes(12).toString('hex'),
+   360→        panEncrypted: 'enc:' + Buffer.from('4539148803434821').toString('base64'), cvvEncrypted: 'enc:821',
+   361→        expiryMonth: '08', expiryYear: '28', cardholderName: 'THANDI MKHIZE',
+   362→        status: 'active', spendingLimitDaily: 200000, onlineEnabled: true,
+   363→        contactlessEnabled: true, atmEnabled: false, internationalEnabled: false,
+   364→        issuedAt: daysAgo(100), activatedAt: daysAgo(100),
+   365→      },
+   366→      {
+   367→        id: 'card-physical-1', userId: consumer.id, cardType: 'mastercard', cardCategory: 'physical',
+   368→        cardDesign: 'groway-classic', lastFourDigits: '7734', cardToken: 'tok_' + randomBytes(12).toString('hex'),
+   369→        panEncrypted: 'enc:' + Buffer.from('5412751234567734').toString('base64'), cvvEncrypted: 'enc:447',
+   370→        expiryMonth: '02', expiryYear: '29', cardholderName: 'THANDI MKHIZE',
+   371→        status: 'active', spendingLimitDaily: 500000, onlineEnabled: true,
+   372→        contactlessEnabled: true, atmEnabled: true, internationalEnabled: true,
+   373→        issuedAt: daysAgo(200), activatedAt: daysAgo(195),
+   374→      },
+   375→    ],
+   376→  });
+   377→
+   378→  // ---- Savings pockets ---------------------------------------------------------
+   379→  await prisma.savingsPocket.createMany({
+   380→    data: [
+   381→      {
+   382→        id: 'pocket-emergency', userId: consumer.id, name: 'Emergency Fund', icon: 'shield',
+   383→        color: '#00897B', targetCents: 2000000, currentCents: 1240000,
+   384→        interestRate: 0.06, interestEarned: 44550, autoSaveRule: JSON.stringify({ type: 'percent_of_topup', value: 10 }),
+   385→      },
+   386→      {
+   387→        id: 'pocket-school', userId: consumer.id, name: 'Back to School', icon: 'graduation-cap',
+   388→        color: '#7C4DFF', targetCents: 800000, currentCents: 315000,
+   389→        interestRate: 0.05, interestEarned: 9800, targetDate: '2026-01-15',
+   390→        autoSaveRule: JSON.stringify({ type: 'fixed_weekly', value: 10000 }),
+   391→      },
+   392→      {
+   393→        id: 'pocket-december', userId: consumer.id, name: 'December Groceries', icon: 'shopping-basket',
+   394→        color: '#FF8F00', targetCents: 600000, currentCents: 182500,
+   395→        interestRate: 0.05, interestEarned: 4200, targetDate: '2025-12-15',
+   396→      },
+   397→    ],
+   398→  });
+   399→
+   400→  // ---- Stokvels ------------------------------------------------------------------
+   401→  const members = [
+   402→    { userId: 'consumer-demo-thandi', name: 'Thandi Mkhize', role: 'treasurer', position: 2 },
+   403→    { userId: 'consumer-member-2', name: 'Nomsa Dlamini', role: 'member', position: 1 },
+   404→    { userId: 'consumer-member-3', name: 'Busi Nkosi', role: 'member', position: 3 },
+   405→    { userId: 'consumer-member-4', name: 'Zanele Botha', role: 'member', position: 4 },
+   406→    { userId: 'consumer-member-5', name: 'Ayanda Khumalo', role: 'member', position: 5 },
+   407→  ];
+   408→  for (const m of members.slice(1)) {
+   409→    await prisma.consumerUser.create({
+   410→      data: {
+   411→        id: m.userId, phone: `+2782111${m.position}${m.position}${m.position}${m.position}${m.position}`,
+   412→        firstName: m.name.split(' ')[0], lastName: m.name.split(' ')[1],
+   413→        kycLevel: 1, kycStatus: 'verified', pinHash: sha256('1234'), accountStatus: 'active',
+   414→      },
+   415→    });
+   416→  }
+   417→
+   418→  const groovy = await prisma.stokvelGroup.create({
+   419→    data: {
+   420→      id: 'stokvel-groovy-5', name: 'Groovy Five Stokvel', description: 'Monthly grocery rotation — 5 members, R2,000/month. Payout every month end.',
+   421→      icon: 'users', creatorId: 'consumer-demo-thandi', targetCents: 10000000,
+   422→      contributionCents: 200000, contributionDay: 25, payoutOrder: JSON.stringify(members.map(m => m.position)),
+   423→      currentCycle: 4, status: 'active', totalSavedCents: 4000000,
+   424→    },
+   425→  });
+   426→  const createdMembers: { id: string; userId: string; name: string }[] = [];
+   427→  for (const m of members) {
+   428→    const mem = await prisma.stokvelMember.create({
+   429→      data: {
+   430→        id: id('stokmem'), groupId: groovy.id, userId: m.userId, role: m.role,
+   431→        payoutPosition: m.position, totalContributed: BigInt(200000 * 3),
+   432→        totalReceived: m.position === 1 ? 1000000 : 0, status: 'active',
+   433→        joinedAt: daysAgo(120),
+   434→      },
+   435→    });
+   436→    createdMembers.push({ id: mem.id, userId: m.userId, name: m.name });
+   437→  }
+   438→  await prisma.stokvelContribution.createMany({
+   439→    data: createdMembers.flatMap((m) => [1, 2, 3].map((cycle) => ({
+   440→      id: id('stokcon'), groupId: groovy.id, memberId: m.id, amountCents: 200000,
+   441→      cycle, status: 'completed', paidAt: daysAgo(90 - (cycle - 1) * 30),
+   442→    }))),
+   443→  });
+   444→  await prisma.stokvelPayout.create({
+   445→    data: {
+   446→      id: id('stokpay'), groupId: groovy.id, memberId: createdMembers[1].id,
+   447→      amountCents: 1000000, cycle: 1, status: 'completed', paidAt: daysAgo(60),
+   448→    },
+   449→  });
+   450→
+   451→  const christmas = await prisma.stokvelGroup.create({
+   452→    data: {
+   453→      id: 'stokvel-xmas-8', name: 'Christmas Eight Club', description: 'December payout club — 8 members, R500/month. All 8 receive payout in December.',
+   454→      icon: 'gift', creatorId: 'consumer-member-2', targetCents: 4000000,
+   455→      contributionCents: 50000, contributionDay: 1, payoutOrder: 'all_at_once',
+   456→      currentCycle: 7, status: 'active', totalSavedCents: 2800000,
+   457→    },
+   458→  });
+   459→  await prisma.stokvelMember.create({
+   460→    data: {
+   461→      id: id('stokmem2'), groupId: christmas.id, userId: 'consumer-demo-thandi',
+   462→      role: 'member', payoutPosition: 3, totalContributed: 350000,
+   463→      totalReceived: 0, status: 'active', joinedAt: daysAgo(210),
+   464→    },
+   465→  });
+   466→
+   467→  // ---- Beneficiaries & PayShap -----------------------------------------------------
+   468→  await prisma.beneficiary.createMany({
+   469→    data: [
+   470→      { id: 'ben-1', userId: consumer.id, name: 'Sipho Mkhize', nickname: 'Husband', type: 'wallet', identifier: '+27827654321', isFavorite: true, useCount: 14, lastUsedAt: daysAgo(2) },
+   471→      { id: 'ben-2', userId: consumer.id, name: 'Mama Ntombi', type: 'wallet', identifier: '+27831112233', isFavorite: true, useCount: 8, lastUsedAt: daysAgo(9) },
+   472→      { id: 'ben-3', userId: consumer.id, name: 'FNB — Thandi Mkhize', type: 'bank', identifier: '62841234567', bankName: 'FNB', accountType: 'cheque', useCount: 3, lastUsedAt: daysAgo(30) },
+   473→    ],
+   474→  });
+   475→  await prisma.payShapRecipient.createMany({
+   476→    data: [
+   477→      { id: 'payshap-1', userId: consumer.id, proxyId: '+27827654321', proxyType: 'cellphone', accountHolderName: 'Sipho Mkhize', bankName: 'Standard Bank', verified: true, verifiedAt: daysAgo(50), lastUsedAt: daysAgo(2) },
+   478→      { id: 'payshap-2', userId: consumer.id, proxyId: 'thandi@groway', proxyType: 'payshap_alias', accountHolderName: 'Thandi Mkhize', bankName: 'Groway Wallet', verified: true, verifiedAt: daysAgo(90) },
+   479→      { id: 'payshap-3', userId: consumer.id, proxyId: '8405123445', proxyType: 'id_number', accountHolderName: 'Mama Ntombi', bankName: 'Capitec', verified: false },
+   480→    ],
+   481→  });
+   482→
+   483→  // ---- Bill providers -----------------------------------------------------------------
+   484→  await prisma.billProvider.createMany({
+   485→    data: [
+   486→      { id: 'prov-eskom', name: 'Eskom Prepaid Electricity', category: 'electricity', accountFormat: '######', accountLabel: 'Meter number', minAmount: 1000, maxAmount: 500000, feeCents: 215, processingTime: 'instant' },
+   487→      { id: 'prov-jhb-water', name: 'City of Joburg — Water', category: 'water', accountFormat: '##########', accountLabel: 'Account number', minAmount: 2000, maxAmount: 200000, feeCents: 0, processingTime: 'instant' },
+   488→      { id: 'prov-dstv', name: 'DStv', category: 'tv', accountFormat: '########', accountLabel: 'Customer number', minAmount: 5000, maxAmount: 100000, feeCents: 250, processingTime: 'instant' },
+   489→      { id: 'prov-vodacom', name: 'Vodacom Account', category: 'mobile', accountFormat: '#########', accountLabel: 'Cellphone number', minAmount: 1000, maxAmount: 50000, feeCents: 0 },
+   490→      { id: 'prov-mtn', name: 'MTN Account', category: 'mobile', accountFormat: '#########', accountLabel: 'Cellphone number', minAmount: 1000, maxAmount: 50000, feeCents: 0 },
+   491→      { id: 'prov-gautrain', name: 'Gautrain Card', category: 'transport', accountFormat: '############', accountLabel: 'Card number', minAmount: 3000, maxAmount: 100000, feeCents: 0 },
+   492→      { id: 'prov-telkom', name: 'Telkom', category: 'internet', accountFormat: '##########', accountLabel: 'Account number', minAmount: 5000, maxAmount: 150000, feeCents: 200 },
+   493→      { id: 'prov-sanlam', name: 'Sanlam Premiums', category: 'insurance', accountFormat: '#########', accountLabel: 'Policy number', minAmount: 5000, maxAmount: 300000, feeCents: 0 },
+   494→    ],
+   495→  });
+   496→
+   497→  // ---- Consumer QR (static receive code) ----------------------------------------------
+   498→  const qrPayload = JSON.stringify({ v: 'groway-qr-1', userId: consumer.id, phone: CONSUMER_PHONE, name: 'Thandi Mkhize', type: 'receive' });
+   499→  await prisma.consumerQR.create({
+   500→    data: {
+   501→      id: 'qr-static-thandi', userId: consumer.id, qrType: 'personal_receive',
+   502→      qrData: qrPayload, staticCode: true, status: 'active', nfcEnabled: false,
+   503→    },
+   504→  });
+   505→
+   506→  console.log('✓ Consumer identity, wallet, loyalty, credit, BNPL, EWA, SASSA, insurance, cards, pockets, stokvels seeded');
+   507→
+   508→  // ---- Transactions (30 days of realistic history) --------------------------------------
+   509→  const txSeed: Array<{
+   510→    type: string; dir: 'debit' | 'credit'; amount: number; fee?: number; desc: string;
+   511→    cat: string; days: number; merchantName?: string; counterparty?: string; cpType?: string;
+   512→    method?: string; extra?: Record<string, string>;
+   513→  }> = [
+   514→    { type: 'salary', dir: 'credit', amount: 1450000, desc: 'Salary — Siyakhana Logistics', cat: 'income', days: 24, method: 'payroll', counterparty: 'Siyakhana Logistics' },
+   515→    { type: 'sassa', dir: 'credit', amount: 106000, desc: 'SASSA Child Support Grant', cat: 'income', days: 22, method: 'government', counterparty: 'SASSA' },
+   516→    { type: 'pos_purchase', dir: 'debit', amount: 32450, desc: 'Groceries — Demo Grocery Store', cat: 'groceries', days: 21, merchantName: 'Demo Grocery Store', method: 'wallet_qr', cpType: 'merchant' },
+   517→    { type: 'airtime', dir: 'debit', amount: 5000, desc: 'Vodacom Airtime R50', cat: 'airtime', days: 20, method: 'wallet' },
+   518→    { type: 'send_money', dir: 'debit', amount: 50000, desc: 'Sent to Sipho Mkhize', cat: 'transfer', days: 19, counterparty: 'Sipho Mkhize', cpType: 'personal', method: 'wallet' },
+   519→    { type: 'electricity', dir: 'debit', amount: 20000, desc: 'Eskom Prepaid — 84.2 kWh', cat: 'utilities', days: 18, method: 'wallet', extra: { meterNumber: '04117893456', voucherToken: '4101 2233 4455 6677 8899', unitsPurchased: '84.2 kWh' } },
+   520→    { type: 'savings', dir: 'debit', amount: 10000, desc: 'Save to Emergency Fund', cat: 'savings', days: 17, method: 'wallet' },
+   521→    { type: 'stokvel', dir: 'debit', amount: 20000, desc: 'Groovy Five Stokvel — Cycle 4', cat: 'stokvel', days: 15, method: 'wallet' },
+   522→    { type: 'pos_purchase', dir: 'debit', amount: 8750, desc: 'POS — Demo Grocery Store', cat: 'groceries', days: 14, merchantName: 'Demo Grocery Store', method: 'wallet_qr' },
+   523→    { type: 'ewa', dir: 'credit', amount: 117600, desc: 'Earned wage advance — Siyakhana', cat: 'income', days: 6, method: 'ewa', fee: 240 },
+   524→    { type: 'bill', dir: 'debit', amount: 89900, desc: 'DStv Compact — November', cat: 'entertainment', days: 6, method: 'wallet' },
+   525→    { type: 'send_money', dir: 'credit', amount: 30000, desc: 'Received from Nomsa Dlamini', cat: 'transfer', days: 5, counterparty: 'Nomsa Dlamini', cpType: 'personal', method: 'payshap' },
+   526→    { type: 'pos_purchase', dir: 'debit', amount: 15600, desc: 'Weekly shop — Demo Grocery Store', cat: 'groceries', days: 5, merchantName: 'Demo Grocery Store', method: 'wallet_qr' },
+   527→    { type: 'insurance', dir: 'debit', amount: 28800, desc: 'Groway Protect premiums', cat: 'insurance', days: 4, method: 'debit_order' },
+   528→    { type: 'transport', dir: 'debit', amount: 3600, desc: 'Gautrain Top-up', cat: 'transport', days: 4, method: 'wallet' },
+   529→    { type: 'loan_repayment', dir: 'debit', amount: 145000, desc: 'Groway Credit — monthly instalment', cat: 'credit', days: 3, method: 'debit_order' },
+   530→    { type: 'bnpl_instalment', dir: 'debit', amount: 14500, desc: 'BNPL instalment 2/3 — Demo Grocery Store', cat: 'bnpl', days: 10, merchantName: 'Demo Grocery Store', method: 'wallet' },
+   531→    { type: 'data', dir: 'debit', amount: 9900, desc: 'MTN 2GB Data Bundle', cat: 'airtime', days: 3, method: 'wallet' },
+   532→    { type: 'water', dir: 'debit', amount: 28450, desc: 'Joburg Water — Account 7103...', cat: 'utilities', days: 2, method: 'wallet' },
+   533→    { type: 'pos_purchase', dir: 'debit', amount: 12450, desc: 'POS — Demo Grocery Store', cat: 'groceries', days: 1, merchantName: 'Demo Grocery Store', method: 'wallet_qr' },
+   534→    { type: 'savings', dir: 'debit', amount: 10000, desc: 'Save to Back to School', cat: 'savings', days: 1, method: 'wallet' },
+   535→    { type: 'airtime', dir: 'debit', amount: 2900, desc: 'Vodacom Airtime R29', cat: 'airtime', days: 0, method: 'wallet' },
+   536→    { type: 'pos_purchase', dir: 'debit', amount: 6730, desc: 'POS — Demo Grocery Store', cat: 'groceries', days: 0, merchantName: 'Demo Grocery Store', method: 'wallet_qr' },
+   537→  ];
+   538→
+   539→  let i = 0;
+   540→  for (const t of txSeed) {
+   541→    const amountCents = BigInt(t.amount);
+   542→    const feeCents = BigInt(t.fee || 0);
+   543→    const net = t.dir === 'debit' ? amountCents + feeCents : amountCents - feeCents;
+   544→    await prisma.consumerTransaction.create({
+   545→      data: {
+   546→        id: id('ctx'), idempotencyKey: `seed-${t.type}-${i++}-${t.days}`,
+   547→        userId: consumer.id,
+   548→        transactionType: t.type,
+   549→        direction: t.dir,
+   550→        amountCents,
+   551→        feeCents,
+   552→        netAmountCents: net,
+   553→        status: 'completed',
+   554→        description: t.desc,
+   555→        category: t.cat,
+   556→        counterpartyName: t.counterparty || t.merchantName || null,
+   557→        counterpartyType: t.cpType || (t.type === 'send_money' ? 'personal' : null),
+   558→        paymentMethod: t.method || 'wallet',
+   559→        merchantId: t.merchantName ? merchantId : null,
+   560→        merchantName: t.merchantName || null,
+   561→        voucherToken: t.extra?.voucherToken || null,
+   562→        meterNumber: t.extra?.meterNumber || null,
+   563→        unitsPurchased: t.extra?.unitsPurchased || null,
+   564→        processedAt: daysAgo(t.days), completedAt: daysAgo(t.days),
+   565→        createdAt: daysAgo(t.days), updatedAt: daysAgo(t.days),
+   566→      },
+   567→    });
+   568→  }
+   569→  console.log(`✓ ${txSeed.length} wallet transactions seeded`);
+   570→
+   571→  // ---- Bill payment history ----------------------------------------------------------------
+   572→  await prisma.billPayment.createMany({
+   573→    data: [
+   574→      { id: id('billpay'), userId: consumer.id, providerId: 'prov-dstv', accountNumber: '41234567', accountName: 'Thandi Mkhize', amountCents: 89900, feeCents: 250, reference: 'DSTV-NOV', status: 'completed', receiptNumber: 'RCPT-88123', processedAt: daysAgo(6) },
+   575→      { id: id('billpay2'), userId: consumer.id, providerId: 'prov-eskom', accountNumber: '04117893456', accountName: 'Prepaid', amountCents: 20000, feeCents: 215, reference: 'ELEC-TOKEN', status: 'completed', receiptNumber: 'RCPT-88410', processedAt: daysAgo(18) },
+   576→    ],
+   577→  });
+   578→
+   579→  console.log('\n=== CONSUMER WALLET V2 SEED COMPLETE ===');
+   580→  console.log(`Consumer login: phone ${CONSUMER_PHONE} / PIN ${CONSUMER_PIN}`);
+   581→  console.log(`Merchant login: demo@groway.co.za / demo1234`);
+   582→  console.log(`Wallet balance: R${(854750 / 100).toFixed(2)}`);
+   583→}
+   584→
+   585→async function main() {
+   586→  const merchant = await seedMerchantOs();
+   587→  await seedConsumer(merchant.id);
+   588→}
+   589→
+   590→main()
+   591→  .catch((e) => { console.error('Seed failed:', e); process.exit(1); })
+   592→  .finally(() => prisma.$disconnect());
+   593→
