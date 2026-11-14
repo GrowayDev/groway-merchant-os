@@ -245,16 +245,13 @@ async function main() {
           id: `user-${user.email.split('@')[0]}`,
           email: user.email,
           passwordHash,
-          firstName: user.firstName,
-          lastName: user.lastName,
+          name: `${user.firstName} ${user.lastName}`,
           role: user.role,
-          status: 'active',
-          createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
     } catch (e) {
-      console.log(`  User ${user.email} may already exist`);
+      console.error('USER ERROR:', e.toString());
     }
   }
   console.log('Demo users created\n');
@@ -269,20 +266,18 @@ async function main() {
         create: {
           id: `merchant-${merchant.vertical}`,
           name: merchant.name,
-          slug: merchant.vertical,
+          code: `MCH-${merchant.vertical.substring(0, 6).toUpperCase()}`,
           vertical: merchant.vertical,
           email: merchant.email,
           phone: '+27123456789',
-          address: '123 Business Street',
+          addressLine1: '123 Business Street',
           city: 'Johannesburg',
           province: 'Gauteng',
           postalCode: '2000',
           country: 'South Africa',
           currency: 'ZAR',
           timezone: 'Africa/Johannesburg',
-          status: 'active',
           plan: 'professional',
-          createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
@@ -295,16 +290,14 @@ async function main() {
           id: `branch-${merchant.vertical}-main`,
           merchantId: `merchant-${merchant.vertical}`,
           name: `${merchant.name} - Main`,
-          address: '123 Business Street',
+          addressLine1: '123 Business Street',
           city: 'Johannesburg',
           province: 'Gauteng',
           postalCode: '2000',
           country: 'South Africa',
           phone: '+27123456789',
           email: merchant.email,
-          status: 'active',
           isDefault: true,
-          createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
@@ -356,7 +349,6 @@ async function main() {
           color: station.color,
           sortOrder: station.sortOrder,
           isActive: true,
-          createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
@@ -379,7 +371,6 @@ async function main() {
           color: section.color,
           sortOrder: section.sortOrder,
           isActive: true,
-          createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
@@ -411,7 +402,6 @@ async function main() {
             positionY: Math.floor(i / 5) * 100 + 50,
             width: 80,
             height: 80,
-            createdAt: new Date(),
             updatedAt: new Date(),
           },
         });
@@ -440,13 +430,11 @@ async function main() {
           lastName: 'User',
           idType: 'passport',
           nationality: 'South African',
-          kycLevel: 'full',
           kycStatus: 'verified',
           kycVerifiedAt: new Date(),
           failedPinAttempts: 0,
           languagePreference: 'en',
           accountStatus: 'active',
-          createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
@@ -456,22 +444,18 @@ async function main() {
     await prisma.consumerWallet.upsert({
       where: { userId: consumerUserId },
       update: {
-        availableBalance: 12450.00,
-        reservedBalance: 0,
-        pendingBalance: 0,
+        dailySpendLimit: BigInt(100000),
+        pendingCents: BigInt(0),
         currency: 'ZAR',
         updatedAt: new Date(),
       },
       create: {
-        id: 'wallet-demo',
+        id: "wallet-demo",
+        balanceCents: BigInt(1245000),
         userId: consumerUserId,
-        availableBalance: 12450.00,
-        reservedBalance: 0,
-        pendingBalance: 0,
+        dailySpendLimit: BigInt(100000),
+        pendingCents: BigInt(0),
         currency: 'ZAR',
-        status: 'active',
-        kycLevel: 'full',
-        createdAt: new Date(),
         updatedAt: new Date(),
       },
     });
@@ -492,8 +476,6 @@ async function main() {
           contactPhone: `+27${Math.floor(Math.random() * 900000000) + 100000000}`,
           address: `${i} Wholesaler Street`,
           city: ['Johannesburg', 'Cape Town', 'Durban'][i % 3],
-          status: 'active',
-          createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
