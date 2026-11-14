@@ -40,6 +40,9 @@ interface HomeTabProps {
   onOpenQR: () => void
   onOpenSend: () => void
   onOpenTransactionHistory: () => void
+  onOpenPayShap: () => void
+  onOpenVouchers: () => void
+  onOpenRemittance: () => void
 }
 
 interface RecentTransaction {
@@ -59,7 +62,10 @@ export function HomeTab({
   onOpenMTNMoMo,
   onOpenQR,
   onOpenSend,
-  onOpenTransactionHistory
+  onOpenTransactionHistory,
+  onOpenPayShap,
+  onOpenVouchers,
+  onOpenRemittance,
 }: HomeTabProps) {
   const [userName] = useState('Thabo')
   const [balanceCents, setBalanceCents] = useState<string | null>(null)
@@ -363,6 +369,43 @@ export function HomeTab({
         </div>
       </div>
 
+      {/* GroAI Smart Widget */}
+      <div className="px-4">
+        <Card className="bg-gradient-to-br from-[#0F766E] to-[#134E4A] border-0">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-bold text-sm">GroAI Insights</p>
+                <p className="text-teal-200 text-[10px]">Powered by spazabox.co.za + Groway Merchant OS</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="bg-white/10 rounded-lg p-3">
+                <p className="text-white text-xs">
+                  💡 You spent R1,240 on groceries this month. Shoprite (a Groway merchant) has 15% off on basics — save R186 by shopping there.
+                </p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-3">
+                <p className="text-white text-xs">
+                  📊 Your electricity usage is 20% higher than last month. Consider buying a R200 token now before month-end peak rates.
+                </p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-3">
+                <p className="text-white text-xs">
+                  💰 You could save R350/month by rounding up transactions to the nearest R10. Enable Auto-Save to start.
+                </p>
+              </div>
+            </div>
+            <button className="w-full mt-3 bg-white/20 hover:bg-white/30 rounded-lg py-2 text-white text-xs font-medium transition-colors">
+              Ask GroAI for more insights →
+            </button>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Quick Services */}
       <div className="px-4">
         <h3 className="text-sm font-semibold text-[#1A1A1A] mb-2">Quick Services</h3>
@@ -382,14 +425,14 @@ export function HomeTab({
             <span className="text-[10px] text-[#FF9800]">MTN MoMo</span>
           </button>
           <button
-            onClick={() => {}}
+            onClick={onOpenPayShap}
             className="flex flex-col items-center p-2 rounded-xl bg-[#E8F5E9] active:scale-95 transition-transform"
           >
             <DollarSign className="h-5 w-5 text-[#4CAF50] mb-1" />
             <span className="text-[10px] text-[#4CAF50]">PayShap</span>
           </button>
           <button
-            onClick={() => {}}
+            onClick={onOpenVouchers}
             className="flex flex-col items-center p-2 rounded-xl bg-[#F3E5F5] active:scale-95 transition-transform"
           >
             <Gift className="h-5 w-5 text-[#9C27B0] mb-1" />
@@ -451,6 +494,71 @@ export function HomeTab({
             </Card>
           ))}
         </div>
+      </div>
+
+      {/* Financial Health Score */}
+      <div className="px-4">
+        <Card className="bg-white border border-gray-100">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#0F766E]/10 flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 text-[#0F766E]" />
+                </div>
+                <h3 className="text-sm font-semibold text-[#1A1A1A]">Financial Health</h3>
+              </div>
+              <Badge className="bg-[#4CAF50]/20 text-[#4CAF50] border-0 text-xs">Good · 72/100</Badge>
+            </div>
+            {/* Health Score Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+              <div className="bg-gradient-to-r from-[#0F766E] to-[#4CAF50] h-2.5 rounded-full" style={{ width: '72%' }} />
+            </div>
+            {/* Breakdown */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <p className="text-[10px] text-[#757575]">Savings Rate</p>
+                <p className="text-sm font-bold text-[#4CAF50]">18% of income</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#757575]">Debt-to-Income</p>
+                <p className="text-sm font-bold text-[#FF9800]">28%</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#757575]">Emergency Fund</p>
+                <p className="text-sm font-bold text-[#1A1A1A]">1.2 months</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#757575]">Credit Score</p>
+                <p className="text-sm font-bold text-[#4CAF50]">682</p>
+              </div>
+            </div>
+            {/* Investment Options */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-[#1A1A1A]">Grow Your Money</p>
+              <button className="w-full flex items-center justify-between p-2 bg-[#E0F2F1] rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-[#0F766E]" />
+                  <span className="text-xs font-medium text-[#0F766E]">Stokvel</span>
+                </div>
+                <span className="text-[10px] text-[#757575]">Earn up to 8% p.a.</span>
+              </button>
+              <button className="w-full flex items-center justify-between p-2 bg-[#E8F5E9] rounded-lg">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-[#4CAF50]" />
+                  <span className="text-xs font-medium text-[#4CAF50]">ETFs</span>
+                </div>
+                <span className="text-[10px] text-[#757575]">From R50/month</span>
+              </button>
+              <button className="w-full flex items-center justify-between p-2 bg-[#F3E5F5] rounded-lg">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-[#9C27B0]" />
+                  <span className="text-xs font-medium text-[#9C27B0]">Stocks</span>
+                </div>
+                <span className="text-[10px] text-[#757575]">JSE listed shares</span>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Activity */}

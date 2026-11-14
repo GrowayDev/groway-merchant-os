@@ -23,6 +23,9 @@ import { TrainModal } from '@/components/wallet/modals/TrainModal'
 import { EventsModal } from '@/components/wallet/modals/EventsModal'
 import { RemittanceModal } from '@/components/wallet/modals/RemittanceModal'
 import { TransactionHistoryModal } from '@/components/wallet/modals/TransactionHistoryModal'
+import { SettingsModal } from '@/components/wallet/modals/SettingsModal'
+import { SecurityModal } from '@/components/wallet/modals/SecurityModal'
+import { HelpModal } from '@/components/wallet/modals/HelpModal'
 import { SavingsModal } from '@/components/wallet/modals/SavingsModal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -106,6 +109,10 @@ export default function ConsumerWalletPage() {
   const [remittanceOpen, setRemittanceOpen] = useState(false)
   const [transactionHistoryOpen, setTransactionHistoryOpen] = useState(false)
   const [savingsOpen, setSavingsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [securityOpen, setSecurityOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [groaiOpen, setGroaiOpen] = useState(false)
 
   // Fetch the user's primary card on mount
   useEffect(() => {
@@ -203,6 +210,9 @@ export default function ConsumerWalletPage() {
               onOpenQR={() => setQRPayOpen(true)}
               onOpenSend={() => setSendMoneyOpen(true)}
               onOpenTransactionHistory={() => setTransactionHistoryOpen(true)}
+              onOpenPayShap={() => setPayShapOpen(true)}
+              onOpenVouchers={() => setVouchersOpen(true)}
+              onOpenRemittance={() => setRemittanceOpen(true)}
             />
           )}
           {activeTab === 'services' && (
@@ -373,28 +383,28 @@ export default function ConsumerWalletPage() {
                   </div>
                   <ChevronRight className="h-5 w-5 text-gray-400" />
                 </button>
-                <button className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200 hover:bg-gray-50">
+                <button onClick={() => setSecurityOpen(true)} className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200 hover:bg-gray-50">
                   <div className="flex items-center gap-3">
                     <Shield className="h-5 w-5 text-[#00897B]" />
                     <span className="text-sm text-[#1A1A1A]">Security Settings</span>
                   </div>
                   <ChevronRight className="h-5 w-5 text-gray-400" />
                 </button>
-                <button className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200 hover:bg-gray-50">
+                <button onClick={() => setSettingsOpen(true)} className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200 hover:bg-gray-50">
                   <div className="flex items-center gap-3">
                     <Bell className="h-5 w-5 text-[#00897B]" />
                     <span className="text-sm text-[#1A1A1A]">Notifications</span>
                   </div>
                   <ChevronRight className="h-5 w-5 text-gray-400" />
                 </button>
-                <button className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200 hover:bg-gray-50">
+                <button onClick={() => setSettingsOpen(true)} className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200 hover:bg-gray-50">
                   <div className="flex items-center gap-3">
                     <Settings className="h-5 w-5 text-[#00897B]" />
                     <span className="text-sm text-[#1A1A1A]">App Settings</span>
                   </div>
                   <ChevronRight className="h-5 w-5 text-gray-400" />
                 </button>
-                <button className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200 hover:bg-gray-50">
+                <button onClick={() => setHelpOpen(true)} className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200 hover:bg-gray-50">
                   <div className="flex items-center gap-3">
                     <HelpCircle className="h-5 w-5 text-[#00897B]" />
                     <span className="text-sm text-[#1A1A1A]">Help & Support</span>
@@ -473,6 +483,9 @@ export default function ConsumerWalletPage() {
       <EventsModal open={eventsOpen} onOpenChange={setEventsOpen} />
       <RemittanceModal open={remittanceOpen} onOpenChange={setRemittanceOpen} />
       <TransactionHistoryModal open={transactionHistoryOpen} onOpenChange={setTransactionHistoryOpen} />
+      <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SecurityModal open={securityOpen} onOpenChange={setSecurityOpen} />
+      <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
       <SavingsModal open={savingsOpen} onOpenChange={setSavingsOpen} />
     </div>
   )
