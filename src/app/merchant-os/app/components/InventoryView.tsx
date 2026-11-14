@@ -86,7 +86,7 @@ import {
   Info,
   Camera,
 } from 'lucide-react'
-import { BulkImportDialog } from './BulkImportDialog'
+import { BulkImportModal } from './BulkImportDialog'
 
 // Types
 interface InventoryItem {
@@ -2410,7 +2410,7 @@ export function InventoryView({ verticalId = 'fnb', subVerticalId = 'qsr' }: Inv
       </Dialog>
 
       {/* Bulk Import Dialog */}
-      <BulkImportDialog open={bulkImportOpen} onOpenChange={setBulkImportOpen} onImport={handleBulkImport} />
+      <BulkImportModal open={bulkImportOpen} onOpenChange={setBulkImportOpen} onImport={handleBulkImport} />
 
       {/* Toast */}
       {toast?.show && (

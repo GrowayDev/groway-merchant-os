@@ -12,12 +12,13 @@ import { AlertCircle, CheckCircle2, Upload, Download, FileSpreadsheet, Zap } fro
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  merchantId: string
+  merchantId?: string
   branchId?: string
   onImported?: () => void
+  onImport?: (products: any[]) => void
 }
 
-export function BulkImportModal({ open, onOpenChange, merchantId, branchId, onImported }: Props) {
+export function BulkImportModal({ open, onOpenChange, merchantId, branchId, onImported, onImport }: Props) {
   const [step, setStep] = useState<'upload' | 'preview' | 'result'>('upload')
   const [jsonData, setJsonData] = useState<any[]>([])
   const [result, setResult] = useState<any>(null)
@@ -112,10 +113,20 @@ export function BulkImportModal({ open, onOpenChange, merchantId, branchId, onIm
 
   const doImport = async () => {
     try {
+      // If onImport callback is provided, use that (local state approach)
+      if (onImport) {
+        onImport(jsonData)
+        setResult({ imported: jsonData.length, skipped: 0, errors: [] })
+        setStep('result')
+        if (onImported) onImported()
+        return
+      }
+
+      // Otherwise use the API (requires merchantId)
       const res = await fetch('/merchant-os/api/products/bulk-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ merchantId, branchId, products: jsonData }),
+        body: JSON.stringify({ merchantId: merchantId || 'demo-merchant', branchId, products: jsonData }),
       })
       const data = await res.json()
       setResult(data)
