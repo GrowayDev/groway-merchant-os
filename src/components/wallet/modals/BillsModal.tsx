@@ -407,7 +407,7 @@ export function BillsModal({ open, onOpenChange }: BillsModalProps) {
                 </div>
                 <h3 className="text-xl font-bold text-[#1A1A1A] mb-2">Payment Successful!</h3>
                 <p className="text-sm text-[#757575]">
-                  R {amount.toFixed(2)} paid to {selectedProvider}
+                <p>R {amount.toFixed(2)} paid to {String(selectedProvider || "")}</p>
                 </p>
               </div>
 

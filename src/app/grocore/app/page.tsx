@@ -176,8 +176,8 @@ function OverviewView({ onNavigate }: { onNavigate: (v: ViewId) => void }) {
   }
   useEffect(() => { load() }, [])
 
-  const deployedCents = capitalSources.reduce((s, c) => s + BigInt(moneyCents(c, "deployed")), 0n)
-  const committedCents = capitalSources.reduce((s, c) => s + BigInt(moneyCents(c, "committed")), 0n)
+  const deployedCents = capitalSources.reduce((s, c) => s + BigInt(moneyCents(c, "deployed")), BigInt(0))
+  const committedCents = capitalSources.reduce((s, c) => s + BigInt(moneyCents(c, "committed")), BigInt(0))
   const openAdvances = advances.filter((a) => a.status === 'open')
 
   const quickLinks: { id: ViewId; label: string; icon: typeof LayoutDashboard; desc: string }[] = [
@@ -370,7 +370,7 @@ function LedgerView() {
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-background"><tr className="text-left text-muted-foreground"><th className="py-2 pr-2">Code</th><th className="py-2 pr-2">Name</th><th className="py-2 pr-2 text-right">Balance</th></tr></thead>
                   <tbody>{trialBalance.map((r, i) => (
-                    <tr key={i} className="border-t"><td className="py-2 pr-2 font-mono">{r.accountCode}</td><td className="py-2 pr-2">{r.accountName}</td><td className={`py-2 pr-2 text-right font-mono ${BigInt(r.balanceCents) < 0n ? 'text-rose-600' : 'text-emerald-600'}`}>{formatMoney(r.balanceCents, r.currency)}</td></tr>
+                    <tr key={i} className="border-t"><td className="py-2 pr-2 font-mono">{r.accountCode}</td><td className="py-2 pr-2">{r.accountName}</td><td className={`py-2 pr-2 text-right font-mono ${BigInt(r.balanceCents) < BigInt(0) ? 'text-rose-600' : 'text-emerald-600'}`}>{formatMoney(r.balanceCents, r.currency)}</td></tr>
                   ))}</tbody>
                 </table>
               </div>
@@ -859,8 +859,8 @@ function CapitalView() {
     } catch (e: any) { setError(e.message) }
   }
 
-  const committedCents = sources.reduce((s, c) => s + BigInt(moneyCents(c, "committed")), 0n)
-  const deployedCents = sources.reduce((s, c) => s + BigInt(moneyCents(c, "deployed")), 0n)
+  const committedCents = sources.reduce((s, c) => s + BigInt(moneyCents(c, "committed")), BigInt(0))
+  const deployedCents = sources.reduce((s, c) => s + BigInt(moneyCents(c, "deployed")), BigInt(0))
 
   return (
     <div className="space-y-6">

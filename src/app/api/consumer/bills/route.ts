@@ -181,13 +181,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user and wallet
+    // Get user and wallet (wallet queried separately — no @relation in schema)
     const user = await db.consumerUser.findUnique({
       where: { id: userId },
-      include: { wallet: true }
     })
+    const wallet = await db.consumerWallet.findUnique({ where: { userId } })
 
-    if (!user || !user.wallet) {
+    if (!user || !wallet) {
       return NextResponse.json(
         { success: false, error: 'User not found' },
         { status: 404 }
@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
     const fee = provider.feeCents || BigInt(0)
     const totalDebit = amount + fee
 
-    if (user.wallet.balanceCents < totalDebit) {
+    if (wallet.balanceCents < totalDebit) {
       return NextResponse.json(
         { success: false, error: 'Insufficient funds' },
         { status: 400 }

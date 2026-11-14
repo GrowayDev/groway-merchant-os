@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
   const action = searchParams.get('action')
   
   // Get userId from params or context
-  const userIdResult = getUserId(searchParams, context)
+  const userIdResult = getUserId(searchParams, context as any)
   if (userIdResult instanceof NextResponse) {
     return userIdResult
   }
@@ -161,11 +161,11 @@ export async function POST(request: NextRequest) {
     // Validate userId - use body param or context
     let userId = bodyUserId
     if (!userId) {
-      userId = context.userId
+      userId = (context as any).userId
     }
     
     // Security check: ensure user can only access their own data
-    if (userId !== context.userId) {
+    if (userId !== (context as any).userId) {
       return NextResponse.json(
         { success: false, error: 'Access denied' },
         { status: 403 }

@@ -220,7 +220,6 @@ export function ElectricityModal({ open, onOpenChange }: ElectricityModalProps) 
         )}
 
         {/* Step: meter number */}
-        {step === 'provider_to_meter_placeholder' && null}
 
         {step === 'meter' && selectedProvider && (
           <div className="space-y-4">

@@ -202,7 +202,7 @@ const BUS_ROUTES = [
 ]
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = request.URL ? new URL(request.url) : new URL(request.url, 'http://localhost')
+  const { searchParams } = new URL(request.url) ? new URL(request.url) : new URL(request.url, 'http://localhost')
   const action = searchParams.get('action')
 
   try {

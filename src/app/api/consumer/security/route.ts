@@ -119,8 +119,8 @@ export async function GET(request: NextRequest) {
           dailySpent: Number(wallet.dailySpentCents) / 100,
           monthlyLimit: Number(wallet.monthlySpendLimit || 0) / 100,
           monthlySpent: Number(wallet.monthlySpentCents) / 100,
-          dailyRemaining: Number((wallet.dailySpendLimit || 0) - wallet.dailySpentCents) / 100,
-          monthlyRemaining: Number((wallet.monthlySpendLimit || 0) - wallet.monthlySpentCents) / 100,
+          dailyRemaining: (Number(wallet.dailySpendLimit ?? BigInt(0)) - Number(wallet.dailySpentCents)) / 100,
+          monthlyRemaining: (Number(wallet.monthlySpendLimit ?? BigInt(0)) - Number(wallet.monthlySpentCents)) / 100,
         } : null,
         sessions: sessions.map(s => ({
           id: s.id,

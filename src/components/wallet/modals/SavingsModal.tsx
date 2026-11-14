@@ -178,7 +178,7 @@ export function SavingsModal({ open, onOpenChange }: SavingsModalProps) {
         setError(res.error || 'Transaction failed')
         return
       }
-      const data = res?.data ?? {}
+      const data = (res?.data ?? {}) as any
       setReceipt({
         reference: data.reference ?? data.receiptNo ?? `SAV-${Date.now()}`,
         message: data.message ?? `${transactAction === 'deposit' ? 'Deposit' : 'Withdrawal'} complete`,

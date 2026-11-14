@@ -16,7 +16,7 @@ export async function apiGet<T = any>(path: string): Promise<T> {
   return res.json()
 }
 
-export async function apiPost<T = any>(path: string, body: unknown): Promise<T> {
+export async function apiPost<T = any>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },

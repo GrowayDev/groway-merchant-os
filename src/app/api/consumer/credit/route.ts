@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { getUserId, ok, error, serialize } from '../../_lib/helpers'
+import { getUserId, ok, error, serialize } from '../_lib/helpers'
 import { LOAN_PURPOSES, EMPLOYMENT_STATUSES, INCOME_BANDS, LOAN_TYPES, DEBT_COUNSELLING_PROVIDERS, generateCaseRef } from '@/lib/consumer-wallet/catalog'
 
 // GET /api/consumer/credit/catalog — return all dropdown data
@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
     const employmentStatus = body.employmentStatus
 
     // Qualifying criteria checks
-    const checks = []
+    interface Check { check: string; passed: boolean; reason?: string; score?: number; ratio?: string }
+    const checks: Check[] = []
     const empData = EMPLOYMENT_STATUSES.find(e => e.value === employmentStatus)
     if (empData && monthlyIncome < empData.minIncome) {
       checks.push({ check: 'income_vs_employment', passed: false, reason: `Income below minimum for ${empData.label}` })
@@ -78,51 +79,39 @@ export async function POST(request: NextRequest) {
     // Create the application in the database
     const application = await db.consumerLoanApplication.create({
       data: {
+        id: `loan-app-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         userId,
         lenderId: body.provider || 'grocredit',
+        lenderName: body.provider || 'grocredit',
         amount: amount,
         term: term,
         loanType: body.loanType,
         purpose: body.purpose,
         status: 'pending',
+        updatedAt: new Date(),
       },
     }).catch(() => null)
 
     // Store full application details as a transaction
-    let transaction = null
+    let transaction: any = null
     try {
       transaction = await db.consumerTransaction.create({
         data: {
+          id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           userId,
           idempotencyKey: caseRef,
           transactionType: 'loan_application',
           direction: 'none',
           amountCents: BigInt(Math.round(amount * 100)),
-          feeCents: 0n,
-          netAmountCents: 0n,
+          feeCents: BigInt(0),
+          netAmountCents: BigInt(0),
           status: 'pending',
           paymentMethod: 'internal',
-          description: `Loan application: ${body.loanType} - ${body.purpose}`,
+          description: `Loan: ${body.loanType} - ${body.purpose} - ${caseRef} - PreQualified: ${preQualified} - Instalment: ${monthlyInstalment}`,
           reference: caseRef,
-          metadata: JSON.stringify({
-            caseRef,
-            loanType: body.loanType,
-            purpose: body.purpose,
-            amount,
-            term,
-            employmentStatus,
-            monthlyIncome,
-            creditScore,
-            estimatedInterestRate,
-            monthlyInstalment,
-            affordabilityRatio: affordabilityRatio.toFixed(4),
-            preQualified,
-            qualifiedAmount,
-            checks,
-            groaiInsight,
-            debtCounsellingAvailable: !preQualified,
-            submittedAt: new Date().toISOString(),
-          }),
+          counterpartyType: 'lender',
+          counterpartyName: body.provider || 'grocredit',
+          updatedAt: new Date(),
         },
       })
     } catch (e) {
@@ -134,6 +123,7 @@ export async function POST(request: NextRequest) {
       caseRef,
       applicationId: application?.id || caseRef,
       status: 'pending',
+        updatedAt: new Date(),
       preQualified,
       qualifiedAmount,
       estimatedInterestRate,

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const entryInput = { tenantId, entryId: body.entryId, sourceType: body.sourceType || 'manual', sourceId: body.sourceId || `src-${Date.now()}`, description: body.description, lines }
     validateBalanced(entryInput)
     const accountCodes = [...new Set(lines.map((l: any) => l.accountCode))]
-    const accounts = await Promise.all(accountCodes.map((code: string) => getRepository().getAccount(tenantId, code)))
+    const accounts = await Promise.all(accountCodes.map((code: any) => getRepository().getAccount(tenantId, code)))
     const accountMap = new Map(accountCodes.map((code, i) => [code, accounts[i]]))
     for (const [code, acc] of accountMap) { if (!acc) throw new GroCoreError('LEDGER_ACCOUNT_NOT_FOUND', `Account ${code} not found`) }
     const dbLines = lines.map((l: any) => ({ accountId: accountMap.get(l.accountCode)!.id, amountCents: l.amount.signedCents, currency: l.amount.currency }))

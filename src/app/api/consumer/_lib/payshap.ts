@@ -118,7 +118,7 @@ export async function getPaymentStatus(paymentId: string): Promise<PayShapPaymen
   return {
     paymentId,
     proxyId: 'unknown',
-    amountCents: 0n,
+    amountCents: BigInt(0),
     currency: 'ZAR',
     status: 'completed',
     reference: '',

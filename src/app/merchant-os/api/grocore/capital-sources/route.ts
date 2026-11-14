@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       type: body.type,
       currency: body.currency,
       committed: { cents: committed.cents, currency: committed.currency as any },
-      deployed: { cents: 0n, currency: committed.currency as any },
+      deployed: { cents: BigInt(0), currency: committed.currency as any },
       costRateBps: body.costRateBps || 0,
       status: body.status || 'active',
       startDate: body.startDate ? new Date(body.startDate) : new Date(),

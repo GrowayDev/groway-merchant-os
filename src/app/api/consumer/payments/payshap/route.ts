@@ -71,10 +71,10 @@ export async function POST(request: NextRequest) {
     // Get sender
     const sender = await db.consumerUser.findUnique({
       where: { id: userId },
-      include: { wallet: true }
     })
+    const senderWallet = await db.consumerWallet.findUnique({ where: { userId } })
 
-    if (!sender || !sender.wallet) {
+    if (!sender || !senderWallet) {
       return NextResponse.json(
         { success: false, error: 'Sender not found' },
         { status: 404 }
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     const feeCents = BigInt(250) // R2.50 PayShap fee
     const totalDebit = amount + feeCents
 
-    if (sender.wallet.balanceCents < totalDebit) {
+    if (senderWallet.balanceCents < totalDebit) {
       return NextResponse.json(
         { success: false, error: 'Insufficient funds' },
         { status: 400 }
@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
     const payShapRef = generatePayShapRef()
     const transaction = await db.consumerTransaction.create({
       data: {
+        id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         idempotencyKey,
         userId: sender.id,
         transactionType: 'payshap_send',
@@ -124,6 +125,7 @@ export async function POST(request: NextRequest) {
         netAmountCents: totalDebit,
         currency: 'ZAR',
         status: 'processing',
+        updatedAt: new Date(),
         description: 'PayShap Transfer',
         reference,
         category: 'transfer',

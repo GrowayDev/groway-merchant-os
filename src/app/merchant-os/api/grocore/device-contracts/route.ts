@@ -4,9 +4,9 @@ import { getRepository, GroCoreError, createContract, DeviceProduct } from '@/li
 import { getTenantId, handleError, ok, parseMoney } from '../_helpers'
 
 const DEVICE_PRODUCTS: Record<string, DeviceProduct> = {
-  solar_kit: { id: 'solar_kit', name: 'Solar Home System', currency: 'ZAR', principal: { cents: 350000n, currency: 'ZAR' }, dailyPayment: { cents: 3500n, currency: 'ZAR' }, totalDays: 180, graceDays: 14 },
-  phone: { id: 'phone', name: 'Smartphone', currency: 'ZAR', principal: { cents: 250000n, currency: 'ZAR' }, dailyPayment: { cents: 2500n, currency: 'ZAR' }, totalDays: 120, graceDays: 7 },
-  fridge: { id: 'fridge', name: 'Refrigerator', currency: 'ZAR', principal: { cents: 500000n, currency: 'ZAR' }, dailyPayment: { cents: 5000n, currency: 'ZAR' }, totalDays: 120, graceDays: 14 },
+  solar_kit: { id: 'solar_kit', name: 'Solar Home System', currency: 'ZAR', principal: { cents: BigInt(350000), currency: 'ZAR' }, dailyPayment: { cents: BigInt(3500), currency: 'ZAR' }, totalDays: 180, graceDays: 14 },
+  phone: { id: 'phone', name: 'Smartphone', currency: 'ZAR', principal: { cents: BigInt(250000), currency: 'ZAR' }, dailyPayment: { cents: BigInt(2500), currency: 'ZAR' }, totalDays: 120, graceDays: 7 },
+  fridge: { id: 'fridge', name: 'Refrigerator', currency: 'ZAR', principal: { cents: BigInt(500000), currency: 'ZAR' }, dailyPayment: { cents: BigInt(5000), currency: 'ZAR' }, totalDays: 120, graceDays: 14 },
 }
 
 export async function GET(request: NextRequest) {

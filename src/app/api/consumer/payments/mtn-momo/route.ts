@@ -40,11 +40,13 @@ export async function POST(request: NextRequest) {
       
       await db.mtnMomoAccount.create({
         data: {
+          id: `momo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           userId,
           phone,
           momoCustomerId,
           status: 'linked',
-          linkedAt: new Date()
+          linkedAt: new Date(),
+          updatedAt: new Date()
         }
       })
 
@@ -95,6 +97,7 @@ export async function POST(request: NextRequest) {
       // Create pending transaction
       const transaction = await db.consumerTransaction.create({
         data: {
+          id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           idempotencyKey: momoRef,
           userId,
           transactionType: 'topup',
@@ -104,6 +107,7 @@ export async function POST(request: NextRequest) {
           netAmountCents: amount,
           currency: 'ZAR',
           status: 'pending',
+          updatedAt: new Date(),
           description: 'MTN MOMO Top-up',
           reference: reference || momoRef,
           category: 'topup',
@@ -119,7 +123,8 @@ export async function POST(request: NextRequest) {
           transactionId: transaction.id,
           momoRef,
           amount: amount.toString(),
-          status: 'pending'
+          status: 'pending',
+          updatedAt: new Date(),
         }
       })
     }
@@ -144,10 +149,10 @@ export async function POST(request: NextRequest) {
       // Get user wallet
       const user = await db.consumerUser.findUnique({
         where: { id: userId },
-        include: { wallet: true }
       })
+      const wallet = await db.consumerWallet.findUnique({ where: { userId } })
 
-      if (!user || !user.wallet) {
+      if (!user || !wallet) {
         return NextResponse.json(
           { success: false, error: 'User not found' },
           { status: 404 }
@@ -155,7 +160,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check balance
-      if (user.wallet.balanceCents < amount) {
+      if (wallet.balanceCents < amount) {
         return NextResponse.json(
           { success: false, error: 'Insufficient funds' },
           { status: 400 }
@@ -182,6 +187,7 @@ export async function POST(request: NextRequest) {
       // Create transaction
       const transaction = await db.consumerTransaction.create({
         data: {
+          id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           idempotencyKey: momoRef,
           userId,
           transactionType: 'withdrawal',
@@ -191,6 +197,7 @@ export async function POST(request: NextRequest) {
           netAmountCents: amount,
           currency: 'ZAR',
           status: 'pending',
+          updatedAt: new Date(),
           description: 'Withdraw to MTN MOMO',
           reference: reference || momoRef,
           category: 'withdrawal',

@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
           transactionType: 'laybye_deposit',
           direction: 'debit',
           amountCents: BigInt(Math.round(depositAmount * 100)),
-          feeCents: 0n,
+          feeCents: BigInt(0),
           netAmountCents: BigInt(Math.round(depositAmount * 100)),
           currency: 'ZAR',
           status: 'completed',

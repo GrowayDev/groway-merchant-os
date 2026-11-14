@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     const amountCents = rawAmount > 1000 ? BigInt(Math.round(rawAmount)) : BigInt(Math.round(rawAmount * 100))
     const amountRand = Number(amountCents) / 100
 
-    if (amountCents <= 0n) return error('amount must be greater than 0', 400)
+    if (amountCents <= BigInt(0)) return error('amount must be greater than 0', 400)
     if (amountRand > provider.maxAmount) {
       return error(`Amount exceeds ${provider.name} max of R${provider.maxAmount.toLocaleString()}`, 400)
     }

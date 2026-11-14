@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
     // Create pending user (unverified)
     const user = await db.consumerUser.create({
       data: {
+        id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         phone,
         firstName: firstName || null,
         lastName: lastName || null,
@@ -52,34 +53,42 @@ export async function POST(request: NextRequest) {
         kycLevel: 0,
         kycStatus: 'pending',
         accountStatus: 'active',
+        updatedAt: new Date(),
       }
     })
 
     // Create wallet
     await db.consumerWallet.create({
       data: {
+        id: `wallet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         userId: user.id,
         balanceCents: BigInt(0),
         reservedCents: BigInt(0),
         pendingCents: BigInt(0),
+        currency: 'ZAR',
+        updatedAt: new Date(),
       }
     })
 
     // Create loyalty account
     await db.consumerLoyalty.create({
       data: {
+        id: `loy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         userId: user.id,
         tier: 'bronze',
         points: 0,
         totalEarned: 0,
         totalRedeemed: 0,
         tierProgress: 0,
+        tierAchievedAt: new Date(),
+        updatedAt: new Date(),
       }
     })
 
     // Store OTP
     await db.otpVerification.create({
       data: {
+        id: `otp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         phone,
         otpCode: otpHash,
         purpose: 'register',

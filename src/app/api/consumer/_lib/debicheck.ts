@@ -96,7 +96,7 @@ export async function authoriseMandate(mandateId: string, userId: string): Promi
     creditorName: '',
     debtorBank: '',
     debtorAccount: '',
-    amountCents: 0n,
+    amountCents: BigInt(0),
     currency: 'ZAR',
     frequency: 'monthly',
     startDate: new Date(),

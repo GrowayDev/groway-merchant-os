@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const userId = getUserId(request)
 
     // Ensure the user has a BNPL eligibility row; create one if missing.
-    let bnpl = await db.consumerBNPL.findUnique({ where: { userId } }).catch(() => null)
+    let bnpl = await db.consumerBNPL.findFirst({ where: { userId } }).catch(() => null)
     if (!bnpl) {
       bnpl = await db.consumerBNPL.create({
         data: {
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     const term = termOverride && terms.includes(termOverride) ? termOverride : terms[0]
 
     // Ensure BNPL eligibility row exists; check eligibility + available limit.
-    let bnpl = await db.consumerBNPL.findUnique({ where: { userId } }).catch(() => null)
+    let bnpl = await db.consumerBNPL.findFirst({ where: { userId } }).catch(() => null)
     if (!bnpl) {
       bnpl = await db.consumerBNPL.create({
         data: {
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
         },
       }),
       db.consumerBNPL.update({
-        where: { userId },
+        where: { id: bnpl!.id },
         data: {
           used: { increment: purchaseAmount },
           available: { decrement: purchaseAmount },
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
           transactionType: 'bnpl_purchase',
           direction: 'debit',
           amountCents: BigInt(Math.round(purchaseAmount * 100)),
-          feeCents: 0n,
+          feeCents: BigInt(0),
           netAmountCents: BigInt(Math.round(purchaseAmount * 100)),
           currency: 'ZAR',
           status: 'completed',

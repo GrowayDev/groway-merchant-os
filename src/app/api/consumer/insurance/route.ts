@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
     const coverAmount = parseMoney(coverAmountInput as string | number)
     const monthlyPremium = parseMoney(monthlyPremiumInput as string | number)
 
-    if (coverAmount <= 0n) return error('coverAmount must be greater than 0', 400)
-    if (monthlyPremium <= 0n) return error('monthlyPremium must be greater than 0', 400)
+    if (coverAmount <= BigInt(0)) return error('coverAmount must be greater than 0', 400)
+    if (monthlyPremium <= BigInt(0)) return error('monthlyPremium must be greater than 0', 400)
 
     // Generate policy number — POL-{YYYYMM}-{6 random}
     const now = new Date()
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
         transactionType: 'insurance_premium',
         direction: 'debit',
         amountCents: monthlyPremium,
-        feeCents: 0n,
+        feeCents: BigInt(0),
         netAmountCents: monthlyPremium,
         currency: 'ZAR',
         status: 'completed',

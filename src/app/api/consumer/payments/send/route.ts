@@ -72,10 +72,10 @@ export async function POST(request: NextRequest) {
     // Get sender
     const sender = await db.consumerUser.findUnique({
       where: { id: userId },
-      include: { wallet: true }
     })
+    const senderWallet = await db.consumerWallet.findUnique({ where: { userId } })
 
-    if (!sender || !sender.wallet) {
+    if (!sender || !senderWallet) {
       return NextResponse.json(
         { success: false, error: 'Sender not found' },
         { status: 404 }
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     const feeCents = BigInt(0) // Free P2P transfers
     const totalDebit = amount + feeCents
 
-    if (sender.wallet.balanceCents < totalDebit) {
+    if (senderWallet.balanceCents < totalDebit) {
       return NextResponse.json(
         { success: false, error: 'Insufficient funds' },
         { status: 400 }
@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check daily spend limit
-    if (sender.wallet.dailySpendLimit && 
-        sender.wallet.dailySpentCents + totalDebit > sender.wallet.dailySpendLimit) {
+    if (senderWallet.dailySpendLimit && 
+        senderWallet.dailySpentCents + totalDebit > senderWallet.dailySpendLimit) {
       return NextResponse.json(
         { success: false, error: 'Daily spend limit exceeded' },
         { status: 400 }
@@ -113,7 +113,6 @@ export async function POST(request: NextRequest) {
     // Find recipient
     const recipient = await db.consumerUser.findUnique({
       where: { phone: recipientPhone },
-      include: { wallet: true }
     })
 
     if (!recipient) {
@@ -135,6 +134,7 @@ export async function POST(request: NextRequest) {
     
     const transaction = await db.consumerTransaction.create({
       data: {
+        id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         idempotencyKey,
         userId: sender.id,
         transactionType: 'p2p_send',
@@ -144,6 +144,7 @@ export async function POST(request: NextRequest) {
         netAmountCents: totalDebit,
         currency: 'ZAR',
         status: 'pending',
+        updatedAt: new Date(),
         description: note || 'P2P Transfer',
         reference: txRef,
         category: 'transfer',
@@ -177,6 +178,7 @@ export async function POST(request: NextRequest) {
     // Create receive transaction for recipient
     await db.consumerTransaction.create({
       data: {
+        id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         idempotencyKey: `${idempotencyKey}-recv`,
         userId: recipient.id,
         transactionType: 'p2p_receive',
@@ -186,6 +188,7 @@ export async function POST(request: NextRequest) {
         netAmountCents: amount,
         currency: 'ZAR',
         status: 'completed',
+        updatedAt: new Date(),
         description: note || 'P2P Transfer',
         reference: txRef,
         category: 'transfer',

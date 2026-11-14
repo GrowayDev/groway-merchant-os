@@ -25,20 +25,20 @@ export async function GET(request: NextRequest) {
     })
 
     const totalSavedCents = pockets.reduce(
-      (sum, p) => sum + (p.currentCents ?? 0n),
-      0n,
+      (sum, p) => sum + (p.currentCents ?? BigInt(0)),
+      BigInt(0),
     )
 
     const totalTargetCents = pockets.reduce(
-      (sum, p) => sum + (p.targetCents ?? 0n),
-      0n,
+      (sum, p) => sum + (p.targetCents ?? BigInt(0)),
+      BigInt(0),
     )
 
     const data = pockets.map((p) => {
-      const target = p.targetCents ?? 0n
-      const current = p.currentCents ?? 0n
-      const progress = target > 0n
-        ? Math.min(100, Number((current * 100n) / target))
+      const target = p.targetCents ?? BigInt(0)
+      const current = p.currentCents ?? BigInt(0)
+      const progress = target > BigInt(0)
+        ? Math.min(100, Number((current * BigInt(100)) / target))
         : null
       const typeValue = p.autoSaveRule && SAVINGS_TYPES.some((t) => t.value === p.autoSaveRule)
         ? p.autoSaveRule
@@ -67,8 +67,8 @@ export async function GET(request: NextRequest) {
     // GroAI insight — derived from savings velocity vs target.
     const monthlyAvgCents = pockets.length > 0
       ? totalSavedCents / BigInt(Math.max(1, pockets.length))
-      : 0n
-    const insight = monthlyAvgCents > 0n
+      : BigInt(0)
+    const insight = monthlyAvgCents > BigInt(0)
       ? `Based on your spending patterns, you could save R${(Number(monthlyAvgCents) / 100 * 1.25).toFixed(0)} more per month by rounding up every transaction and auto-routing the difference into your "${pockets[0]?.name ?? 'Pocket'}" pocket. Switching one takeaway meal per week to home-cooked would add roughly R${(Number(monthlyAvgCents) / 100 * 0.6).toFixed(0)} extra.`
       : 'Start a savings pocket today — even R50/week compounds. GroAI recommends an Auto-Save pocket that rounds up every payment to the nearest R10 and banks the change.'
 
@@ -125,9 +125,9 @@ export async function POST(request: NextRequest) {
         icon,
         color,
         targetCents,
-        currentCents: 0n,
+        currentCents: BigInt(0),
         interestRate,
-        interestEarned: 0n,
+        interestEarned: BigInt(0),
         // Reuse the free-form autoSaveRule field to persist the catalog type
         // value so GET can return the type label/icon alongside the pocket.
         autoSaveRule: typeRaw,
@@ -179,7 +179,7 @@ export async function PUT(request: NextRequest) {
     if (amountInput == null) return error('amount is required', 400)
 
     const amountCents = parseMoney(amountInput as string | number)
-    if (amountCents <= 0n) return error('amount must be greater than 0', 400)
+    if (amountCents <= BigInt(0)) return error('amount must be greater than 0', 400)
 
     const pocket = await db.savingsPocket.findUnique({ where: { id: pocketId } })
     if (!pocket || pocket.userId !== userId) {
@@ -221,7 +221,7 @@ export async function PUT(request: NextRequest) {
             transactionType: 'savings_deposit',
             direction: 'debit',
             amountCents,
-            feeCents: 0n,
+            feeCents: BigInt(0),
             netAmountCents: amountCents,
             currency: 'ZAR',
             status: 'completed',
@@ -236,7 +236,7 @@ export async function PUT(request: NextRequest) {
       ])
     } else {
       // Withdraw — pocket must have funds; credit wallet if it exists.
-      if ((pocket.currentCents ?? 0n) < amountCents) {
+      if ((pocket.currentCents ?? BigInt(0)) < amountCents) {
         return error('Insufficient funds in savings pocket', 400)
       }
 
@@ -262,7 +262,7 @@ export async function PUT(request: NextRequest) {
             transactionType: 'savings_withdrawal',
             direction: 'credit',
             amountCents,
-            feeCents: 0n,
+            feeCents: BigInt(0),
             netAmountCents: amountCents,
             currency: 'ZAR',
             status: 'completed',

@@ -33,10 +33,6 @@ export async function POST(request: NextRequest) {
     // Find user
     const user = await db.consumerUser.findUnique({
       where: { phone },
-      include: {
-        wallet: true,
-        loyalty: true
-      }
     })
 
     if (!user) {
@@ -45,6 +41,10 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // Fetch wallet and loyalty separately (no @relation in schema)
+    const wallet = await db.consumerWallet.findUnique({ where: { userId: user.id } })
+    const loyalty = await db.consumerLoyalty.findUnique({ where: { userId: user.id } })
 
     // Check if account is locked
     if (user.lockedUntil && user.lockedUntil > new Date()) {
@@ -114,12 +114,14 @@ export async function POST(request: NextRequest) {
     // Create session
     const session = await db.consumerSession.create({
       data: {
+        id: `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         userId: user.id,
         deviceName: deviceName || 'Unknown',
         deviceType: deviceType || 'mobile',
         deviceId: deviceId || null,
         refreshToken,
         refreshTokenExpiry,
+        updatedAt: new Date(),
         status: 'active'
       }
     })
@@ -154,12 +156,12 @@ export async function POST(request: NextRequest) {
           languagePreference: user.languagePreference
         },
         wallet: {
-          balanceCents: user.wallet?.balanceCents?.toString() || '0',
-          currency: user.wallet?.currency || 'ZAR'
+          balanceCents: wallet?.balanceCents?.toString() || '0',
+          currency: wallet?.currency || 'ZAR'
         },
         loyalty: {
-          tier: user.loyalty?.tier || 'bronze',
-          points: user.loyalty?.points || 0
+          tier: loyalty?.tier || 'bronze',
+          points: loyalty?.points || 0
         }
       }
     })

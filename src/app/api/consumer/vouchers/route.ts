@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
   const category = searchParams.get('category')
   
   // Get userId from params or context
-  const userIdResult = getUserId(searchParams, context)
+  const userIdResult = getUserId(searchParams, context as any)
   if (userIdResult instanceof NextResponse) {
     return userIdResult
   }
@@ -134,11 +134,11 @@ export async function POST(request: NextRequest) {
     // Validate userId - use body param or context
     let userId = bodyUserId
     if (!userId) {
-      userId = context.userId
+      userId = (context as any).userId
     }
     
     // Security check: ensure user can only access their own data
-    if (userId !== context.userId) {
+    if (userId !== (context as any).userId) {
       return NextResponse.json(
         { success: false, error: 'Access denied' },
         { status: 403 }
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'purchase') {
       // Find provider
-      let provider = null
+      let provider: any = null
       for (const providers of Object.values(voucherProviders)) {
         provider = providers.find(p => p.id === providerId)
         if (provider) break

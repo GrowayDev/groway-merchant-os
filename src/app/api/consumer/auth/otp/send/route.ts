@@ -47,10 +47,11 @@ export async function POST(request: NextRequest) {
     // Store OTP
     await db.otpVerification.create({
       data: {
+        id: `otp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         phone,
         otpCode: otpHash,
         purpose: purpose || 'login',
-        expiresAt: otpExpiry
+        expiresAt: otpExpiry,
       }
     })
 

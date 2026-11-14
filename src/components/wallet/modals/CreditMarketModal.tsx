@@ -12,12 +12,13 @@ import { apiGet, apiPost, formatMoney } from '@/components/wallet/lib/api'
 
 interface Props {
   open: boolean
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
+  onClose?: () => void
 }
 
 type Step = 'form' | 'submitting' | 'result' | 'debt_counselling'
 
-export function CreditMarketModal({ open, onClose }: Props) {
+export function CreditMarketModal({ open, onOpenChange }: Props) {
   const [step, setStep] = useState<Step>('form')
   const [catalog, setCatalog] = useState<any>(null)
   const [error, setError] = useState('')
@@ -74,7 +75,7 @@ export function CreditMarketModal({ open, onClose }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && onOpenChange(false)}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -249,7 +250,7 @@ export function CreditMarketModal({ open, onClose }: Props) {
 
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={reset}>New Application</Button>
-              <Button variant="outline" className="flex-1" onClick={onClose}>Close</Button>
+              <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Close</Button>
             </div>
           </div>
         )}
