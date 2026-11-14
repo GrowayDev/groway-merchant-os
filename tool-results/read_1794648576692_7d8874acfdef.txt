@@ -1,0 +1,2002 @@
+     1→generator client {
+     2→  provider = "prisma-client-js"
+     3→}
+     4→
+     5→datasource db {
+     6→  provider = "sqlite"
+     7→  url      = "file:../dev.db"
+     8→}
+     9→
+    10→model AccountingBill {
+    11→  id            String     @id
+    12→  merchantId    String
+    13→  billNumber    String     @unique
+    14→  supplierId    String?
+    15→  supplierName  String
+    16→  supplierEmail String?
+    17→  supplierPhone String?
+    18→  billDate      String
+    19→  dueDate       String
+    20→  category      String?
+    21→  description   String?
+    22→  reference     String?
+    23→  subtotal      Float      @default(0)
+    24→  vatAmount     Float      @default(0)
+    25→  totalAmount   Float      @default(0)
+    26→  amountPaid    Float      @default(0)
+    27→  balanceDue    Float      @default(0)
+    28→  status        String     @default("draft")
+    29→  paymentTerms  String?
+    30→  notes         String?
+    31→  internalNotes String?
+    32→  approvedBy    String?
+    33→  approvedAt    DateTime?
+    34→  paidAt        DateTime?
+    35→  cancelledAt   DateTime?
+    36→  createdBy     String?
+    37→  createdAt     DateTime   @default(now())
+    38→  updatedAt     DateTime
+    39→  BillItem      BillItem[]
+    40→
+    41→  @@index([merchantId, billDate])
+    42→  @@index([merchantId, status])
+    43→}
+    44→
+    45→model AccountingInvoice {
+    46→  id             String        @id
+    47→  merchantId     String
+    48→  invoiceNumber  String        @unique
+    49→  customerId     String?
+    50→  customerName   String
+    51→  customerEmail  String?
+    52→  customerPhone  String?
+    53→  invoiceDate    String
+    54→  dueDate        String
+    55→  description    String?
+    56→  subtotal       Float         @default(0)
+    57→  vatAmount      Float         @default(0)
+    58→  discountAmount Float         @default(0)
+    59→  totalAmount    Float         @default(0)
+    60→  amountPaid     Float         @default(0)
+    61→  balanceDue     Float         @default(0)
+    62→  status         String        @default("draft")
+    63→  paymentTerms   String?
+    64→  notes          String?
+    65→  internalNotes  String?
+    66→  sentAt         DateTime?
+    67→  paidAt         DateTime?
+    68→  cancelledAt    DateTime?
+    69→  createdBy      String?
+    70→  createdAt      DateTime      @default(now())
+    71→  updatedAt      DateTime
+    72→  InvoiceItem    InvoiceItem[]
+    73→
+    74→  @@index([merchantId, invoiceDate])
+    75→  @@index([merchantId, status])
+    76→}
+    77→
+    78→model AccountingInvoiceSync {
+    79→  id                    String    @id
+    80→  merchantId            String
+    81→  connectionId          String
+    82→  invoiceId             String?
+    83→  receiptId             String?
+    84→  transactionId         String?
+    85→  externalInvoiceId     String?
+    86→  externalInvoiceNumber String?
+    87→  syncStatus            String    @default("pending")
+    88→  syncedAt              DateTime?
+    89→  syncError             String?
+    90→  externalPaymentStatus String?
+    91→  paidAt                DateTime?
+    92→  createdAt             DateTime  @default(now())
+    93→  updatedAt             DateTime
+    94→
+    95→  @@index([merchantId, syncStatus])
+    96→  @@index([connectionId, transactionId])
+    97→  @@index([connectionId, invoiceId])
+    98→}
+    99→
+   100→model AccountingJournalSync {
+   101→  id                 String    @id
+   102→  merchantId         String
+   103→  connectionId       String
+   104→  journalEntryId     String
+   105→  externalJournalId  String?
+   106→  syncStatus         String    @default("pending")
+   107→  syncedAt           DateTime?
+   108→  syncError          String?
+   109→  isReversed         Boolean   @default(false)
+   110→  reversedAt         DateTime?
+   111→  externalReversalId String?
+   112→  createdAt          DateTime  @default(now())
+   113→  updatedAt          DateTime
+   114→
+   115→  @@unique([connectionId, journalEntryId])
+   116→  @@index([merchantId, syncStatus])
+   117→}
+   118→
+   119→model AccountingMapping {
+   120→  id                    String                @id
+   121→  connectionId          String
+   122→  merchantId            String
+   123→  localAccountCode      String
+   124→  localAccountName      String
+   125→  localAccountType      String
+   126→  externalAccountId     String?
+   127→  externalAccountCode   String?
+   128→  externalAccountName   String?
+   129→  mappingType           String                @default("auto")
+   130→  isActive              Boolean               @default(true)
+   131→  vatRate               Float?
+   132→  externalTaxCode       String?
+   133→  createdAt             DateTime              @default(now())
+   134→  updatedAt             DateTime
+   135→  IntegrationConnection IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+   136→
+   137→  @@unique([connectionId, localAccountCode])
+   138→  @@index([merchantId, localAccountCode])
+   139→}
+   140→
+   141→model AccountingPeriod {
+   142→  id           String    @id
+   143→  merchantId   String
+   144→  fiscalYearId String?
+   145→  name         String
+   146→  startDate    String
+   147→  endDate      String
+   148→  periodType   String    @default("monthly")
+   149→  status       String    @default("open")
+   150→  closedBy     String?
+   151→  closedAt     DateTime?
+   152→  createdAt    DateTime  @default(now())
+   153→  updatedAt    DateTime
+   154→
+   155→  @@unique([merchantId, name])
+   156→}
+   157→
+   158→model AccountingReconciliation {
+   159→  id                    String    @id
+   160→  merchantId            String
+   161→  connectionId          String
+   162→  internalTransactionId String?
+   163→  internalReference     String?
+   164→  internalAmount        Float
+   165→  internalDate          String
+   166→  externalTransactionId String
+   167→  externalReference     String?
+   168→  externalAmount        Float
+   169→  externalDate          String
+   170→  externalDescription   String?
+   171→  matchStatus           String    @default("unmatched")
+   172→  matchConfidence       Float?
+   173→  matchType             String?
+   174→  matchedBy             String?
+   175→  matchedAt             DateTime?
+   176→  varianceAmount        Float?
+   177→  varianceReason        String?
+   178→  createdAt             DateTime  @default(now())
+   179→  updatedAt             DateTime
+   180→
+   181→  @@index([merchantId, externalDate])
+   182→  @@index([connectionId, matchStatus])
+   183→}
+   184→
+   185→model AdminMerchant {
+   186→  id                    String                  @id
+   187→  businessName          String
+   188→  tradingName           String?
+   189→  registrationNumber    String?
+   190→  vatNumber             String?
+   191→  tier                  String                  @default("starter")
+   192→  status                String                  @default("pending")
+   193→  vertical              String?
+   194→  subVertical           String?
+   195→  contactName           String?
+   196→  contactEmail          String?
+   197→  contactPhone          String?
+   198→  addressStreet         String?
+   199→  addressCity           String?
+   200→  addressProvince       String?
+   201→  addressPostalCode     String?
+   202→  kycStatus             String                  @default("pending")
+   203→  kybStatus             String                  @default("pending")
+   204→  riskScore             Int                     @default(50)
+   205→  monthlyVolume         Float                   @default(0)
+   206→  totalTransactions     Int                     @default(0)
+   207→  joinedDate            DateTime                @default(now())
+   208→  createdAt             DateTime                @default(now())
+   209→  updatedAt             DateTime
+   210→  AdminMerchantDocument AdminMerchantDocument[]
+   211→  AdminMerchantNote     AdminMerchantNote[]
+   212→}
+   213→
+   214→model AdminMerchantDocument {
+   215→  id            String        @id
+   216→  merchantId    String
+   217→  type          String
+   218→  status        String        @default("pending")
+   219→  url           String?
+   220→  uploadedAt    DateTime      @default(now())
+   221→  verifiedAt    DateTime?
+   222→  verifiedBy    String?
+   223→  createdAt     DateTime      @default(now())
+   224→  updatedAt     DateTime
+   225→  AdminMerchant AdminMerchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+   226→}
+   227→
+   228→model AdminMerchantNote {
+   229→  id            String        @id
+   230→  merchantId    String
+   231→  content       String
+   232→  author        String
+   233→  createdAt     DateTime      @default(now())
+   234→  updatedAt     DateTime
+   235→  AdminMerchant AdminMerchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+   236→}
+   237→
+   238→model AdminSession {
+   239→  id        String    @id
+   240→  adminId   String
+   241→  token     String    @unique
+   242→  device    String?
+   243→  ipAddress String?
+   244→  userAgent String?
+   245→  expiresAt DateTime
+   246→  createdAt DateTime  @default(now())
+   247→  AdminUser AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+   248→}
+   249→
+   250→model AdminUser {
+   251→  id           String         @id
+   252→  email        String         @unique
+   253→  name         String
+   254→  role         String         @default("admin")
+   255→  department   String?
+   256→  phone        String?
+   257→  passwordHash String
+   258→  mfaEnabled   Boolean        @default(true)
+   259→  mfaSecret    String?
+   260→  status       String         @default("active")
+   261→  lastLogin    DateTime?
+   262→  createdAt    DateTime       @default(now())
+   263→  updatedAt    DateTime
+   264→  AdminSession AdminSession[]
+   265→  AuditLog     AuditLog[]
+   266→}
+   267→
+   268→model AgeVerification {
+   269→  id                 String   @id
+   270→  verificationId     String   @unique
+   271→  documentType       String
+   272→  documentNumber     String?
+   273→  customerName       String?
+   274→  dateOfBirth        String
+   275→  ageVerified        Boolean  @default(false)
+   276→  verificationMethod String
+   277→  verifiedBy         String?
+   278→  verifiedByName     String?
+   279→  imageUrl           String?
+   280→  confidence         Float?
+   281→  productId          String?
+   282→  productName        String?
+   283→  saleId             String?
+   284→  location           String?
+   285→  notes              String?
+   286→  flagged            Boolean  @default(false)
+   287→  flagReason         String?
+   288→  createdAt          DateTime @default(now())
+   289→  updatedAt          DateTime
+   290→}
+   291→
+   292→model AmlAlert {
+   293→  id          String   @id
+   294→  type        String
+   295→  entityName  String
+   296→  entityType  String
+   297→  triggeredAt String
+   298→  severity    String   @default("medium")
+   299→  status      String   @default("new")
+   300→  matchScore  Int
+   301→  details     String
+   302→  createdAt   DateTime @default(now())
+   303→  updatedAt   DateTime
+   304→}
+   305→
+   306→model Appointment {
+   307→  id                  String                @id
+   308→  customerId          String?
+   309→  customerName        String
+   310→  customerPhone       String?
+   311→  customerEmail       String?
+   312→  staffId             String
+   313→  serviceId           String
+   314→  date                String
+   315→  time                String
+   316→  duration            Int
+   317→  status              String                @default("scheduled")
+   318→  total               Float
+   319→  depositAmount       Float?
+   320→  depositPaid         Boolean               @default(false)
+   321→  depositMethod       String?
+   322→  depositReference    String?
+   323→  notes               String?
+   324→  source              String                @default("in-store")
+   325→  reminder24hSent     Boolean               @default(false)
+   326→  reminder2hSent      Boolean               @default(false)
+   327→  confirmationSent    Boolean               @default(false)
+   328→  cancelledAt         DateTime?
+   329→  cancelledReason     String?
+   330→  completedAt         DateTime?
+   331→  createdAt           DateTime              @default(now())
+   332→  updatedAt           DateTime
+   333→  BookingService      BookingService        @relation(fields: [serviceId], references: [id])
+   334→  Staff               Staff                 @relation(fields: [staffId], references: [id])
+   335→  Customer            Customer?             @relation(fields: [customerId], references: [id])
+   336→  AppointmentReminder AppointmentReminder[]
+   337→}
+   338→
+   339→model AppointmentReminder {
+   340→  id            String      @id
+   341→  appointmentId String
+   342→  type          String
+   343→  channel       String
+   344→  sentAt        DateTime
+   345→  status        String      @default("sent")
+   346→  message       String?
+   347→  createdAt     DateTime    @default(now())
+   348→  Appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+   349→}
+   350→
+   351→model AuditLog {
+   352→  id         String     @id
+   353→  action     String
+   354→  category   String
+   355→  actorId    String?
+   356→  actorName  String
+   357→  targetType String?
+   358→  targetId   String?
+   359→  targetName String?
+   360→  details    String?
+   361→  ipAddress  String?
+   362→  userAgent  String?
+   363→  createdAt  DateTime   @default(now())
+   364→  AdminUser  AdminUser? @relation(fields: [actorId], references: [id])
+   365→}
+   366→
+   367→model AuditLogEntry {
+   368→  id         String   @id
+   369→  tenantId   String?
+   370→  userId     String?
+   371→  userType   String?
+   372→  action     String
+   373→  category   String
+   374→  targetType String?
+   375→  targetId   String?
+   376→  details    String?
+   377→  ipAddress  String?
+   378→  userAgent  String?
+   379→  createdAt  DateTime @default(now())
+   380→
+   381→  @@index([createdAt])
+   382→  @@index([action])
+   383→  @@index([userId])
+   384→  @@index([tenantId, createdAt])
+   385→}
+   386→
+   387→model BNPLAgreement {
+   388→  id                    String           @id
+   389→  agreementNumber       String           @unique
+   390→  userId                String
+   391→  merchantId            String?
+   392→  merchantName          String
+   393→  merchantRef           String?
+   394→  purchaseAmount        Float
+   395→  instalmentAmount      Float
+   396→  totalInstalments      Int              @default(3)
+   397→  paidInstalments       Int              @default(0)
+   398→  outstandingAmount     Float
+   399→  nextDueDate           String?
+   400→  firstPaymentDue       String
+   401→  status                String           @default("active")
+   402→  interestRate          Float            @default(0)
+   403→  interestFree          Boolean          @default(true)
+   404→  lateFeeRate           Float            @default(5)
+   405→  lateFeesAccrued       Float            @default(0)
+   406→  ncaDisclosureShown    Boolean          @default(false)
+   407→  ncaAccepted           Boolean          @default(false)
+   408→  ncaAcceptedAt         DateTime?
+   409→  creditScoreAtCreation Int?
+   410→  coolingOffExpiry      DateTime?
+   411→  grosellOrderId        String?
+   412→  merchantOsOrderId     String?
+   413→  walletTransactionId   String?
+   414→  purchaseDescription   String?
+   415→  purchaseCategory      String?
+   416→  createdAt             DateTime         @default(now())
+   417→  updatedAt             DateTime
+   418→  completedAt           DateTime?
+   419→  cancelledAt           DateTime?
+   420→  cancelledReason       String?
+   421→  BNPLMerchant          BNPLMerchant?    @relation(fields: [merchantId], references: [id])
+   422→  BNPLInstalment        BNPLInstalment[]
+   423→
+   424→  @@index([status])
+   425→  @@index([merchantId])
+   426→  @@index([userId, status])
+   427→}
+   428→
+   429→model BNPLInstalment {
+   430→  id                  String        @id
+   431→  agreementId         String
+   432→  instalmentNumber    Int
+   433→  amount              Float
+   434→  dueDate             String
+   435→  status              String        @default("pending")
+   436→  paidAmount          Float         @default(0)
+   437→  paidAt              DateTime?
+   438→  paymentMethod       String?
+   439→  paymentReference    String?
+   440→  walletTransactionId String?
+   441→  lateFeeApplied      Float         @default(0)
+   442→  lateFeePaid         Boolean       @default(false)
+   443→  reminderSentAt      DateTime?
+   444→  reminderType        String?
+   445→  createdAt           DateTime      @default(now())
+   446→  updatedAt           DateTime
+   447→  BNPLAgreement       BNPLAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+   448→
+   449→  @@unique([agreementId, instalmentNumber])
+   450→  @@index([dueDate, status])
+   451→  @@index([agreementId, status])
+   452→}
+   453→
+   454→model BNPLMerchant {
+   455→  id                   String          @id
+   456→  grosellMerchantId    String?         @unique
+   457→  merchantOsId         String?
+   458→  businessName         String
+   459→  tradingName          String?
+   460→  category             String?
+   461→  logo                 String?
+   462→  phone                String?
+   463→  email                String?
+   464→  website              String?
+   465→  address              String?
+   466→  city                 String?
+   467→  province             String?
+   468→  postalCode           String?
+   469→  bnplEnabled          Boolean         @default(true)
+   470→  maxTransactionLimit  Float           @default(5000)
+   471→  minTransactionAmount Float           @default(500)
+   472→  commissionRate       Float           @default(3.5)
+   473→  settlementDays       Int             @default(2)
+   474→  riskScore            Int             @default(50)
+   475→  status               String          @default("active")
+   476→  lastSyncAt           DateTime?
+   477→  createdAt            DateTime        @default(now())
+   478→  updatedAt            DateTime
+   479→  BNPLAgreement        BNPLAgreement[]
+   480→
+   481→  @@index([status])
+   482→  @@index([merchantOsId])
+   483→  @@index([grosellMerchantId])
+   484→}
+   485→
+   486→model BNPLUser {
+   487→  id                  String    @id
+   488→  userId              String    @unique
+   489→  eligible            Boolean   @default(false)
+   490→  creditScore         Int       @default(0)
+   491→  creditLimit         Float     @default(0)
+   492→  creditUsed          Float     @default(0)
+   493→  creditAvailable     Float     @default(0)
+   494→  kycLevel            Int       @default(0)
+   495→  accountAgeDays      Int       @default(0)
+   496→  walletHistoryMonths Int       @default(0)
+   497→  transactionCount    Int       @default(0)
+   498→  avgMonthlySpend     Float     @default(0)
+   499→  tier                String    @default("bronze")
+   500→  tierLimit           Float     @default(500)
+   501→  status              String    @default("active")
+   502→  blockedReason       String?
+   503→  blockedAt           DateTime?
+   504→  lastAssessmentAt    DateTime?
+   505→  createdAt           DateTime  @default(now())
+   506→  updatedAt           DateTime
+   507→
+   508→  @@index([status])
+   509→  @@index([userId])
+   510→}
+   511→
+   512→model Beneficiary {
+   513→  id           String       @id
+   514→  userId       String
+   515→  name         String
+   516→  nickname     String?
+   517→  type         String
+   518→  identifier   String
+   519→  bankName     String?
+   520→  accountType  String?
+   521→  lastUsedAt   DateTime?
+   522→  useCount     Int          @default(0)
+   523→  isFavorite   Boolean      @default(false)
+   524→  createdAt    DateTime     @default(now())
+   525→  updatedAt    DateTime
+   526→  ConsumerUser ConsumerUser @relation(fields: [userId], references: [id])
+   527→}
+   528→
+   529→model BillItem {
+   530→  id             String         @id
+   531→  billId         String
+   532→  description    String
+   533→  quantity       Float          @default(1)
+   534→  unitPrice      Float          @default(0)
+   535→  vatRate        Float          @default(15)
+   536→  vatAmount      Float          @default(0)
+   537→  lineTotal      Float          @default(0)
+   538→  accountCode    String?
+   539→  sortOrder      Int            @default(0)
+   540→  createdAt      DateTime       @default(now())
+   541→  AccountingBill AccountingBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+   542→}
+   543→
+   544→model BillPayment {
+   545→  id            String       @id
+   546→  userId        String
+   547→  providerId    String
+   548→  accountNumber String
+   549→  accountName   String?
+   550→  amountCents   BigInt
+   551→  feeCents      BigInt       @default(0)
+   552→  reference     String?
+   553→  status        String       @default("pending")
+   554→  externalRef   String?
+   555→  receiptNumber String?
+   556→  processedAt   DateTime?
+   557→  failedAt      DateTime?
+   558→  failureReason String?
+   559→  createdAt     DateTime     @default(now())
+   560→  updatedAt     DateTime
+   561→  BillProvider  BillProvider @relation(fields: [providerId], references: [id])
+   562→}
+   563→
+   564→model BillProvider {
+   565→  id             String        @id
+   566→  name           String
+   567→  category       String
+   568→  logo           String?
+   569→  accountFormat  String
+   570→  accountLabel   String
+   571→  minAmount      BigInt
+   572→  maxAmount      BigInt
+   573→  feeCents       BigInt        @default(0)
+   574→  processingTime String        @default("instant")
+   575→  status         String        @default("active")
+   576→  createdAt      DateTime      @default(now())
+   577→  updatedAt      DateTime
+   578→  BillPayment    BillPayment[]
+   579→}
+   580→
+   581→model BookingService {
+   582→  id                String         @id
+   583→  name              String
+   584→  category          String         @default("general")
+   585→  duration          Int            @default(30)
+   586→  price             Float          @default(0)
+   587→  description       String?
+   588→  depositRequired   Boolean        @default(false)
+   589→  depositAmount     Float?
+   590→  depositPercentage Float?
+   591→  active            Boolean        @default(true)
+   592→  bufferAfter       Int            @default(0)
+   593→  maxPerDay         Int?
+   594→  createdAt         DateTime       @default(now())
+   595→  updatedAt         DateTime
+   596→  Appointment       Appointment[]
+   597→  StaffService      StaffService[]
+   598→}
+   599→
+   600→model BookingSettings {
+   601→  id                    String   @id
+   602→  merchantId            String   @unique
+   603→  onlineBookingEnabled  Boolean  @default(true)
+   604→  requireDeposit        Boolean  @default(false)
+   605→  defaultDepositPct     Float    @default(20)
+   606→  sendConfirmationSMS   Boolean  @default(true)
+   607→  sendReminder24h       Boolean  @default(true)
+   608→  sendReminder2h        Boolean  @default(true)
+   609→  sendWhatsApp          Boolean  @default(false)
+   610→  allowOnlineReschedule Boolean  @default(true)
+   611→  allowOnlineCancel     Boolean  @default(true)
+   612→  cancellationPolicy    String   @default("moderate")
+   613→  cancellationHours     Int      @default(24)
+   614→  minBookingNotice      Int      @default(2)
+   615→  maxAdvanceBooking     Int      @default(30)
+   616→  autoConfirmBookings   Boolean  @default(false)
+   617→  bufferBetweenSlots    Int      @default(0)
+   618→  workingHoursStart     String   @default("08:00")
+   619→  workingHoursEnd       String   @default("18:00")
+   620→  workingDays           String   @default("1,2,3,4,5,6")
+   621→  whatsappNumber        String?
+   622→  createdAt             DateTime @default(now())
+   623→  updatedAt             DateTime
+   624→}
+   625→
+   626→model Branch {
+   627→  id                                               String          @id
+   628→  merchantId                                       String
+   629→  code                                             String
+   630→  name                                             String
+   631→  type                                             String          @default("store")
+   632→  phone                                            String?
+   633→  email                                            String?
+   634→  managerName                                      String?
+   635→  managerPhone                                     String?
+   636→  addressLine1                                     String?
+   637→  addressLine2                                     String?
+   638→  city                                             String?
+   639→  province                                         String?
+   640→  postalCode                                       String?
+   641→  latitude                                         Float?
+   642→  longitude                                        Float?
+   643→  operatingHours                                   String?
+   644→  isDefault                                        Boolean         @default(false)
+   645→  isActive                                         Boolean         @default(true)
+   646→  lastTransactionAt                                DateTime?
+   647→  createdAt                                        DateTime        @default(now())
+   648→  updatedAt                                        DateTime
+   649→  Merchant                                         Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+   650→  Product                                          Product[]
+   651→  StockMovement                                    StockMovement[]
+   652→  StockTransfer_StockTransfer_toBranchIdToBranch   StockTransfer[] @relation("StockTransfer_toBranchIdToBranch")
+   653→  StockTransfer_StockTransfer_fromBranchIdToBranch StockTransfer[] @relation("StockTransfer_fromBranchIdToBranch")
+   654→  Transaction                                      Transaction[]
+   655→
+   656→  @@unique([merchantId, code])
+   657→}
+   658→
+   659→model Budget {
+   660→  id                String              @id
+   661→  merchantId        String
+   662→  name              String
+   663→  description       String?
+   664→  periodType        String              @default("monthly")
+   665→  fiscalYearId      String?
+   666→  startDate         String
+   667→  endDate           String
+   668→  accountId         String?
+   669→  accountCode       String?
+   670→  accountName       String?
+   671→  category          String?
+   672→  budgetAmount      Float               @default(0)
+   673→  committedAmount   Float               @default(0)
+   674→  spentAmount       Float               @default(0)
+   675→  remainingAmount   Float               @default(0)
+   676→  monthlyBreakdown  String?
+   677→  alertEnabled      Boolean             @default(true)
+   678→  alertThreshold    Float               @default(80)
+   679→  alertSentAt       DateTime?
+   680→  status            String              @default("active")
+   681→  createdBy         String?
+   682→  approvedBy        String?
+   683→  approvedAt        DateTime?
+   684→  notes             String?
+   685→  createdAt         DateTime            @default(now())
+   686→  updatedAt         DateTime
+   687→  BudgetTransaction BudgetTransaction[]
+   688→
+   689→  @@unique([merchantId, name, startDate])
+   690→  @@index([merchantId, status])
+   691→  @@index([merchantId, periodType])
+   692→}
+   693→
+   694→model BudgetTransaction {
+   695→  id                 String   @id
+   696→  budgetId           String
+   697→  transactionType    String
+   698→  transactionId      String?
+   699→  transactionDate    String
+   700→  amount             Float    @default(0)
+   701→  previousSpent      Float    @default(0)
+   702→  newSpent           Float    @default(0)
+   703→  description        String?
+   704→  accountCode        String?
+   705→  isManualAdjustment Boolean  @default(false)
+   706→  adjustmentReason   String?
+   707→  createdBy          String?
+   708→  createdAt          DateTime @default(now())
+   709→  Budget             Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+   710→
+   711→  @@index([budgetId, transactionDate])
+   712→}
+   713→
+   714→model CardSettings {
+   715→  id                   String       @id
+   716→  cardId               String       @unique
+   717→  onlineEnabled        Boolean      @default(true)
+   718→  contactlessEnabled   Boolean      @default(true)
+   719→  atmEnabled           Boolean      @default(false)
+   720→  internationalEnabled Boolean      @default(false)
+   721→  dailyLimit           BigInt       @default(500000)
+   722→  monthlyLimit         BigInt       @default(2500000)
+   723→  allowedCategories    String?
+   724→  blockedMerchants     String?
+   725→  transactionAlerts    Boolean      @default(true)
+   726→  createdAt            DateTime     @default(now())
+   727→  updatedAt            DateTime
+   728→  ConsumerCard         ConsumerCard @relation(fields: [cardId], references: [id])
+   729→}
+   730→
+   731→model CardTransaction {
+   732→  id               String       @id
+   733→  cardId           String
+   734→  transactionType  String
+   735→  amountCents      BigInt
+   736→  merchantName     String
+   737→  merchantCategory String?
+   738→  status           String       @default("completed")
+   739→  reference        String?
+   740→  declinedReason   String?
+   741→  processedAt      DateTime?
+   742→  createdAt        DateTime     @default(now())
+   743→  updatedAt        DateTime
+   744→  ConsumerCard     ConsumerCard @relation(fields: [cardId], references: [id])
+   745→
+   746→  @@index([cardId, createdAt])
+   747→}
+   748→
+   749→model CatalogProduct {
+   750→  id              String      @id
+   751→  sku             String      @unique
+   752→  sourceType      String      @default("wholesale")
+   753→  wholesalerId    String?
+   754→  supplierId      String?
+   755→  vertical        String
+   756→  subVertical     String?
+   757→  category        String
+   758→  subCategory     String?
+   759→  description     String
+   760→  brand           String?
+   761→  packSize        String
+   762→  unit            String
+   763→  vatRate         Float       @default(15.0)
+   764→  costPrice       Float       @default(0)
+   765→  retailPrice     Float       @default(0)
+   766→  grossMargin     Float       @default(0)
+   767→  minOrderQty     Int         @default(1)
+   768→  leadDays        Int         @default(3)
+   769→  inStock         Boolean     @default(true)
+   770→  notes           String?
+   771→  verticalsServed String?
+   772→  status          String      @default("active")
+   773→  createdAt       DateTime    @default(now())
+   774→  updatedAt       DateTime
+   775→  Wholesaler      Wholesaler? @relation(fields: [wholesalerId], references: [id])
+   776→  Supplier        Supplier?   @relation(fields: [supplierId], references: [id])
+   777→
+   778→  @@index([sku])
+   779→  @@index([vertical])
+   780→  @@index([category])
+   781→  @@index([wholesalerId])
+   782→  @@index([supplierId])
+   783→  @@index([sourceType])
+   784→}
+   785→
+   786→model ChartOfAccount {
+   787→  id                   String           @id
+   788→  merchantId           String
+   789→  code                 String
+   790→  name                 String
+   791→  type                 String
+   792→  subType              String?
+   793→  parentId             String?
+   794→  isActive             Boolean          @default(true)
+   795→  isSystemAccount      Boolean          @default(false)
+   796→  normalBalance        String           @default("debit")
+   797→  openingBalance       Float            @default(0)
+   798→  currentBalance       Float            @default(0)
+   799→  description          String?
+   800→  taxDeductible        Boolean          @default(false)
+   801→  createdAt            DateTime         @default(now())
+   802→  updatedAt            DateTime
+   803→  ChartOfAccount       ChartOfAccount?  @relation("ChartOfAccountToChartOfAccount", fields: [parentId], references: [id])
+   804→  other_ChartOfAccount ChartOfAccount[] @relation("ChartOfAccountToChartOfAccount")
+   805→
+   806→  @@unique([merchantId, code])
+   807→}
+   808→
+   809→model ComplianceItem {
+   810→  id           String   @id
+   811→  type         String
+   812→  merchantId   String?
+   813→  merchantName String?
+   814→  submittedAt  String
+   815→  status       String   @default("pending")
+   816→  priority     String   @default("medium")
+   817→  assignedTo   String?
+   818→  documents    String?
+   819→  notes        String?
+   820→  createdAt    DateTime @default(now())
+   821→  updatedAt    DateTime
+   822→}
+   823→
+   824→model ConsumerBNPL {
+   825→  id               String             @id
+   826→  userId           String
+   827→  eligible         Boolean            @default(true)
+   828→  creditScore      Int                @default(650)
+   829→  limit            Float              @default(5000)
+   830→  used             Float              @default(0)
+   831→  available        Float              @default(5000)
+   832→  createdAt        DateTime           @default(now())
+   833→  updatedAt        DateTime
+   834→  ConsumerUser     ConsumerUser       @relation(fields: [userId], references: [id])
+   835→  ConsumerBNPLPlan ConsumerBNPLPlan[]
+   836→
+   837→  @@index([userId])
+   838→}
+   839→
+   840→model ConsumerBNPLInstalment {
+   841→  id               String           @id
+   842→  planId           String
+   843→  number           Int
+   844→  amount           Float
+   845→  dueDate          DateTime
+   846→  status           String           @default("pending")
+   847→  paidAt           DateTime?
+   848→  createdAt        DateTime         @default(now())
+   849→  updatedAt        DateTime
+   850→  ConsumerBNPLPlan ConsumerBNPLPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+   851→
+   852→  @@index([planId, status])
+   853→}
+   854→
+   855→model ConsumerBNPLPlan {
+   856→  id                     String                   @id
+   857→  userId                 String
+   858→  merchant               String
+   859→  purchaseAmount         Float
+   860→  instalmentAmount       Float
+   861→  paidInstalments        Int                      @default(0)
+   862→  totalInstalments       Int                      @default(3)
+   863→  nextDueDate            DateTime?
+   864→  status                 String                   @default("active")
+   865→  createdAt              DateTime                 @default(now())
+   866→  updatedAt              DateTime
+   867→  ConsumerBNPLInstalment ConsumerBNPLInstalment[]
+   868→  ConsumerBNPL           ConsumerBNPL             @relation(fields: [userId], references: [id])
+   869→
+   870→  @@index([userId, status])
+   871→}
+   872→
+   873→model ConsumerCard {
+   874→  id                   String            @id
+   875→  userId               String
+   876→  cardType             String
+   877→  cardCategory         String            @default("virtual")
+   878→  cardDesign           String            @default("default")
+   879→  lastFourDigits       String
+   880→  cardToken            String            @unique
+   881→  panEncrypted         String
+   882→  cvvEncrypted         String
+   883→  expiryMonth          String
+   884→  expiryYear           String
+   885→  cardholderName       String?
+   886→  status               String            @default("active")
+   887→  spendingLimitDaily   BigInt?
+   888→  spendingLimitMonthly BigInt?
+   889→  spentTodayCents      BigInt            @default(0)
+   890→  spentThisMonthCents  BigInt            @default(0)
+   891→  allowedCategories    String?
+   892→  blockedCategories    String?
+   893→  onlineEnabled        Boolean           @default(true)
+   894→  contactlessEnabled   Boolean           @default(true)
+   895→  atmEnabled           Boolean           @default(false)
+   896→  internationalEnabled Boolean           @default(false)
+   897→  nfcToken             String?
+   898→  nfcTokenExpiry       DateTime?
+   899→  issuedAt             DateTime          @default(now())
+   900→  activatedAt          DateTime?
+   901→  cancelledAt          DateTime?
+   902→  cancelledReason      String?
+   903→  createdAt            DateTime          @default(now())
+   904→  updatedAt            DateTime
+   905→  CardSettings         CardSettings?
+   906→  CardTransaction      CardTransaction[]
+   907→  ConsumerUser         ConsumerUser      @relation(fields: [userId], references: [id])
+   908→}
+   909→
+   910→model ConsumerCreditScore {
+   911→  id           String       @id
+   912→  userId       String       @unique
+   913→  score        Int          @default(650)
+   914→  lastUpdated  DateTime     @default(now())
+   915→  history      String?
+   916→  factors      String?
+   917→  createdAt    DateTime     @default(now())
+   918→  updatedAt    DateTime
+   919→  ConsumerUser ConsumerUser @relation(fields: [userId], references: [id])
+   920→
+   921→  @@index([userId])
+   922→}
+   923→
+   924→model ConsumerEWA {
+   925→  id                     String                   @id
+   926→  userId                 String                   @unique
+   927→  employeeId             String?
+   928→  employer               String?
+   929→  monthlySalary          Float                    @default(0)
+   930→  payDay                 Int                      @default(25)
+   931→  accruedSalary          Float                    @default(0)
+   932→  availableAdvance       Float                    @default(0)
+   933→  usedThisMonth          Float                    @default(0)
+   934→  limit                  Float                    @default(15000)
+   935→  eligible               Boolean                  @default(true)
+   936→  nextPayDay             DateTime?
+   937→  createdAt              DateTime                 @default(now())
+   938→  updatedAt              DateTime
+   939→  ConsumerUser           ConsumerUser             @relation(fields: [userId], references: [id])
+   940→  ConsumerEWATransaction ConsumerEWATransaction[]
+   941→
+   942→  @@index([userId])
+   943→}
+   944→
+   945→model ConsumerEWATransaction {
+   946→  id            String      @id
+   947→  userId        String
+   948→  amount        Float
+   949→  fee           Float
+   950→  netAmount     Float
+   951→  reason        String?
+   952→  status        String      @default("settled")
+   953→  repaymentDate DateTime?
+   954→  requestedAt   DateTime    @default(now())
+   955→  settledAt     DateTime?
+   956→  createdAt     DateTime    @default(now())
+   957→  updatedAt     DateTime
+   958→  ConsumerEWA   ConsumerEWA @relation(fields: [userId], references: [id])
+   959→
+   960→  @@index([userId, status])
+   961→}
+   962→
+   963→model ConsumerInsurance {
+   964→  id              String       @id
+   965→  userId          String
+   966→  productType     String
+   967→  provider        String
+   968→  coverAmount     BigInt       @default(0)
+   969→  premium         BigInt       @default(0)
+   970→  startDate       String?
+   971→  status          String       @default("active")
+   972→  nextPaymentDate String?
+   973→  beneficiaries   String?
+   974→  createdAt       DateTime     @default(now())
+   975→  updatedAt       DateTime
+   976→  ConsumerUser    ConsumerUser @relation(fields: [userId], references: [id])
+   977→
+   978→  @@index([userId, status])
+   979→}
+   980→
+   981→model ConsumerKYCDocument {
+   982→  id                String       @id
+   983→  userId            String
+   984→  documentType      String
+   985→  documentCategory  String
+   986→  fileName          String
+   987→  fileUrl           String
+   988→  fileHash          String?
+   989→  fileSize          Int?
+   990→  fileType          String?
+   991→  status            String       @default("pending")
+   992→  uploadedAt        DateTime     @default(now())
+   993→  verifiedBy        String?
+   994→  verifiedByName    String?
+   995→  verifiedAt        DateTime?
+   996→  verificationNotes String?
+   997→  rejectionReason   String?
+   998→  documentNumber    String?
+   999→  documentCountry   String?
+  1000→  issueDate         String?
+  1001→  expiryDate        String?
+  1002→  extractedData     String?
+  1003→  isClear           Boolean?
+  1004→  isComplete        Boolean?
+  1005→  isExpired         Boolean      @default(false)
+  1006→  tamperScore       Float?
+  1007→  reviewAssignedTo  String?
+  1008→  reviewAssignedAt  DateTime?
+  1009→  reviewPriority    String       @default("normal")
+  1010→  createdAt         DateTime     @default(now())
+  1011→  updatedAt         DateTime
+  1012→  ConsumerUser      ConsumerUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  1013→
+  1014→  @@index([reviewPriority, status])
+  1015→  @@index([status])
+  1016→  @@index([documentType])
+  1017→  @@index([userId])
+  1018→}
+  1019→
+  1020→model ConsumerLaybye {
+  1021→  id                    String                  @id
+  1022→  userId                String
+  1023→  merchant              String
+  1024→  item                  String
+  1025→  itemPrice             Float
+  1026→  deposit               Float
+  1027→  totalPaid             Float                   @default(0)
+  1028→  remainingBalance      Float
+  1029→  instalmentAmount      Float
+  1030→  instalmentsPaid       Int                     @default(0)
+  1031→  totalInstalments      Int
+  1032→  nextDueDate           DateTime?
+  1033→  expiresAt             DateTime?
+  1034→  status                String                  @default("active")
+  1035→  ncaProtected          Boolean                 @default(false)
+  1036→  createdAt             DateTime                @default(now())
+  1037→  updatedAt             DateTime
+  1038→  ConsumerUser          ConsumerUser            @relation(fields: [userId], references: [id])
+  1039→  ConsumerLaybyePayment ConsumerLaybyePayment[]
+  1040→
+  1041→  @@index([userId, status])
+  1042→}
+  1043→
+  1044→model ConsumerLaybyePayment {
+  1045→  id             String         @id
+  1046→  laybyeId       String
+  1047→  amount         Float
+  1048→  type           String         @default("instalment")
+  1049→  status         String         @default("completed")
+  1050→  createdAt      DateTime       @default(now())
+  1051→  updatedAt      DateTime
+  1052→  ConsumerLaybye ConsumerLaybye @relation(fields: [laybyeId], references: [id], onDelete: Cascade)
+  1053→
+  1054→  @@index([laybyeId])
+  1055→}
+  1056→
+  1057→model ConsumerLoan {
+  1058→  id              String       @id
+  1059→  userId          String
+  1060→  lenderId        String
+  1061→  lenderName      String
+  1062→  loanType        String
+  1063→  amount          Float
+  1064→  outstanding     Float
+  1065→  monthlyPayment  Float
+  1066→  interestRate    Float
+  1067→  termMonths      Int
+  1068→  monthsRemaining Int
+  1069→  status          String       @default("active")
+  1070→  createdAt       DateTime     @default(now())
+  1071→  updatedAt       DateTime
+  1072→  ConsumerUser    ConsumerUser @relation(fields: [userId], references: [id])
+  1073→
+  1074→  @@index([userId, status])
+  1075→}
+  1076→
+  1077→model ConsumerLoanApplication {
+  1078→  id           String       @id
+  1079→  userId       String
+  1080→  lenderId     String
+  1081→  lenderName   String
+  1082→  amount       Float
+  1083→  term         Int
+  1084→  loanType     String?
+  1085→  purpose      String?
+  1086→  status       String       @default("pending")
+  1087→  createdAt    DateTime     @default(now())
+  1088→  updatedAt    DateTime
+  1089→  ConsumerUser ConsumerUser @relation(fields: [userId], references: [id])
+  1090→
+  1091→  @@index([userId, status])
+  1092→}
+  1093→
+  1094→model ConsumerLoyalty {
+  1095→  id               String       @id
+  1096→  userId           String       @unique
+  1097→  tier             String       @default("bronze")
+  1098→  points           Int          @default(0)
+  1099→  totalEarned      Int          @default(0)
+  1100→  totalRedeemed    Int          @default(0)
+  1101→  pointsToNextTier Int?
+  1102→  tierProgress     Float        @default(0)
+  1103→  tierAchievedAt   DateTime?
+  1104→  createdAt        DateTime     @default(now())
+  1105→  updatedAt        DateTime
+  1106→  ConsumerUser     ConsumerUser @relation(fields: [userId], references: [id])
+  1107→}
+  1108→
+  1109→model ConsumerQR {
+  1110→  id               String          @id
+  1111→  userId           String
+  1112→  qrType           String
+  1113→  qrData           String
+  1114→  emvPayload       String?
+  1115→  merchantId       String?
+  1116→  merchantName     String?
+  1117→  merchantCategory String?
+  1118→  amountCents      BigInt?
+  1119→  currency         String          @default("ZAR")
+  1120→  reference        String?
+  1121→  tipAmountCents   BigInt?
+  1122→  staticCode       Boolean         @default(false)
+  1123→  expiresAt        DateTime?
+  1124→  validFrom        DateTime?       @default(now())
+  1125→  scanCount        Int             @default(0)
+  1126→  lastScannedAt    DateTime?
+  1127→  nfcEnabled       Boolean         @default(false)
+  1128→  nfcToken         String?
+  1129→  status           String          @default("active")
+  1130→  createdAt        DateTime        @default(now())
+  1131→  updatedAt        DateTime
+  1132→  QRTransaction    QRTransaction[]
+  1133→
+  1134→  @@index([status])
+  1135→  @@index([qrType])
+  1136→  @@index([userId])
+  1137→}
+  1138→
+  1139→model ConsumerSASSA {
+  1140→  id                       String                     @id
+  1141→  userId                   String                     @unique
+  1142→  linked                   Boolean                    @default(false)
+  1143→  idNumber                 String?
+  1144→  status                   String                     @default("active")
+  1145→  totalMonthlyIncome       Float                      @default(0)
+  1146→  createdAt                DateTime                   @default(now())
+  1147→  updatedAt                DateTime
+  1148→  ConsumerUser             ConsumerUser               @relation(fields: [userId], references: [id])
+  1149→  ConsumerSASSAApplication ConsumerSASSAApplication[]
+  1150→  ConsumerSASSAGrant       ConsumerSASSAGrant[]
+  1151→
+  1152→  @@index([userId])
+  1153→}
+  1154→
+  1155→model ConsumerSASSAApplication {
+  1156→  id            String        @id
+  1157→  sassaId       String
+  1158→  grantType     String
+  1159→  grantName     String?
+  1160→  status        String        @default("pending")
+  1161→  submittedAt   DateTime      @default(now())
+  1162→  processedAt   DateTime?
+  1163→  documents     String?
+  1164→  createdAt     DateTime      @default(now())
+  1165→  updatedAt     DateTime
+  1166→  ConsumerSASSA ConsumerSASSA @relation(fields: [sassaId], references: [id], onDelete: Cascade)
+  1167→
+  1168→  @@index([sassaId, status])
+  1169→}
+  1170→
+  1171→model ConsumerSASSAGrant {
+  1172→  id            String        @id
+  1173→  sassaId       String
+  1174→  grantType     String
+  1175→  grantName     String
+  1176→  amount        Float
+  1177→  beneficiaries Int           @default(1)
+  1178→  totalAmount   Float
+  1179→  status        String        @default("approved")
+  1180→  nextPayment   DateTime?
+  1181→  lastPayment   DateTime?
+  1182→  createdAt     DateTime      @default(now())
+  1183→  updatedAt     DateTime
+  1184→  ConsumerSASSA ConsumerSASSA @relation(fields: [sassaId], references: [id], onDelete: Cascade)
+  1185→
+  1186→  @@index([sassaId])
+  1187→}
+  1188→
+  1189→model ConsumerSession {
+  1190→  id                 String       @id
+  1191→  userId             String
+  1192→  deviceName         String?
+  1193→  deviceType         String?
+  1194→  deviceId           String?
+  1195→  osVersion          String?
+  1196→  appVersion         String?
+  1197→  ipAddress          String?
+  1198→  userAgent          String?
+  1199→  pushToken          String?
+  1200→  refreshToken       String       @unique
+  1201→  refreshTokenExpiry DateTime
+  1202→  lastActiveAt       DateTime     @default(now())
+  1203→  status             String       @default("active")
+  1204→  revokedAt          DateTime?
+  1205→  revokeReason       String?
+  1206→  createdAt          DateTime     @default(now())
+  1207→  updatedAt          DateTime
+  1208→  ConsumerUser       ConsumerUser @relation(fields: [userId], references: [id])
+  1209→}
+  1210→
+  1211→model ConsumerTransaction {
+  1212→  id                String       @id
+  1213→  idempotencyKey    String       @unique
+  1214→  userId            String
+  1215→  transactionType   String
+  1216→  direction         String
+  1217→  amountCents       BigInt
+  1218→  feeCents          BigInt       @default(0)
+  1219→  netAmountCents    BigInt
+  1220→  currency          String       @default("ZAR")
+  1221→  status            String       @default("pending")
+  1222→  description       String?
+  1223→  reference         String?
+  1224→  category          String?
+  1225→  counterpartyId    String?
+  1226→  counterpartyName  String?
+  1227→  counterpartyPhone String?
+  1228→  counterpartyType  String?
+  1229→  paymentMethod     String?
+  1230→  cardId            String?
+  1231→  cardLastFour      String?
+  1232→  externalRef       String?
+  1233→  providerRef       String?
+  1234→  payShapRef        String?
+  1235→  merchantId        String?
+  1236→  merchantName      String?
+  1237→  qrType            String?
+  1238→  nfcTerminalId     String?
+  1239→  originalTxId      String?
+  1240→  voucherToken      String?      // Token/Voucher PIN for airtime, electricity, water etc.
+  1241→  voucherExpiry     String?      // Expiry date for the voucher/token
+  1242→  meterNumber       String?      // Meter/account number for utilities
+  1243→  unitsPurchased    String?      // Units purchased (kWh, litres, etc.)
+  1244→  reversedAt        DateTime?
+  1245→  reversalReason    String?
+  1246→  disputedAt        DateTime?
+  1247→  disputeReason     String?
+  1248→  disputeStatus     String?
+  1249→  disputeResolvedAt DateTime?
+  1250→  processedAt       DateTime?
+  1251→  completedAt       DateTime?
+  1252→  failedAt          DateTime?
+  1253→  failureReason     String?
+  1254→  createdAt         DateTime     @default(now())
+  1255→  updatedAt         DateTime
+  1256→  ConsumerUser      ConsumerUser @relation(fields: [userId], references: [id])
+  1257→}
+  1258→
+  1259→model ConsumerUser {
+  1260→  id                      String                    @id
+  1261→  phone                   String                    @unique
+  1262→  email                   String?
+  1263→  firstName               String?
+  1264→  lastName                String?
+  1265→  idNumber                String?
+  1266→  idType                  String?                   @default("sa_id")
+  1267→  dateOfBirth             String?
+  1268→  nationality             String?                   @default("ZA")
+  1269→  kycLevel                Int                       @default(0)
+  1270→  kycStatus               String                    @default("pending")
+  1271→  kycVerifiedAt           DateTime?
+  1272→  pinHash                 String?
+  1273→  failedPinAttempts       Int                       @default(0)
+  1274→  lockedUntil             DateTime?
+  1275→  biometricKeyId          String?
+  1276→  languagePreference      String                    @default("en")
+  1277→  notificationPrefs       String?
+  1278→  accountStatus           String                    @default("active")
+  1279→  freezeReason            String?
+  1280→  frozenAt                DateTime?
+  1281→  createdAt               DateTime                  @default(now())
+  1282→  updatedAt               DateTime
+  1283→  Beneficiary             Beneficiary[]
+  1284→  ConsumerBNPL            ConsumerBNPL[]
+  1285→  ConsumerCard            ConsumerCard[]
+  1286→  ConsumerCreditScore     ConsumerCreditScore?
+  1287→  ConsumerEWA             ConsumerEWA?
+  1288→  ConsumerInsurance       ConsumerInsurance[]
+  1289→  ConsumerKYCDocument     ConsumerKYCDocument[]
+  1290→  ConsumerLaybye          ConsumerLaybye[]
+  1291→  ConsumerLoan            ConsumerLoan[]
+  1292→  ConsumerLoanApplication ConsumerLoanApplication[]
+  1293→  ConsumerLoyalty         ConsumerLoyalty?
+  1294→  ConsumerSASSA           ConsumerSASSA?
+  1295→  ConsumerSession         ConsumerSession[]
+  1296→  ConsumerTransaction     ConsumerTransaction[]
+  1297→  ConsumerWallet          ConsumerWallet?
+  1298→  GautrainCard            GautrainCard?
+  1299→  PayShapRecipient        PayShapRecipient[]
+  1300→  SavingsPocket           SavingsPocket[]
+  1301→  StokvelMember           StokvelMember[]
+  1302→}
+  1303→
+  1304→model ConsumerWallet {
+  1305→  id                    String       @id
+  1306→  userId                String       @unique
+  1307→  balanceCents          BigInt       @default(0)
+  1308→  reservedCents         BigInt       @default(0)
+  1309→  pendingCents          BigInt       @default(0)
+  1310→  currency              String       @default("ZAR")
+  1311→  dailySpendLimit       BigInt?
+  1312→  dailySpentCents       BigInt       @default(0)
+  1313→  monthlySpendLimit     BigInt?
+  1314→  monthlySpentCents     BigInt       @default(0)
+  1315→  totalReceivedCents    BigInt       @default(0)
+  1316→  totalSentCents        BigInt       @default(0)
+  1317→  totalTopupsCents      BigInt       @default(0)
+  1318→  totalWithdrawalsCents BigInt       @default(0)
+  1319→  createdAt             DateTime     @default(now())
+  1320→  updatedAt             DateTime
+  1321→  ConsumerUser          ConsumerUser @relation(fields: [userId], references: [id])
+  1322→}
+  1323→
+  1324→model CreditApplication {
+  1325→  id                  String    @id
+  1326→  merchantId          String    @unique
+  1327→  businessName        String
+  1328→  tradingName         String?
+  1329→  registrationNumber  String?
+  1330→  vatNumber           String?
+  1331→  businessType        String?
+  1332→  industry            String?
+  1333→  tradingMonths       Int?
+  1334→  monthlyRevenue      Float?
+  1335→  annualRevenue       Float?
+  1336→  requestedAmount     Float
+  1337→  requestedTerm       Int       @default(12)
+  1338→  purpose             String?
+  1339→  bankName            String?
+  1340→  bankAccount         String?
+  1341→  bankBranch          String?
+  1342→  accountHolder       String?
+  1343→  idDocumentUrl       String?
+  1344→  proofOfAddressUrl   String?
+  1345→  bankStatementUrl    String?
+  1346→  financialStatements String?
+  1347→  status              String    @default("draft")
+  1348→  assignedTier        String?
+  1349→  approvedLimit       Float?
+  1350→  approvedRate        Float?
+  1351→  reviewedBy          String?
+  1352→  reviewedAt          DateTime?
+  1353→  reviewNotes         String?
+  1354→  rejectionReason     String?
+  1355→  submittedAt         DateTime?
+  1356→  decidedAt           DateTime?
+  1357→  createdAt           DateTime  @default(now())
+  1358→  updatedAt           DateTime
+  1359→}
+  1360→
+  1361→model CreditDocument {
+  1362→  id               String         @id
+  1363→  merchantCreditId String
+  1364→  type             String
+  1365→  name             String
+  1366→  description      String?
+  1367→  fileUrl          String
+  1368→  fileSize         Int?
+  1369→  fileType         String?
+  1370→  verified         Boolean        @default(false)
+  1371→  verifiedBy       String?
+  1372→  verifiedAt       DateTime?
+  1373→  expiryDate       String?
+  1374→  createdAt        DateTime       @default(now())
+  1375→  updatedAt        DateTime
+  1376→  MerchantCredit   MerchantCredit @relation(fields: [merchantCreditId], references: [id])
+  1377→}
+  1378→
+  1379→model CreditDrawRequest {
+  1380→  id                  String            @id
+  1381→  referenceNumber     String            @unique
+  1382→  merchantCreditId    String
+  1383→  amount              Float
+  1384→  purpose             String?
+  1385→  purposeDescription  String?
+  1386→  termMonths          Int               @default(12)
+  1387→  interestRate        Float
+  1388→  monthlyPayment      Float
+  1389→  totalInterest       Float
+  1390→  totalRepayable      Float
+  1391→  status              String            @default("pending")
+  1392→  poId                String?
+  1393→  poNumber            String?
+  1394→  supplierId          String?
+  1395→  supplierName        String?
+  1396→  requestedBy         String?
+  1397→  requestedByName     String?
+  1398→  requestedAt         DateTime          @default(now())
+  1399→  reviewedBy          String?
+  1400→  reviewedByName      String?
+  1401→  reviewedAt          DateTime?
+  1402→  reviewNotes         String?
+  1403→  rejectionReason     String?
+  1404→  approvedAt          DateTime?
+  1405→  disbursementMethod  String?
+  1406→  disbursementAccount String?
+  1407→  disbursedAt         DateTime?
+  1408→  disbursedBy         String?
+  1409→  repaymentStart      String?
+  1410→  firstPaymentDue     String?
+  1411→  maturityDate        String?
+  1412→  ncaDisclosureShown  Boolean           @default(false)
+  1413→  ncaAccepted         Boolean           @default(false)
+  1414→  ncaAcceptedAt       DateTime?
+  1415→  createdAt           DateTime          @default(now())
+  1416→  updatedAt           DateTime
+  1417→  MerchantCredit      MerchantCredit    @relation(fields: [merchantCreditId], references: [id])
+  1418→  CreditRepayment     CreditRepayment[]
+  1419→}
+  1420→
+  1421→model CreditNotification {
+  1422→  id               String         @id
+  1423→  merchantCreditId String
+  1424→  type             String
+  1425→  title            String
+  1426→  message          String
+  1427→  channel          String         @default("in_app")
+  1428→  sent             Boolean        @default(false)
+  1429→  sentAt           DateTime?
+  1430→  read             Boolean        @default(false)
+  1431→  readAt           DateTime?
+  1432→  actionUrl        String?
+  1433→  metadata         String?
+  1434→  createdAt        DateTime       @default(now())
+  1435→  MerchantCredit   MerchantCredit @relation(fields: [merchantCreditId], references: [id])
+  1436→}
+  1437→
+  1438→model CreditRepayment {
+  1439→  id                String             @id
+  1440→  referenceNumber   String             @unique
+  1441→  merchantCreditId  String
+  1442→  drawRequestId     String?
+  1443→  amount            Float
+  1444→  principalAmount   Float
+  1445→  interestAmount    Float
+  1446→  penaltyAmount     Float              @default(0)
+  1447→  balanceBefore     Float
+  1448→  balanceAfter      Float
+  1449→  dueDate           String
+  1450→  paidDate          String?
+  1451→  status            String             @default("pending")
+  1452→  paymentMethod     String?
+  1453→  paymentReference  String?
+  1454→  notes             String?
+  1455→  lateFeeApplied    Boolean            @default(false)
+  1456→  reminder24hSent   Boolean            @default(false)
+  1457→  reminder3dSent    Boolean            @default(false)
+  1458→  reminder7dSent    Boolean            @default(false)
+  1459→  createdAt         DateTime           @default(now())
+  1460→  updatedAt         DateTime
+  1461→  CreditDrawRequest CreditDrawRequest? @relation(fields: [drawRequestId], references: [id])
+  1462→  MerchantCredit    MerchantCredit     @relation(fields: [merchantCreditId], references: [id])
+  1463→}
+  1464→
+  1465→model CreditTier {
+  1466→  id               String           @id
+  1467→  name             String           @unique
+  1468→  displayName      String
+  1469→  minLimit         Float            @default(0)
+  1470→  maxLimit         Float            @default(50000)
+  1471→  interestRate     Float            @default(12)
+  1472→  interestSpread   Float            @default(5)
+  1473→  termMonths       Int              @default(12)
+  1474→  minTermMonths    Int              @default(1)
+  1475→  maxTermMonths    Int              @default(36)
+  1476→  earlyPayDiscount Float            @default(2)
+  1477→  requireNCA       Boolean          @default(true)
+  1478→  requireGuarantee Boolean          @default(false)
+  1479→  minRevenue       Float            @default(0)
+  1480→  minTradingMonths Int              @default(3)
+  1481→  features         String?
+  1482→  color            String           @default("#00897B")
+  1483→  icon             String           @default("BadgeZAR")
+  1484→  active           Boolean          @default(true)
+  1485→  createdAt        DateTime         @default(now())
+  1486→  updatedAt        DateTime
+  1487→  MerchantCredit   MerchantCredit[]
+  1488→}
+  1489→
+  1490→model CreditTransaction {
+  1491→  id               String         @id
+  1492→  merchantCreditId String
+  1493→  type             String
+  1494→  referenceId      String?
+  1495→  referenceNumber  String?
+  1496→  amount           Float
+  1497→  balanceBefore    Float
+  1498→  balanceAfter     Float
+  1499→  description      String
+  1500→  metadata         String?
+  1501→  createdBy        String?
+  1502→  createdAt        DateTime       @default(now())
+  1503→  MerchantCredit   MerchantCredit @relation(fields: [merchantCreditId], references: [id])
+  1504→}
+  1505→
+  1506→model CustomReport {
+  1507→  id              String            @id
+  1508→  merchantId      String
+  1509→  name            String
+  1510→  description     String?
+  1511→  reportType      String            @default("custom")
+  1512→  category        String?
+  1513→  selectedFields  String
+  1514→  filters         String?
+  1515→  groupBy         String?
+  1516→  aggregations    String?
+  1517→  sortBy          String?
+  1518→  dataSource      String            @default("transactions")
+  1519→  dateRangeField  String?           @default("createdAt")
+  1520→  exportFormats   String?
+  1521→  defaultFormat   String            @default("pdf")
+  1522→  isPublic        Boolean           @default(false)
+  1523→  sharedWith      String?
+  1524→  createdBy       String?
+  1525→  createdByName   String?
+  1526→  scheduleId      String?
+  1527→  status          String            @default("active")
+  1528→  lastRunAt       DateTime?
+  1529→  runCount        Int               @default(0)
+  1530→  createdAt       DateTime          @default(now())
+  1531→  updatedAt       DateTime
+  1532→  ReportExecution ReportExecution[]
+  1533→  ScheduledReport ScheduledReport?
+  1534→
+  1535→  @@unique([merchantId, name])
+  1536→  @@index([merchantId, status])
+  1537→  @@index([merchantId, reportType])
+  1538→}
+  1539→
+  1540→model Customer {
+  1541→  id                   String                 @id
+  1542→  merchantId           String
+  1543→  name                 String
+  1544→  phone                String?
+  1545→  email                String?
+  1546→  notes                String?
+  1547→  tags                 String?
+  1548→  segment              String                 @default("new")
+  1549→  totalSpent           Float                  @default(0)
+  1550→  visitCount           Int                    @default(0)
+  1551→  lastVisit            DateTime?
+  1552→  loyaltyPoints        Int                    @default(0)
+  1553→  loyaltyTier          String                 @default("bronze")
+  1554→  createdAt            DateTime               @default(now())
+  1555→  updatedAt            DateTime
+  1556→  Appointment          Appointment[]
+  1557→  CustomerMembership   CustomerMembership[]
+  1558→  CustomerPackage      CustomerPackage[]
+  1559→  RecurringAppointment RecurringAppointment[]
+  1560→
+  1561→  @@index([merchantId])
+  1562→}
+  1563→
+  1564→model CustomerAlert {
+  1565→  id              String   @id
+  1566→  alertType       String
+  1567→  customerName    String?
+  1568→  idNumber        String?
+  1569→  photoUrl        String?
+  1570→  reason          String
+  1571→  source          String
+  1572→  sourceReference String?
+  1573→  startDate       String
+  1574→  endDate         String?
+  1575→  isActive        Boolean  @default(true)
+  1576→  notes           String?
+  1577→  createdAt       DateTime @default(now())
+  1578→  updatedAt       DateTime
+  1579→}
+  1580→
+  1581→model CustomerMembership {
+  1582→  id                String         @id
+  1583→  customerId        String
+  1584→  planId            String
+  1585→  startDate         String
+  1586→  renewalDate       String
+  1587→  servicesRemaining String?
+  1588→  status            String         @default("active")
+  1589→  createdAt         DateTime       @default(now())
+  1590→  updatedAt         DateTime
+  1591→  MembershipPlan    MembershipPlan @relation(fields: [planId], references: [id])
+  1592→  Customer          Customer       @relation(fields: [customerId], references: [id])
+  1593→}
+  1594→
+  1595→model CustomerPackage {
+  1596→  id                String           @id
+  1597→  customerId        String
+  1598→  packageId         String
+  1599→  purchaseDate      String
+  1600→  expiryDate        String
+  1601→  sessionsRemaining Int
+  1602→  sessionsTotal     Int
+  1603→  createdAt         DateTime         @default(now())
+  1604→  updatedAt         DateTime
+  1605→  TreatmentPackage  TreatmentPackage @relation(fields: [packageId], references: [id])
+  1606→  Customer          Customer         @relation(fields: [customerId], references: [id])
+  1607→}
+  1608→
+  1609→model DeliveryMenuMapping {
+  1610→  id                    String                @id
+  1611→  connectionId          String
+  1612→  merchantId            String
+  1613→  localProductId        String
+  1614→  localSku              String
+  1615→  localName             String
+  1616→  externalItemId        String?
+  1617→  externalName          String?
+  1618→  externalDescription   String?
+  1619→  isAvailable           Boolean               @default(true)
+  1620→  availableFrom         String?
+  1621→  availableTo           String?
+  1622→  externalPrice         Float?
+  1623→  priceOverride         Float?
+  1624→  hasModifiers          Boolean               @default(false)
+  1625→  modifierConfig        String?
+  1626→  syncStatus            String                @default("pending")
+  1627→  lastSyncedAt          DateTime?
+  1628→  IntegrationConnection IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  1629→
+  1630→  @@unique([connectionId, localProductId])
+  1631→  @@index([merchantId, localSku])
+  1632→}
+  1633→
+  1634→model DeliveryOrder {
+  1635→  id                    String              @id
+  1636→  merchantId            String
+  1637→  connectionId          String
+  1638→  platform              String
+  1639→  externalOrderId       String
+  1640→  externalOrderNumber   String?
+  1641→  orderType             String              @default("delivery")
+  1642→  isPreorder            Boolean             @default(false)
+  1643→  prepTimeMinutes       Int?
+  1644→  requestedDeliveryTime DateTime?
+  1645→  customerName          String?
+  1646→  customerPhone         String?
+  1647→  customerEmail         String?
+  1648→  deliveryAddress       String?
+  1649→  deliveryInstructions  String?
+  1650→  deliveryLatitude      Float?
+  1651→  deliveryLongitude     Float?
+  1652→  deliveryDistance      Float?
+  1653→  subtotal              Float
+  1654→  deliveryFee           Float?
+  1655→  platformFee           Float?
+  1656→  discountAmount        Float?
+  1657→  totalAmount           Float
+  1658→  orderStatus           String              @default("pending")
+  1659→  statusHistory         String?
+  1660→  paymentStatus         String              @default("pending")
+  1661→  paymentMethod         String?
+  1662→  driverName            String?
+  1663→  driverPhone           String?
+  1664→  driverLocation        String?
+  1665→  estimatedArrival      DateTime?
+  1666→  pickupCode            String?
+  1667→  internalOrderId       String?
+  1668→  orderCreatedAt        DateTime
+  1669→  orderUpdatedAt        DateTime?
+  1670→  acceptedAt            DateTime?
+  1671→  readyAt               DateTime?
+  1672→  pickedUpAt            DateTime?
+  1673→  deliveredAt           DateTime?
+  1674→  cancelledAt           DateTime?
+  1675→  cancelReason          String?
+  1676→  createdAt             DateTime            @default(now())
+  1677→  updatedAt             DateTime
+  1678→  DeliveryOrderItem     DeliveryOrderItem[]
+  1679→
+  1680→  @@unique([connectionId, externalOrderId])
+  1681→  @@index([platform, orderStatus])
+  1682→  @@index([merchantId, orderStatus])
+  1683→}
+  1684→
+  1685→model DeliveryOrderItem {
+  1686→  id                  String        @id
+  1687→  deliveryOrderId     String
+  1688→  externalItemId      String?
+  1689→  itemName            String
+  1690→  quantity            Int
+  1691→  unitPrice           Float
+  1692→  totalPrice          Float
+  1693→  specialInstructions String?
+  1694→  modifiers           String?
+  1695→  localProductId      String?
+  1696→  DeliveryOrder       DeliveryOrder @relation(fields: [deliveryOrderId], references: [id], onDelete: Cascade)
+  1697→
+  1698→  @@index([deliveryOrderId])
+  1699→}
+  1700→
+  1701→model DeliveryPayout {
+  1702→  id                     String    @id
+  1703→  merchantId             String
+  1704→  connectionId           String
+  1705→  platform               String
+  1706→  externalPayoutId       String
+  1707→  payoutReference        String?
+  1708→  payoutPeriodStart      String
+  1709→  payoutPeriodEnd        String
+  1710→  payoutAmount           Float
+  1711→  currency               String    @default("ZAR")
+  1712→  orderCount             Int
+  1713→  totalOrderValue        Float
+  1714→  totalDeliveryFees      Float?
+  1715→  totalPlatformFees      Float?
+  1716→  totalAdjustments       Float?
+  1717→  adjustmentsDetail      String?
+  1718→  payoutStatus           String    @default("pending")
+  1719→  paidAt                 DateTime?
+  1720→  bankReference          String?
+  1721→  isReconciled           Boolean   @default(false)
+  1722→  reconciledAt           DateTime?
+  1723→  reconciliationVariance Float?
+  1724→  createdAt              DateTime  @default(now())
+  1725→  updatedAt              DateTime
+  1726→
+  1727→  @@unique([connectionId, externalPayoutId])
+  1728→  @@index([platform, payoutPeriodStart])
+  1729→  @@index([merchantId, payoutStatus])
+  1730→}
+  1731→
+  1732→model DepositRule {
+  1733→  id              String   @id
+  1734→  name            String
+  1735→  serviceCategory String?
+  1736→  serviceId       String?
+  1737→  depositType     String   @default("percentage")
+  1738→  depositValue    Float    @default(20)
+  1739→  minAmount       Float    @default(0)
+  1740→  nonRefundable   Boolean  @default(true)
+  1741→  active          Boolean  @default(true)
+  1742→  createdAt       DateTime @default(now())
+  1743→  updatedAt       DateTime
+  1744→}
+  1745→
+  1746→model DeviceFingerprint {
+  1747→  id              String   @id
+  1748→  fingerprint     String   @unique
+  1749→  deviceId        String?
+  1750→  deviceType      String?
+  1751→  os              String?
+  1752→  osVersion       String?
+  1753→  browser         String?
+  1754→  browserVersion  String?
+  1755→  appVersion      String?
+  1756→  manufacturer    String?
+  1757→  model           String?
+  1758→  screenRes       String?
+  1759→  timezone        String?
+  1760→  language        String?
+  1761→  firstSeenAt     DateTime @default(now())
+  1762→  lastSeenAt      DateTime @default(now())
+  1763→  seenCount       Int      @default(1)
+  1764→  associatedUsers String?
+  1765→  associatedIps   String?
+  1766→  riskScore       Int      @default(0)
+  1767→  flagged         Boolean  @default(false)
+  1768→  flagReason      String?
+  1769→  createdAt       DateTime @default(now())
+  1770→  updatedAt       DateTime @default(now())
+  1771→
+  1772→  @@index([flagged])
+  1773→  @@index([deviceType])
+  1774→}
+  1775→
+  1776→model DiscoveryBusinessProfile {
+  1777→  id             String   @id
+  1778→  merchantId     String   @unique
+  1779→  name           String
+  1780→  description    String?
+  1781→  category       String
+  1782→  subcategory    String?
+  1783→  logo           String?
+  1784→  coverImage     String?
+  1785→  phone          String?
+  1786→  email          String?
+  1787→  website        String?
+  1788→  instagram      String?
+  1789→  facebook       String?
+  1790→  twitter        String?
+  1791→  priceRange     String   @default("$$")
+  1792→  amenities      String?
+  1793→  paymentMethods String?
+  1794→  openingHours   String?
+  1795→  active         Boolean  @default(true)
+  1796→  createdAt      DateTime @default(now())
+  1797→  updatedAt      DateTime
+  1798→}
+  1799→
+  1800→model DocumentAccessLog {
+  1801→  id             String   @id
+  1802→  documentType   String
+  1803→  documentId     String
+  1804→  documentName   String?
+  1805→  accessedBy     String
+  1806→  accessedByName String
+  1807→  accessedByRole String
+  1808→  action         String
+  1809→  ipAddress      String?
+  1810→  userAgent      String?
+  1811→  reason         String?
+  1812→  caseId         String?
+  1813→  caseNumber     String?
+  1814→  createdAt      DateTime @default(now())
+  1815→
+  1816→  @@index([createdAt])
+  1817→  @@index([accessedBy])
+  1818→  @@index([documentType, documentId])
+  1819→}
+  1820→
+  1821→model EReceipt {
+  1822→  id                  String    @id
+  1823→  merchantId          String
+  1824→  transactionId       String?
+  1825→  transactionNumber   String
+  1826→  customerId          String?
+  1827→  customerName        String?
+  1828→  customerPhone       String?
+  1829→  customerEmail       String?
+  1830→  receiptNumber       String    @unique
+  1831→  receiptData         String
+  1832→  sentViaWhatsapp     Boolean   @default(false)
+  1833→  sentViaEmail        Boolean   @default(false)
+  1834→  sentViaSms          Boolean   @default(false)
+  1835→  whatsappSentAt      DateTime?
+  1836→  emailSentAt         DateTime?
+  1837→  smsSentAt           DateTime?
+  1838→  whatsappMessageId   String?
+  1839→  whatsappDeliveredAt DateTime?
+  1840→  whatsappReadAt      DateTime?
+  1841→  publicUrl           String?   @unique
+  1842→  qrCode              String?
+  1843→  viewCount           Int       @default(0)
+  1844→  lastViewedAt        DateTime?
+  1845→  status              String    @default("active")
+  1846→  createdAt           DateTime  @default(now())
+  1847→  updatedAt           DateTime
+  1848→
+  1849→  @@index([merchantId, createdAt])
+  1850→  @@index([customerPhone, createdAt])
+  1851→}
+  1852→
+  1853→model EcommerceOrderSync {
+  1854→  id                  String    @id
+  1855→  merchantId          String
+  1856→  connectionId        String
+  1857→  externalOrderId     String
+  1858→  externalOrderNumber String
+  1859→  orderSource         String
+  1860→  orderStatus         String
+  1861→  paymentStatus       String
+  1862→  fulfillmentStatus   String?
+  1863→  internalOrderId     String?
+  1864→  syncStatus          String    @default("pending")
+  1865→  syncedAt            DateTime?
+  1866→  syncError           String?
+  1867→  totalAmount         Float
+  1868→  currency            String    @default("ZAR")
+  1869→  customerEmail       String?
+  1870→  customerName        String?
+  1871→  orderCreatedAt      DateTime
+  1872→  orderUpdatedAt      DateTime?
+  1873→  createdAt           DateTime  @default(now())
+  1874→  updatedAt           DateTime
+  1875→
+  1876→  @@unique([connectionId, externalOrderId])
+  1877→  @@index([orderSource, orderStatus])
+  1878→  @@index([merchantId, syncStatus])
+  1879→}
+  1880→
+  1881→model EcommerceProductMapping {
+  1882→  id                    String                @id
+  1883→  connectionId          String
+  1884→  merchantId            String
+  1885→  localProductId        String
+  1886→  localSku              String
+  1887→  localName             String
+  1888→  externalProductId     String?
+  1889→  externalSku           String?
+  1890→  externalName          String?
+  1891→  inventoryTracked      Boolean               @default(true)
+  1892→  lastInventorySync     DateTime?
+  1893→  lastQuantity          Int?
+  1894→  priceTracked          Boolean               @default(true)
+  1895→  lastPriceSync         DateTime?
+  1896→  lastPrice             Float?
+  1897→  syncStatus            String                @default("pending")
+  1898→  isActive              Boolean               @default(true)
+  1899→  IntegrationConnection IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  1900→
+  1901→  @@unique([connectionId, localProductId])
+  1902→  @@index([merchantId, localSku])
+  1903→}
+  1904→
+  1905→model EcommerceWebhookEvent {
+  1906→  id              String    @id
+  1907→  merchantId      String
+  1908→  connectionId    String
+  1909→  eventType       String
+  1910→  externalEventId String?
+  1911→  payload         String
+  1912→  status          String    @default("pending")
+  1913→  processedAt     DateTime?
+  1914→  errorMessage    String?
+  1915→  retryCount      Int       @default(0)
+  1916→  nextRetryAt     DateTime?
+  1917→  createdAt       DateTime  @default(now())
+  1918→  updatedAt       DateTime
+  1919→
+  1920→  @@index([status, createdAt])
+  1921→  @@index([connectionId, eventType])
+  1922→}
+  1923→
+  1924→model EnterpriseActivity {
+  1925→  id                        String                    @id
+  1926→  corporateId               String
+  1927→  type                      String
+  1928→  message                   String
+  1929→  entityType                String?
+  1930→  entityId                  String?
+  1931→  metadata                  String?
+  1932→  userId                    String?
+  1933→  userName                  String?
+  1934→  ip                        String?
+  1935→  createdAt                 DateTime                  @default(now())
+  1936→  EnterpriseCorporateClient EnterpriseCorporateClient @relation(fields: [corporateId], references: [id])
+  1937→}
+  1938→
+  1939→model EnterpriseApiKey {
+  1940→  id                        String                    @id
+  1941→  name                      String
+  1942→  keyPrefix                 String
+  1943→  keyHash                   String
+  1944→  corporateId               String
+  1945→  permissions               String?
+  1946→  status                    String                    @default("active")
+  1947→  lastUsed                  DateTime?
+  1948→  expiresAt                 DateTime?
+  1949→  createdBy                 String?
+  1950→  notes                     String?
+  1951→  createdAt                 DateTime                  @default(now())
+  1952→  updatedAt                 DateTime
+  1953→  EnterpriseCorporateClient EnterpriseCorporateClient @relation(fields: [corporateId], references: [id])
+  1954→}
+  1955→
+  1956→model EnterpriseCorporateClient {
+  1957→  id                   String                @id
+  1958→  code                 String                @unique
+  1959→  name                 String
+  1960→  tier                 String                @default("Silver")
+  1961→  merchantsCount       Int                   @default(0)
+  1962→  monthlyVolume        Float                 @default(0)
+  1963→  creditLimit          Float                 @default(0)
+  1964→  creditUsed           Float                 @default(0)
+  1965→  status               String                @default("active")
+  1966→  contactPerson        String?
+  1967→  contactEmail         String?
+  1968→  contactPhone         String?
+  1969→  address              String?
+  1970→  city                 String?
+  1971→  province             String?
+  1972→  postalCode           String?
+  1973→  country              String                @default("South Africa")
+  1974→  registrationNumber   String?
+  1975→  vatNumber            String?
+  1976→  notes                String?
+  1977→  createdAt            DateTime              @default(now())
+  1978→  updatedAt            DateTime
+  1979→  EnterpriseActivity   EnterpriseActivity[]
+  1980→  EnterpriseApiKey     EnterpriseApiKey[]
+  1981→  EnterpriseMerchant   EnterpriseMerchant[]
+  1982→  EnterpriseTransfer   EnterpriseTransfer[]
+  1983→  EnterpriseUser       EnterpriseUser[]
+  1984→  EnterpriseWhiteLabel EnterpriseWhiteLabel?
+  1985→}
+  1986→
+  1987→model EnterpriseCustomer {
+  1988→  id                 String             @id
+  1989→  code               String             @unique
+  1990→  name               String
+  1991→  email              String?
+  1992→  phone              String?
+  1993→  merchantId         String
+  1994→  totalSpent         Float              @default(0)
+  1995→  visitCount         Int                @default(0)
+  1996→  locationsCount     Int                @default(1)
+  1997→  tier               String             @default("Bronze")
+  1998→  lastVisit          DateTime?
+  1999→  firstVisit         DateTime?
+  2000→  loyaltyPoints      Int                @default(0)
+
+[showing lines 1-2000 of 7247; use offset=2001 with limit to continue reading]

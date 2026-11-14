@@ -23,6 +23,7 @@ import { TrainModal } from '@/components/wallet/modals/TrainModal'
 import { EventsModal } from '@/components/wallet/modals/EventsModal'
 import { RemittanceModal } from '@/components/wallet/modals/RemittanceModal'
 import { TransactionHistoryModal } from '@/components/wallet/modals/TransactionHistoryModal'
+import { SavingsModal } from '@/components/wallet/modals/SavingsModal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -104,6 +105,7 @@ export default function ConsumerWalletPage() {
   const [eventsOpen, setEventsOpen] = useState(false)
   const [remittanceOpen, setRemittanceOpen] = useState(false)
   const [transactionHistoryOpen, setTransactionHistoryOpen] = useState(false)
+  const [savingsOpen, setSavingsOpen] = useState(false)
 
   // Fetch the user's primary card on mount
   useEffect(() => {
@@ -220,6 +222,8 @@ export default function ConsumerWalletPage() {
               onOpenEvents={() => setEventsOpen(true)}
               onOpenRemittance={() => setRemittanceOpen(true)}
               onOpenPayShap={() => setPayShapOpen(true)}
+              onOpenSavings={() => setSavingsOpen(true)}
+              onOpenGrantPlus={() => setGrantPlusOpen(true)}
             />
           )}
           {activeTab === 'pay' && (
@@ -469,6 +473,7 @@ export default function ConsumerWalletPage() {
       <EventsModal open={eventsOpen} onOpenChange={setEventsOpen} />
       <RemittanceModal open={remittanceOpen} onOpenChange={setRemittanceOpen} />
       <TransactionHistoryModal open={transactionHistoryOpen} onOpenChange={setTransactionHistoryOpen} />
+      <SavingsModal open={savingsOpen} onOpenChange={setSavingsOpen} />
     </div>
   )
 }

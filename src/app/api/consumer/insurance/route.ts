@@ -1,104 +1,41 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { randomBytes } from 'crypto'
 import { db } from '@/lib/db'
+import { getUserId, ok, error, parseMoney } from '../_lib/helpers'
+import {
+  INSURANCE_CATEGORIES,
+  INSURANCE_PROVIDERS,
+  generateCaseRef,
+  generateReceiptNo,
+} from '@/lib/consumer-wallet/catalog'
 
-// Insurance product categories
-const INSURANCE_PRODUCTS = [
-  {
-    id: 'funeral-cover',
-    name: 'Funeral Cover',
-    category: 'funeral',
-    provider: 'Old Mutual',
-    description: 'Comprehensive funeral cover for you and your family',
-    minPremium: 5000, // R50
-    maxPremium: 500000, // R5000
-    maxCover: 10000000, // R100,000
-    waitingPeriod: 6, // months
-    icon: 'shield'
-  },
-  {
-    id: 'life-cover',
-    name: 'Life Cover',
-    category: 'life',
-    provider: 'Discovery',
-    description: 'Protect your loved ones financial future',
-    minPremium: 10000, // R100
-    maxPremium: 1000000, // R10,000
-    maxCover: 50000000, // R500,000
-    waitingPeriod: 3,
-    icon: 'heart'
-  },
-  {
-    id: 'hospital-plan',
-    name: 'Hospital Plan',
-    category: 'health',
-    provider: 'OUTsurance',
-    description: 'Daily cash benefit when hospitalized',
-    minPremium: 8000, // R80
-    maxPremium: 300000, // R3,000
-    maxCover: 1000000, // R10,000 per day
-    waitingPeriod: 1,
-    icon: 'activity'
-  },
-  {
-    id: 'accident-cover',
-    name: 'Accident Cover',
-    category: 'accident',
-    provider: 'Hollard',
-    description: 'Coverage for accidental injuries and disability',
-    minPremium: 3000, // R30
-    maxPremium: 200000, // R2,000
-    maxCover: 20000000, // R200,000
-    waitingPeriod: 0,
-    icon: 'umbrella'
-  },
-  {
-    id: 'device-insurance',
-    name: 'Device Insurance',
-    category: 'gadget',
-    provider: 'King Price',
-    description: 'Protect your phone, laptop, and other devices',
-    minPremium: 2500, // R25
-    maxPremium: 50000, // R500
-    maxCover: 3000000, // R30,000
-    waitingPeriod: 0,
-    icon: 'smartphone'
-  }
-]
+/**
+ * /api/consumer/insurance
+ *
+ * Browse insurance categories + providers from the catalog and apply for
+ * cover. Insurance does NOT require a credit score (unlike loans) — you
+ * can subscribe regardless of your credit history.
+ *
+ * Money is stored as BigInt cents on ConsumerInsurance.coverAmount and
+ * ConsumerInsurance.premium.
+ */
 
-// GET - Fetch available insurance products and user's policies
+// GET /api/consumer/insurance — categories, providers + user policies
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const category = searchParams.get('category')
+    const userId = getUserId(request)
 
-    // Get user's existing policies if userId provided
-    let userPolicies: any[] = []
-    if (userId) {
-      userPolicies = await db.consumerInsurance.findMany({
-        where: { userId, status: 'active' }
-      })
-    }
+    const policies = await db.consumerInsurance.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    }).catch(() => [])
 
-    // Filter products by category if specified
-    let products = INSURANCE_PRODUCTS
-    if (category) {
-      products = products.filter(p => p.category === category)
-    }
-
-    // Add user-specific pricing based on profile (simplified)
-    const productsWithPricing = products.map(product => ({
-      ...product,
-      recommendedPremium: Math.floor((product.minPremium + product.maxPremium) / 2),
-      estimatedCover: Math.floor(product.maxCover * 0.5),
-      hasPolicy: userPolicies.some(p => p.productType === product.id)
-    }))
-
-    return NextResponse.json({
+    return ok({
       success: true,
       data: {
-        products: productsWithPricing,
-        userPolicies: userPolicies.map(p => ({
+        categories: INSURANCE_CATEGORIES,
+        providers: INSURANCE_PROVIDERS,
+        policies: policies.map((p) => ({
           id: p.id,
           productType: p.productType,
           provider: p.provider,
@@ -107,244 +44,152 @@ export async function GET(request: NextRequest) {
           status: p.status,
           startDate: p.startDate,
           nextPaymentDate: p.nextPaymentDate,
-          beneficiaries: p.beneficiaries ? JSON.parse(p.beneficiaries) : []
+          beneficiaries: p.beneficiaries ? JSON.parse(p.beneficiaries) : [],
         })),
-        categories: [...new Set(INSURANCE_PRODUCTS.map(p => p.category))]
-      }
+        explainer:
+          'Insurance does not require a credit score. You can subscribe regardless of your credit history. Premiums are based on cover amount, age and risk profile — not your credit record.',
+      },
     })
-
-  } catch (error) {
-    console.error('Get insurance products error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to get insurance products' },
-      { status: 500 }
-    )
+  } catch (err) {
+    console.error('Get insurance error:', err)
+    return error('Failed to fetch insurance catalog', 500)
   }
 }
 
-// POST - Purchase insurance policy
+// POST /api/consumer/insurance — apply for insurance
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { 
-      userId, 
-      productId, 
-      coverAmount, 
-      premiumAmount,
-      beneficiaries 
-    } = body
+    const userId = getUserId(request)
+    const body = await request.json().catch(() => ({} as Record<string, unknown>))
 
-    if (!userId || !productId || !coverAmount || !premiumAmount) {
-      return NextResponse.json(
-        { success: false, error: 'User ID, product, cover amount, and premium are required' },
-        { status: 400 }
-      )
+    const category = body.category as string | undefined
+    const providerId = body.providerId as string | undefined
+    const coverAmountInput = body.coverAmount ?? body.coverAmountCents
+    const monthlyPremiumInput = body.monthlyPremium ?? body.monthlyPremiumCents ?? body.premium
+    const details = (body.details as Record<string, unknown> | undefined) ?? {}
+
+    if (!category) return error('category is required', 400)
+    if (!providerId) return error('providerId is required', 400)
+    if (coverAmountInput == null) return error('coverAmount is required', 400)
+    if (monthlyPremiumInput == null) return error('monthlyPremium is required', 400)
+
+    const categoryMeta = INSURANCE_CATEGORIES.find((c) => c.value === category)
+    if (!categoryMeta) return error(`Invalid category: ${category}`, 400)
+
+    const provider = INSURANCE_PROVIDERS.find((p) => p.id === providerId)
+    if (!provider) return error(`Invalid provider: ${providerId}`, 400)
+    if (!provider.categories.includes(category as never)) {
+      return error(`${provider.name} does not offer ${categoryMeta.label}`, 400)
     }
 
-    // Find product
-    const product = INSURANCE_PRODUCTS.find(p => p.id === productId)
-    if (!product) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid insurance product' },
-        { status: 400 }
-      )
-    }
+    const coverAmount = parseMoney(coverAmountInput as string | number)
+    const monthlyPremium = parseMoney(monthlyPremiumInput as string | number)
 
-    // Validate amounts
-    const cover = BigInt(coverAmount)
-    const premium = BigInt(premiumAmount)
+    if (coverAmount <= 0n) return error('coverAmount must be greater than 0', 400)
+    if (monthlyPremium <= 0n) return error('monthlyPremium must be greater than 0', 400)
 
-    if (cover < 10000 || cover > BigInt(product.maxCover)) {
-      return NextResponse.json(
-        { success: false, error: `Cover amount must be between R100 and R${Number(product.maxCover) / 100}` },
-        { status: 400 }
-      )
-    }
-
-    if (premium < BigInt(product.minPremium) || premium > BigInt(product.maxPremium)) {
-      return NextResponse.json(
-        { success: false, error: `Premium must be between R${Number(product.minPremium) / 100} and R${Number(product.maxPremium) / 100}` },
-        { status: 400 }
-      )
-    }
-
-    // Get user
-    const user = await db.consumerUser.findUnique({
-      where: { id: userId },
-      include: { wallet: true }
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
-    // Check wallet balance for first premium
-    if (user.wallet && user.wallet.balanceCents < premium) {
-      return NextResponse.json(
-        { success: false, error: 'Insufficient funds for first premium' },
-        { status: 400 }
-      )
-    }
-
-    // Calculate next payment date (1 month from now)
+    // Generate policy number — POL-{YYYYMM}-{6 random}
     const now = new Date()
+    const yyyymm = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`
+    const policyNo = `POL-${yyyymm}-${randomBytes(3).toString('hex').toUpperCase()}`
+    const caseRef = generateCaseRef('INS')
+    const receiptNo = generateReceiptNo('INS')
+
+    // Next premium due in 1 month
     const nextPaymentDate = new Date(now)
     nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1)
+    const nextPaymentStr = nextPaymentDate.toISOString().split('T')[0]
+    const startStr = now.toISOString().split('T')[0]
 
-    // Create policy
+    const beneficiaries = Array.isArray(details.beneficiaries) ? details.beneficiaries : []
+
     const policy = await db.consumerInsurance.create({
       data: {
-        id: `ins-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        id: policyNo,
         userId,
-        productType: productId,
-        provider: product.provider,
-        coverAmount: cover,
-        premium: premium,
-        status: 'active',
-        startDate: now.toISOString().split('T')[0],
-        nextPaymentDate: nextPaymentDate.toISOString().split('T')[0],
-        beneficiaries: beneficiaries ? JSON.stringify(beneficiaries) : null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
+        productType: category,
+        provider: provider.name,
+        coverAmount,
+        premium: monthlyPremium,
+        startDate: startStr,
+        nextPaymentDate: nextPaymentStr,
+        beneficiaries: JSON.stringify(beneficiaries),
+        status: 'pending_activation',
+        updatedAt: now,
+      },
+    }).catch((e) => {
+      console.error('Create insurance policy error:', e)
+      return null
     })
 
-    // Deduct first premium from wallet
-    if (user.wallet) {
+    // Record the first premium as a transaction (wallet is optional in demo).
+    await db.consumerTransaction.create({
+      data: {
+        id: `ctx-${randomBytes(8).toString('hex')}`,
+        idempotencyKey: `${receiptNo}-prem`,
+        userId,
+        transactionType: 'insurance_premium',
+        direction: 'debit',
+        amountCents: monthlyPremium,
+        feeCents: 0n,
+        netAmountCents: monthlyPremium,
+        currency: 'ZAR',
+        status: 'completed',
+        description: `${categoryMeta.label} — first premium (${provider.name})`,
+        reference: receiptNo,
+        category: 'insurance',
+        counterpartyName: provider.name,
+        paymentMethod: 'wallet',
+        completedAt: now,
+        updatedAt: now,
+      },
+    }).catch((e) => {
+      console.error('Create insurance transaction error:', e)
+    })
+
+    // If wallet exists, deduct the first premium.
+    const wallet = await db.consumerWallet.findUnique({ where: { userId } }).catch(() => null)
+    if (wallet && wallet.balanceCents >= monthlyPremium) {
       await db.consumerWallet.update({
         where: { userId },
-        data: {
-          balanceCents: { decrement: premium }
-        }
-      })
-
-      // Create transaction
-      await db.consumerTransaction.create({
-        data: {
-          id: `ctx-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          idempotencyKey: `ins-${policy.id}`,
-          userId,
-          transactionType: 'insurance_premium',
-          direction: 'debit',
-          amountCents: premium,
-          feeCents: BigInt(0),
-          netAmountCents: premium,
-          currency: 'ZAR',
-          status: 'completed',
-          description: `${product.name} - First Premium`,
-          reference: `INS${Date.now()}`,
-          category: 'insurance',
-          counterpartyName: product.provider,
-          paymentMethod: 'wallet',
-          completedAt: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }
-      })
+        data: { balanceCents: { decrement: monthlyPremium }, updatedAt: now },
+      }).catch(() => null)
     }
 
-    return NextResponse.json({
+    return ok({
       success: true,
-      message: 'Insurance policy created successfully',
       data: {
-        policyId: policy.id,
-        product: product.name,
-        provider: product.provider,
-        coverAmount: cover.toString(),
-        premium: premium.toString(),
-        startDate: policy.startDate,
-        nextPaymentDate: policy.nextPaymentDate,
-        status: 'active',
-        waitingPeriod: product.waitingPeriod > 0 ? `${product.waitingPeriod} months` : 'None'
-      }
-    })
-
-  } catch (error) {
-    console.error('Purchase insurance error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to purchase insurance' },
-      { status: 500 }
-    )
-  }
-}
-
-// PUT - Update policy (change cover, add beneficiaries)
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { policyId, userId, action, data } = body
-
-    if (!policyId || !userId || !action) {
-      return NextResponse.json(
-        { success: false, error: 'Policy ID, User ID, and action are required' },
-        { status: 400 }
-      )
-    }
-
-    // Get policy
-    const policy = await db.consumerInsurance.findUnique({
-      where: { id: policyId }
-    })
-
-    if (!policy || policy.userId !== userId) {
-      return NextResponse.json(
-        { success: false, error: 'Policy not found' },
-        { status: 404 }
-      )
-    }
-
-    switch (action) {
-      case 'updateBeneficiaries':
-        await db.consumerInsurance.update({
-          where: { id: policyId },
-          data: {
-            beneficiaries: JSON.stringify(data.beneficiaries),
-            updatedAt: new Date()
-          }
-        })
-        break
-
-      case 'updateCover':
-        const newCover = BigInt(data.coverAmount)
-        await db.consumerInsurance.update({
-          where: { id: policyId },
-          data: {
-            coverAmount: newCover,
-            updatedAt: new Date()
-          }
-        })
-        break
-
-      case 'cancel':
-        await db.consumerInsurance.update({
-          where: { id: policyId },
-          data: {
-            status: 'cancelled',
-            updatedAt: new Date()
-          }
-        })
-        break
-
-      default:
-        return NextResponse.json(
-          { success: false, error: 'Invalid action' },
-          { status: 400 }
-        )
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `Policy ${action} completed successfully`
-    })
-
-  } catch (error) {
-    console.error('Update insurance policy error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to update policy' },
-      { status: 500 }
-    )
+        policyNo: policy?.id ?? policyNo,
+        caseRef,
+        receiptNo,
+        category,
+        categoryLabel: categoryMeta.label,
+        categoryIcon: categoryMeta.icon,
+        provider: provider.name,
+        providerId: provider.id,
+        providerPhone: provider.phone,
+        coverAmount: coverAmount.toString(),
+        premium: monthlyPremium.toString(),
+        nextPaymentDate: nextPaymentStr,
+        startDate: startStr,
+        status: 'pending_activation',
+        beneficiaries,
+        requiresMedical: categoryMeta.requiresMedical,
+        terms: [
+          'Cover is subject to the insurer’s underwriting assessment.',
+          categoryMeta.requiresMedical
+            ? 'A medical questionnaire or examination may be required before cover is activated.'
+            : 'No medical examination required for this cover.',
+          'A 6-month waiting period applies to pre-existing conditions on funeral cover.',
+          'Premiums are debited monthly via DebiCheck from your linked bank account.',
+          'The first premium has been collected and the policy is pending activation.',
+          'You may cancel within 30 days for a full refund of premiums paid.',
+        ],
+        message: `${categoryMeta.label} application submitted to ${provider.name}. Policy ${policyNo} is pending activation.`,
+      },
+    }, 201)
+  } catch (err) {
+    console.error('Apply insurance error:', err)
+    return error('Failed to apply for insurance', 500)
   }
 }

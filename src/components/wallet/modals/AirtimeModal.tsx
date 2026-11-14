@@ -1,17 +1,35 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { apiPost } from '@/components/wallet/lib/api'
+import { Card, CardContent } from '@/components/ui/card'
+import { apiPost, formatMoney } from '@/components/wallet/lib/api'
 import {
-  X,
+  Smartphone,
+  Copy,
   Check,
   Loader2,
+  AlertCircle,
   ChevronRight,
-  Smartphone,
-  AlertCircle
+  Info,
+  Signal,
+  Phone,
 } from 'lucide-react'
 
 interface AirtimeModalProps {
@@ -19,397 +37,646 @@ interface AirtimeModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-type Step = 'network' | 'bundle' | 'details' | 'confirm' | 'success'
-
-interface Network {
+type Provider = {
   id: string
   name: string
-  color: string
-  bg: string
+  country: 'ZA' | 'MW'
+  voiceDenominations: number[]
+  dataBundles: { id: string; name: string; price: number; validity: string }[]
 }
 
-interface TransactionRecord {
-  id: string
-  type: 'airtime' | 'data' | 'voice' | 'sms'
-  network: string
+type Step = 'provider' | 'phone' | 'select' | 'confirm' | 'result'
+
+type VoiceResult = {
+  receiptNo: string
+  pin: string
+  amountCents: string | bigint | number
+  provider: { id: string; name: string; country: string }
   phoneNumber: string
-  amount: number
-  token: string
-  reference: string
-  timestamp: Date
-  status: 'completed' | 'pending' | 'failed'
+  type: 'voice'
+  voucherExpiry?: string
+  instructions?: string[]
+  createdAt?: string
 }
 
-const networks: Network[] = [
-  { id: 'vodacom', name: 'Vodacom', color: '#E60000', bg: '#FFEBEE' },
-  { id: 'mtn', name: 'MTN', color: '#FFCC00', bg: '#FFF8E1' },
-  { id: 'cellc', name: 'Cell C', color: '#0066B3', bg: '#E3F2FD' },
-  { id: 'telkom', name: 'Telkom', color: '#00897B', bg: '#E0F2F1' },
-  { id: 'rain', name: 'Rain', color: '#00A0E3', bg: '#E1F5FE' },
-]
+type DataResult = {
+  receiptNo: string
+  directRecharge: true
+  amountCents: string | bigint | number
+  provider: { id: string; name: string; country: string }
+  phoneNumber: string
+  type: 'data'
+  bundle: { id: string; name: string; price: number; validity: string } | null
+  instructions?: string[]
+  createdAt?: string
+}
 
-const bundleTypes = [
-  { id: 'airtime', name: 'Airtime', icon: '📞' },
-  { id: 'data', name: 'Data Bundle', icon: '📶' },
-  { id: 'voice', name: 'Voice Bundle', icon: '🎙️' },
-  { id: 'sms', name: 'SMS Bundle', icon: '💬' },
-]
+type PurchaseResult = VoiceResult | DataResult
 
-const quickAmounts = [10, 20, 50, 100, 200]
+// Fallback providers (mirrors the catalog so the modal works before GET resolves)
+const FALLBACK_PROVIDERS: Provider[] = [
+  {
+    id: 'vodacom',
+    name: 'Vodacom',
+    country: 'ZA',
+    voiceDenominations: [5, 10, 15, 20, 29, 30, 50, 110, 275, 299, 500, 1000],
+    dataBundles: [
+      { id: 'vc-1gb', name: '1GB Data', price: 49, validity: '30 days' },
+      { id: 'vc-2gb', name: '2GB Data', price: 89, validity: '30 days' },
+      { id: 'vc-5gb', name: '5GB Data', price: 199, validity: '30 days' },
+      { id: 'vc-1gb-daily', name: '1GB Daily', price: 12, validity: '1 day' },
+    ],
+  },
+  {
+    id: 'mtn',
+    name: 'MTN',
+    country: 'ZA',
+    voiceDenominations: [5, 10, 15, 20, 30, 50, 100, 200, 500, 1000],
+    dataBundles: [
+      { id: 'mtn-1gb', name: '1GB Data', price: 49, validity: '30 days' },
+      { id: 'mtn-2gb', name: '2GB Data', price: 85, validity: '30 days' },
+      { id: 'mtn-5gb', name: '5GB Data', price: 199, validity: '30 days' },
+    ],
+  },
+  {
+    id: 'cellc',
+    name: 'Cell C',
+    country: 'ZA',
+    voiceDenominations: [5, 10, 20, 30, 50, 100, 200, 500, 1000],
+    dataBundles: [
+      { id: 'cc-1gb', name: '1GB Data', price: 45, validity: '30 days' },
+      { id: 'cc-2gb', name: '2GB Data', price: 79, validity: '30 days' },
+    ],
+  },
+  {
+    id: 'telkom',
+    name: 'Telkom',
+    country: 'ZA',
+    voiceDenominations: [5, 10, 15, 25, 35, 50, 100, 200, 500],
+    dataBundles: [
+      { id: 'tk-1gb', name: '1GB Data', price: 35, validity: '30 days' },
+      { id: 'tk-5gb', name: '5GB Data', price: 149, validity: '30 days' },
+    ],
+  },
+  {
+    id: 'airtel-mw',
+    name: 'Airtel Malawi',
+    country: 'MW',
+    voiceDenominations: [50, 100, 200, 500, 1000, 2000, 5000],
+    dataBundles: [
+      { id: 'am-1gb', name: '1GB Data', price: 500, validity: '7 days' },
+      { id: 'am-2gb', name: '2GB Data', price: 900, validity: '30 days' },
+    ],
+  },
+  {
+    id: 'tnm-mw',
+    name: 'TNM',
+    country: 'MW',
+    voiceDenominations: [50, 100, 200, 500, 1000, 2000, 5000],
+    dataBundles: [
+      { id: 'tnm-1gb', name: '1GB Data', price: 500, validity: '7 days' },
+      { id: 'tnm-2gb', name: '2GB Data', price: 900, validity: '30 days' },
+    ],
+  },
+]
 
 export function AirtimeModal({ open, onOpenChange }: AirtimeModalProps) {
-  const [step, setStep] = useState<Step>('network')
-  const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null)
-  const [bundleType, setBundleType] = useState('airtime')
+  const [tab, setTab] = useState<'voice' | 'data'>('voice')
+  const [providers] = useState<Provider[]>(FALLBACK_PROVIDERS)
+  const [step, setStep] = useState<Step>('provider')
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
-  const [amount, setAmount] = useState<number>(0)
+  const [selectedDenomination, setSelectedDenomination] = useState<number | null>(null)
+  const [selectedBundle, setSelectedBundle] = useState<Provider['dataBundles'][number] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [transaction, setTransaction] = useState<TransactionRecord | null>(null)
+  const [result, setResult] = useState<PurchaseResult | null>(null)
+  const [copied, setCopied] = useState(false)
 
-  const generateToken = () => {
-    // Generate a realistic-looking token for prepaid services
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    let token = ''
-    for (let i = 0; i < 20; i++) {
-      if (i > 0 && i % 4 === 0) token += '-'
-      token += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return token
-  }
+  const phoneValid = useMemo(() => {
+    const digits = phoneNumber.replace(/\D/g, '')
+    return digits.length >= 9 && digits.length <= 13
+  }, [phoneNumber])
+
+  const providersByCountry = useMemo(() => {
+    const g: Record<string, Provider[]> = { ZA: [], MW: [] }
+    for (const p of providers) g[p.country]?.push(p)
+    return g
+  }, [providers])
+
+  const resetFlow = useCallback(() => {
+    setStep('provider')
+    setSelectedProvider(null)
+    setPhoneNumber('')
+    setSelectedDenomination(null)
+    setSelectedBundle(null)
+    setResult(null)
+    setError(null)
+  }, [])
+
+  const handleTabChange = useCallback((value: string) => {
+    setTab(value as 'voice' | 'data')
+    resetFlow()
+  }, [resetFlow])
 
   const handleBuy = useCallback(async () => {
+    if (!selectedProvider || !phoneValid) return
+    if (tab === 'voice' && !selectedDenomination) return
+    if (tab === 'data' && !selectedBundle) return
+
     setIsLoading(true)
     setError(null)
-
     try {
-      // Call the actual backend API for airtime purchase
-      const result = await apiPost<{ success?: boolean; data?: any; error?: string }>('/airtime', {
-        action: 'purchase',
-        phone: phoneNumber,
-        productId: `${selectedNetwork?.id}_${Math.floor(amount)}`,
-        amountCents: Math.round(amount * 100),
-        providerId: selectedNetwork?.id,
-        bundleType,
-      })
-
-      const data = result?.data ?? result
-      const newTransaction: TransactionRecord = {
-        id: data.id || `TXN${Date.now().toString(36).toUpperCase()}`,
-        type: bundleType as 'airtime' | 'data' | 'voice' | 'sms',
-        network: data.network || selectedNetwork?.name || '',
-        phoneNumber: phoneNumber,
-        amount: amount,
-        token: data.voucherPin || data.token || generateToken(),
-        reference: data.reference || `AIR${Date.now().toString(36).toUpperCase()}`,
-        timestamp: new Date(),
-        status: 'completed'
+      const body: Record<string, unknown> = {
+        providerId: selectedProvider.id,
+        phoneNumber,
+        type: tab,
+      }
+      if (tab === 'voice') {
+        body.amountCents = Math.round((selectedDenomination as number) * 100)
+      } else {
+        body.bundleId = selectedBundle?.id
       }
 
-      setTransaction(newTransaction)
-      setStep('success')
+      const res = await apiPost<PurchaseResult & { success?: boolean; error?: string }>(
+        '/airtime',
+        body,
+      )
+      if (res?.success === false) {
+        setError(res.error || 'Airtime purchase failed')
+        return
+      }
+      setResult(res)
+      setStep('result')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Airtime purchase failed')
     } finally {
       setIsLoading(false)
     }
-  }, [selectedNetwork, phoneNumber, amount, bundleType])
+  }, [selectedProvider, phoneValid, tab, selectedDenomination, selectedBundle])
+
+  const copyPin = useCallback(async () => {
+    if (!result || result.type !== 'voice') return
+    try {
+      await navigator.clipboard.writeText(result.pin)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // ignore
+    }
+  }, [result])
 
   const handleClose = useCallback(() => {
-    setStep('network')
-    setSelectedNetwork(null)
-    setBundleType('airtime')
-    setPhoneNumber('')
-    setAmount(0)
-    setTransaction(null)
+    resetFlow()
     onOpenChange(false)
-  }, [onOpenChange])
+  }, [resetFlow, onOpenChange])
 
-  if (!open) return null
+  const currency = selectedProvider?.country === 'MW' ? 'MWK' : 'ZAR'
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom duration-300">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-[#1A1A1A]">Airtime & Data</h2>
-          <button onClick={handleClose} className="p-1 rounded-full hover:bg-gray-100">
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
+  // Helper to render the provider grid (reused in both tabs)
+  const renderProviderGrid = () => (
+    <div className="space-y-4">
+      <div>
+        <Label className="text-sm font-medium">Select network</Label>
+        <p className="text-xs text-muted-foreground mt-1">
+          {tab === 'voice' ? 'Voice airtime PIN voucher' : 'Data bundle (direct recharge)'}
+        </p>
+      </div>
+      {(['ZA', 'MW'] as const).map((country) => (
+        <div key={country} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              {country === 'ZA' ? 'South Africa' : 'Malawi'}
+            </Badge>
+            <div className="h-px bg-border flex-1" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {providersByCountry[country]?.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  setSelectedProvider(p)
+                  setStep('phone')
+                }}
+                className="flex flex-col items-start gap-1 p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/40 transition-colors text-left"
+              >
+                <Smartphone className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">{p.name}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {tab === 'voice'
+                    ? `${p.voiceDenominations.length} denominations`
+                    : `${p.dataBundles.length} bundles`}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
+      ))}
+    </div>
+  )
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {step === 'network' && (
-            <div className="space-y-4">
-              <p className="text-sm text-[#757575]">Select network</p>
+  const renderPhoneStep = () => (
+    <div className="space-y-4">
+      <button onClick={() => setStep('provider')} className="text-xs text-primary hover:underline">
+        ← Change network
+      </button>
 
-              <div className="grid grid-cols-2 gap-3">
-                {networks.map((network) => (
-                  <button
-                    key={network.id}
-                    onClick={() => {
-                      setSelectedNetwork(network)
-                      setStep('bundle')
-                    }}
-                    className="p-4 rounded-xl border border-gray-200 hover:border-[#00897B] transition-all"
-                  >
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center mb-2"
-                      style={{ backgroundColor: network.bg }}
-                    >
-                      <Smartphone className="h-5 w-5" style={{ color: network.color }} />
-                    </div>
-                    <p className="text-sm font-medium text-[#1A1A1A]">{network.name}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+      <Card className="py-3">
+        <CardContent className="px-4">
+          <div className="flex items-center gap-2">
+            <Smartphone className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">{selectedProvider?.name}</span>
+          </div>
+        </CardContent>
+      </Card>
 
-          {step === 'bundle' && selectedNetwork && (
-            <div className="space-y-4">
-              <button onClick={() => setStep('network')} className="text-sm text-[#00897B]">
-                ← Change network
-              </button>
+      <div className="space-y-2">
+        <Label htmlFor="phone">Phone number</Label>
+        <Input
+          id="phone"
+          type="tel"
+          placeholder="e.g. 082 123 4567"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          className="h-12 text-base"
+        />
+        {phoneNumber && !phoneValid && (
+          <p className="text-xs text-destructive flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" /> Enter a valid phone number.
+          </p>
+        )}
+      </div>
 
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: selectedNetwork.bg }}
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setStep('provider')} className="flex-1">
+          Back
+        </Button>
+        <Button
+          onClick={() => setStep('select')}
+          disabled={!phoneValid}
+          className="flex-1"
+        >
+          Continue
+        </Button>
+      </div>
+    </div>
+  )
+
+  const renderSelectStep = () => {
+    if (!selectedProvider) return null
+    if (tab === 'voice') {
+      return (
+        <div className="space-y-4">
+          <button onClick={() => setStep('phone')} className="text-xs text-primary hover:underline">
+            ← Back
+          </button>
+
+          <div className="space-y-2">
+            <Label>Select denomination</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {selectedProvider.voiceDenominations.map((value) => (
+                <button
+                  key={value}
+                  onClick={() => {
+                    setSelectedDenomination(value)
+                    setStep('confirm')
+                  }}
+                  className={`py-3 rounded-lg text-sm font-medium transition-colors border ${
+                    selectedDenomination === value
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-muted/40 hover:bg-accent/40'
+                  }`}
                 >
-                  <Smartphone className="h-4 w-4" style={{ color: selectedNetwork.color }} />
-                </div>
-                <span className="text-sm font-bold text-[#1A1A1A]">{selectedNetwork.name}</span>
-              </div>
-
-              <h3 className="text-sm font-semibold text-[#1A1A1A]">What do you want to buy?</h3>
-
-              <div className="grid grid-cols-2 gap-2">
-                {bundleTypes.map((bundle) => (
-                  <button
-                    key={bundle.id}
-                    onClick={() => {
-                      setBundleType(bundle.id)
-                      setStep('details')
-                    }}
-                    className={`p-3 rounded-xl border-2 text-left transition-all ${
-                      bundleType === bundle.id
-                        ? 'border-[#00897B] bg-[#E0F2F1]'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <span className="text-xl">{bundle.icon}</span>
-                    <p className="text-sm font-medium text-[#1A1A1A] mt-1">{bundle.name}</p>
-                  </button>
-                ))}
-              </div>
+                  {selectedProvider.country === 'MW' ? `K${value}` : `R${value}`}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div className="space-y-4">
+        <button onClick={() => setStep('phone')} className="text-xs text-primary hover:underline">
+          ← Back
+        </button>
 
-          {step === 'details' && selectedNetwork && (
-            <div className="space-y-4">
-              <button onClick={() => setStep('bundle')} className="text-sm text-[#00897B]">
-                ← Back
-              </button>
-
-              <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-2">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: selectedNetwork.bg }}
-                >
-                  <Smartphone className="h-4 w-4" style={{ color: selectedNetwork.color }} />
-                </div>
-                <div>
-                  <p className="text-xs text-[#757575]">{selectedNetwork.name}</p>
-                  <p className="text-sm font-medium text-[#1A1A1A] capitalize">{bundleType}</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-[#1A1A1A]">Phone Number</label>
-                  <Input
-                    type="tel"
-                    placeholder="e.g., 082 123 4567"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="h-12 mt-1"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-[#1A1A1A]">Amount</label>
-                  <div className="relative mt-1">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">R</span>
-                    <Input
-                      type="number"
-                      value={amount || ''}
-                      onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                      className="pl-8 h-12"
-                    />
+        <div className="space-y-2">
+          <Label>Select data bundle</Label>
+          <div className="space-y-1.5">
+            {selectedProvider.dataBundles.map((b) => (
+              <button
+                key={b.id}
+                onClick={() => {
+                  setSelectedBundle(b)
+                  setStep('confirm')
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/40 transition-colors text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <Signal className="h-4 w-4 text-primary" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{b.name}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Valid {b.validity}
+                    </span>
                   </div>
                 </div>
-
-                <div className="flex gap-2">
-                  {quickAmounts.map((value) => (
-                    <button
-                      key={value}
-                      onClick={() => setAmount(value)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-                        amount === value
-                          ? 'bg-[#00897B] text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      R{value}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold">
+                    {selectedProvider.country === 'MW' ? `K${b.price}` : `R${b.price}`}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep('bundle')} className="flex-1">
-                  Back
-                </Button>
-                <Button
-                  onClick={() => setStep('confirm')}
-                  disabled={!phoneNumber.trim() || amount <= 0}
-                  className="flex-1 bg-[#00897B] hover:bg-[#00695C]"
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {step === 'confirm' && selectedNetwork && (
-            <div className="space-y-4">
-              <div className="text-center mb-4">
-                <p className="text-3xl font-bold text-[#1A1A1A]">R {amount.toFixed(2)}</p>
-                <p className="text-sm text-[#757575]">{selectedNetwork.name} {bundleType}</p>
-              </div>
-
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Phone Number</span>
-                  <span className="text-sm font-mono text-[#1A1A1A]">{phoneNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Network</span>
-                  <span className="text-sm font-medium text-[#1A1A1A]">{selectedNetwork.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Type</span>
-                  <Badge className="bg-[#00897B]/10 text-[#00897B] border-0 capitalize">{bundleType}</Badge>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleBuy}
-                disabled={isLoading}
-                className="w-full bg-[#00897B] hover:bg-[#00695C] h-12"
-              >
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Buy Now'}
-              </Button>
-
-              {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
-              )}
-
-              <Button variant="outline" onClick={() => setStep('details')} className="w-full">
-                Back
-              </Button>
-            </div>
-          )}
-
-          {step === 'success' && selectedNetwork && transaction && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-20 h-20 rounded-full bg-[#4CAF50]/10 flex items-center justify-center mx-auto mb-4">
-                  <Check className="h-10 w-10 text-[#4CAF50]" />
-                </div>
-                <h3 className="text-xl font-bold text-[#1A1A1A] mb-2">Purchase Successful!</h3>
-                <p className="text-sm text-[#757575]">
-                  R {amount.toFixed(2)} {bundleType} sent to {phoneNumber}
-                </p>
-              </div>
-
-              {/* Transaction Receipt */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                <div className="text-center pb-3 border-b border-gray-200">
-                  <p className="text-xs text-[#757575] mb-1">Transaction ID</p>
-                  <p className="text-sm font-mono font-bold text-[#1A1A1A]">{transaction.id}</p>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Network</span>
-                  <span className="text-sm font-medium text-[#1A1A1A]">{transaction.network}</span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Phone Number</span>
-                  <span className="text-sm font-mono text-[#1A1A1A]">{transaction.phoneNumber}</span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Type</span>
-                  <Badge className="bg-[#00897B]/10 text-[#00897B] border-0 capitalize">{transaction.type}</Badge>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Amount</span>
-                  <span className="text-sm font-bold text-[#1A1A1A]">R {transaction.amount.toFixed(2)}</span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Date</span>
-                  <span className="text-sm text-[#1A1A1A]">{transaction.timestamp.toLocaleDateString('en-ZA')} {transaction.timestamp.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Status</span>
-                  <Badge className="bg-green-100 text-green-700 border-0">Completed</Badge>
-                </div>
-              </div>
-
-              {/* Token Receipt - Important for Prepaid Services */}
-              <div className="bg-[#E0F2F1] rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-[#00897B] text-white border-0 text-xs">TOKEN</Badge>
-                  <span className="text-xs text-[#757575]">Keep this for your records</span>
-                </div>
-                <p className="text-lg font-mono font-bold text-[#00897B] text-center tracking-wider">{transaction.token}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-2"
-                  onClick={() => navigator.clipboard.writeText(transaction.token)}
-                >
-                  Copy Token
-                </Button>
-              </div>
-
-              {/* Reference */}
-              <div className="bg-gray-50 rounded-lg p-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#757575]">Reference</span>
-                  <span className="text-sm font-mono font-medium text-[#1A1A1A]">{transaction.reference}</span>
-                </div>
-              </div>
-
-              <Button onClick={handleClose} className="w-full bg-[#00897B] hover:bg-[#00695C]">
-                Done
-              </Button>
-
-              <p className="text-xs text-center text-[#757575]">
-                Transaction saved to your purchase history
-              </p>
-            </div>
-          )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+    )
+  }
+
+  const renderConfirmStep = () => {
+    if (!selectedProvider) return null
+    const amountCents =
+      tab === 'voice'
+        ? Math.round((selectedDenomination as number) * 100)
+        : Math.round((selectedBundle?.price ?? 0) * 100)
+
+    return (
+      <div className="space-y-4">
+        <div className="text-center">
+          <p className="text-3xl font-bold tabular-nums">
+            {formatMoney(BigInt(amountCents), currency)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {selectedProvider.name} • {tab === 'voice' ? 'Voice airtime' : selectedBundle?.name}
+          </p>
+        </div>
+
+        <Card className="py-3 bg-muted/40">
+          <CardContent className="px-4 space-y-2">
+            <Row label="Network" value={selectedProvider.name} />
+            <Row label="Phone" value={phoneNumber} mono />
+            <Row label="Type" value={tab === 'voice' ? 'Voice (PIN voucher)' : 'Data (direct recharge)'} />
+            {tab === 'voice' ? (
+              <Row
+                label="Denomination"
+                value={selectedProvider.country === 'MW'
+                  ? `K${selectedDenomination}`
+                  : `R${selectedDenomination}`}
+              />
+            ) : (
+              <>
+                <Row label="Bundle" value={selectedBundle?.name ?? ''} />
+                <Row label="Validity" value={selectedBundle?.validity ?? ''} />
+              </>
+            )}
+            <Row label="Fee" value="FREE" className="text-emerald-600" />
+          </CardContent>
+        </Card>
+
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-xs">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <Button onClick={handleBuy} disabled={isLoading} className="w-full h-12">
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Processing…
+            </>
+            ) : tab === 'voice' ? (
+              <>Buy Airtime</>
+            ) : (
+              <>Buy Data Bundle</>
+            )}
+        </Button>
+
+        <Button variant="outline" onClick={() => setStep('select')} className="w-full">
+          Back
+        </Button>
+      </div>
+    )
+  }
+
+  const renderResult = () => {
+    if (!result || !selectedProvider) return null
+
+    return (
+      <div className="space-y-4">
+        <div className="text-center">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-2">
+            <Check className="h-7 w-7 text-emerald-600" />
+          </div>
+          <h3 className="text-base font-bold">
+            {result.type === 'voice' ? 'Voucher Issued' : 'Direct Recharge Complete'}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {formatMoney(BigInt(String(result.amountCents)), currency)} •{' '}
+            {selectedProvider.name}
+          </p>
+        </div>
+
+        {/* Voice: PIN voucher */}
+        {result.type === 'voice' && (
+          <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <Badge className="bg-emerald-600 text-white border-0 text-[10px]">
+                AIRTIME PIN
+              </Badge>
+              <span className="text-[10px] text-emerald-700">Dial *100*PIN#</span>
+            </div>
+            <p className="text-xl font-mono font-bold text-emerald-700 text-center tracking-[0.25em] break-all">
+              {result.pin}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-3 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+              onClick={copyPin}
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3 w-3" /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3 w-3" /> Copy PIN
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Data: direct recharge confirmation */}
+        {result.type === 'data' && (
+          <div className="rounded-lg bg-sky-50 border border-sky-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <Badge className="bg-sky-600 text-white border-0 text-[10px]">
+                DIRECT RECHARGE
+              </Badge>
+              <span className="text-[10px] text-sky-700">No PIN needed</span>
+            </div>
+            <div className="flex items-center gap-2 justify-center text-sky-700">
+              <Signal className="h-5 w-5" />
+              <p className="text-sm font-medium">
+                {result.bundle?.name ?? 'Data bundle'} pushed to {result.phoneNumber}
+              </p>
+            </div>
+            <p className="text-[11px] text-sky-600 text-center mt-2">
+              Valid for {result.bundle?.validity ?? '30 days'} — you&apos;ll receive an SMS
+              confirmation within 60 seconds.
+            </p>
+          </div>
+        )}
+
+        {/* Receipt details */}
+        <Card className="py-3 bg-muted/40">
+          <CardContent className="px-4 space-y-2">
+            <Row label="Receipt no." value={result.receiptNo} mono />
+            <Row label="Network" value={selectedProvider.name} />
+            <Row label="Phone" value={result.phoneNumber} mono />
+            <Row
+              label="Type"
+              value={result.type === 'voice' ? 'Voice airtime' : 'Data bundle'}
+            />
+            {result.type === 'voice' && (
+              <Row label="PIN" value={result.pin} mono />
+            )}
+            {result.type === 'data' && result.bundle && (
+              <>
+                <Row label="Bundle" value={result.bundle.name} />
+                <Row label="Validity" value={result.bundle.validity} />
+              </>
+            )}
+            <Row label="Amount" value={formatMoney(BigInt(String(result.amountCents)), currency)} />
+            <Row
+              label="Date"
+              value={new Date(result.createdAt ?? Date.now()).toLocaleString('en-ZA', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })}
+            />
+            <div className="flex justify-between pt-1 border-t border-border mt-2">
+              <span className="text-xs text-muted-foreground">Status</span>
+              <Badge className="bg-emerald-100 text-emerald-700 border-0">Completed</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {result.instructions && result.instructions.length > 0 && (
+          <div className="rounded-md bg-muted/40 p-3 space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">How to use</p>
+            <ul className="text-xs space-y-1">
+              {result.instructions.map((line, i) => (
+                <li key={i} className="text-muted-foreground">
+                  {i + 1}. {line}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <Button onClick={handleClose} className="w-full h-11">
+          Done
+        </Button>
+
+        <p className="text-[10px] text-center text-muted-foreground">
+          Transaction saved to your records
+        </p>
+      </div>
+    )
+  }
+
+  // Active step rendering — depends on tab
+  const renderActiveStep = () => {
+    if (step === 'result') return renderResult()
+    if (step === 'confirm') return renderConfirmStep()
+    if (step === 'select') return renderSelectStep()
+    if (step === 'phone') return renderPhoneStep()
+    return renderProviderGrid()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => (o ? null : handleClose())}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <Smartphone className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <DialogTitle className="text-base">Airtime &amp; Data</DialogTitle>
+              <DialogDescription className="text-xs">
+                Vodacom, MTN, Cell C, Telkom, Airtel, TNM
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        {/* Explainer for voice vs data */}
+        {step === 'provider' && (
+          <div className="flex items-start gap-2 rounded-md bg-muted/40 border border-border p-3 text-xs text-muted-foreground">
+            <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+            <p>
+              <strong>Voice airtime</strong> issues a PIN voucher you redeem by dialing{' '}
+              <code className="font-mono">*100*PIN#</code>.{' '}
+              <strong>Data bundles</strong> are pushed straight to your number — no PIN needed.
+            </p>
+          </div>
+        )}
+
+        {/* Tabs only show on provider step so the flow stays single-purpose */}
+        {step === 'provider' ? (
+          <Tabs value={tab} onValueChange={handleTabChange}>
+            <TabsList className="w-full">
+              <TabsTrigger value="voice" className="flex-1 gap-1.5">
+                <Phone className="h-3.5 w-3.5" /> Voice Airtime
+              </TabsTrigger>
+              <TabsTrigger value="data" className="flex-1 gap-1.5">
+                <Signal className="h-3.5 w-3.5" /> Data Bundles
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="voice" className="mt-4">
+              {renderActiveStep()}
+            </TabsContent>
+            <TabsContent value="data" className="mt-4">
+              {renderActiveStep()}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="space-y-1">
+            <Badge variant="outline" className="text-[10px] mb-3">
+              {tab === 'voice' ? 'Voice Airtime' : 'Data Bundle'}
+            </Badge>
+            {renderActiveStep()}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function Row({
+  label,
+  value,
+  mono,
+  className,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+  className?: string
+}) {
+  return (
+    <div className="flex justify-between items-center text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`font-medium ${mono ? 'font-mono' : ''} ${className ?? ''}`}>
+        {value}
+      </span>
     </div>
   )
 }

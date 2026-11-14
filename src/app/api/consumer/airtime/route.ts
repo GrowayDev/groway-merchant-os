@@ -1,218 +1,259 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { db } from '@/lib/db'
+import { getUserId, ok, error, parseMoney, serialize } from '../_lib/helpers'
+import { ensureConsumerUser } from '../_lib/ensureUser'
+import {
+  AIRTIME_PROVIDERS,
+  generatePin,
+  generateReceiptNo,
+} from '@/lib/consumer-wallet/catalog'
 
-// Network configurations
-const NETWORKS = {
-  vodacom: {
-    id: 'vodacom',
-    name: 'Vodacom',
-    color: '#E60000',
-    prefixes: ['082', '072', '076', '079', '086'],
-    bundles: [
-      { id: 'v-airtime', type: 'airtime', name: 'Airtime Only', data: '0', price: 0, validity: 'N/A' },
-      { id: 'v1', type: 'data', name: 'Just 4 You', data: '1GB', price: 9900, validity: '30 days', popular: true },
-      { id: 'v2', type: 'data', name: 'Power Bundle', data: '2GB', price: 14900, validity: '30 days' },
-      { id: 'v3', type: 'data', name: 'Mega Bundle', data: '5GB', price: 29900, validity: '30 days', popular: true },
-      { id: 'v4', type: 'data', name: 'Giga Bundle', data: '10GB', price: 49900, validity: '30 days' },
-      { id: 'v5', type: 'data', name: 'Night Owl', data: '2GB', price: 4900, validity: '7 nights', nightData: true },
-    ],
-  },
-  mtn: {
-    id: 'mtn',
-    name: 'MTN',
-    color: '#FFCC00',
-    prefixes: ['083', '073', '078', '071'],
-    bundles: [
-      { id: 'm-airtime', type: 'airtime', name: 'Airtime Only', data: '0', price: 0, validity: 'N/A' },
-      { id: 'm1', type: 'data', name: 'Ayoba', data: '1GB', price: 9500, validity: '30 days', popular: true },
-      { id: 'm2', type: 'data', name: 'Chatta', data: '2GB', price: 14500, validity: '30 days' },
-      { id: 'm3', type: 'data', name: 'Supa', data: '5GB', price: 28900, validity: '30 days', popular: true },
-      { id: 'm4', type: 'data', name: 'Mega', data: '10GB', price: 47900, validity: '30 days' },
-    ],
-  },
-  cellc: {
-    id: 'cellc',
-    name: 'Cell C',
-    color: '#00A651',
-    prefixes: ['084', '074', '077'],
-    bundles: [
-      { id: 'c-airtime', type: 'airtime', name: 'Airtime Only', data: '0', price: 0, validity: 'N/A' },
-      { id: 'c1', type: 'data', name: 'Data Bundle', data: '1GB', price: 8900, validity: '30 days' },
-      { id: 'c2', type: 'data', name: 'SmartData', data: '2GB', price: 13900, validity: '30 days', popular: true },
-      { id: 'c3', type: 'data', name: 'MegaData', data: '5GB', price: 27900, validity: '30 days' },
-    ],
-  },
-  telkom: {
-    id: 'telkom',
-    name: 'Telkom',
-    color: '#0066B3',
-    prefixes: ['081', '071'],
-    bundles: [
-      { id: 't-airtime', type: 'airtime', name: 'Airtime Only', data: '0', price: 0, validity: 'N/A' },
-      { id: 't1', type: 'data', name: 'FreeMe', data: '1GB', price: 7900, validity: '30 days', popular: true },
-      { id: 't2', type: 'data', name: 'FreeMe', data: '2GB', price: 12900, validity: '30 days' },
-      { id: 't3', type: 'data', name: 'FreeMe', data: '5GB', price: 24900, validity: '30 days', popular: true },
-    ],
-  },
+/**
+ * /api/consumer/airtime
+ *
+ * Voice airtime (voucher PIN) and data bundle (direct recharge) purchases
+ * for SA networks (Vodacom, MTN, Cell C, Telkom) and Malawi (Airtel, TNM).
+ *
+ *  - Voice: returns a 12-digit PIN voucher the customer can dial `*100*PIN#`
+ *    to redeem on any compatible handset.
+ *  - Data: direct recharge — the bundle is pushed to the MSISDN immediately,
+ *    no PIN needed.
+ *
+ * Catalog lives in `@/lib/consumer-wallet/catalog`. Voice denominations are
+ * in Rands; data bundle prices are in Rands too. The API standardises on
+ * cents for amount output.
+ */
+
+const MIN_VOICE_CENTS = BigInt(200) // R2.00
+
+type AirtimeProvider = (typeof AIRTIME_PROVIDERS)[number]
+type DataBundle = AirtimeProvider['dataBundles'][number]
+
+function findProvider(providerId: string): AirtimeProvider | undefined {
+  return AIRTIME_PROVIDERS.find((p) => p.id === providerId)
 }
 
-// Detect network from phone number
-function detectNetwork(phoneNumber: string): string | null {
-  const cleanNumber = phoneNumber.replace(/\D/g, '')
-  const prefix = cleanNumber.startsWith('27') 
-    ? '0' + cleanNumber.slice(2, 4) 
-    : cleanNumber.slice(0, 3)
-
-  for (const [networkId, network] of Object.entries(NETWORKS)) {
-    if (network.prefixes.includes(prefix)) {
-      return networkId
-    }
-  }
-  return null
+function findBundle(provider: AirtimeProvider, bundleId: string): DataBundle | undefined {
+  return provider.dataBundles.find((b) => b.id === bundleId)
 }
 
-// GET - Fetch networks, bundles, or detect network
+function normalisePhone(input: string): string {
+  const digits = input.replace(/\D/g, '')
+  if (!digits) return ''
+  // Local ZA: 0XXXXXXXXX -> +27XXXXXXXXX
+  if (digits.startsWith('0')) return '+27' + digits.slice(1)
+  if (digits.startsWith('27')) return '+' + digits
+  if (digits.startsWith('+')) return digits
+  // Malawi default if length matches
+  if (digits.length === 9) return '+265' + digits
+  return '+' + digits
+}
+
+// GET — list airtime providers with voice denominations and data bundles
 export async function GET(request: NextRequest) {
+  const userId = getUserId(request)
+
+  const providers = AIRTIME_PROVIDERS.map((p) => ({
+    id: p.id,
+    name: p.name,
+    country: p.country,
+    voiceDenominations: [...p.voiceDenominations],
+    dataBundles: p.dataBundles.map((b) => ({ ...b })),
+  }))
+
+  const grouped: Record<string, typeof providers> = { ZA: [], MW: [] }
+  for (const p of providers) grouped[p.country].push(p)
+
+  let recent: Array<Record<string, unknown>> = []
   try {
-    const { searchParams } = new URL(request.url)
-    const networkId = searchParams.get('network')
-    const phoneNumber = searchParams.get('phone')
-
-    // Detect network from phone number
-    if (phoneNumber) {
-      const detectedNetwork = detectNetwork(phoneNumber)
-      return NextResponse.json({
-        success: true,
-        data: {
-          phoneNumber,
-          detectedNetwork,
-          network: detectedNetwork ? NETWORKS[detectedNetwork as keyof typeof NETWORKS] : null,
-        }
-      })
-    }
-
-    // Get specific network details
-    if (networkId && NETWORKS[networkId as keyof typeof NETWORKS]) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          network: NETWORKS[networkId as keyof typeof NETWORKS]
-        }
-      })
-    }
-
-    // Return all networks
-    return NextResponse.json({
-      success: true,
-      data: {
-        networks: Object.values(NETWORKS).map(n => ({
-          id: n.id,
-          name: n.name,
-          color: n.color,
-          prefixes: n.prefixes,
-        }))
-      }
+    const rows = await db.consumerTransaction.findMany({
+      where: {
+        userId,
+        transactionType: 'airtime',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
     })
-
-  } catch (error) {
-    console.error('Get airtime data error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to get airtime data' },
-      { status: 500 }
-    )
+    recent = rows.map((r) => ({
+      id: r.id,
+      provider: r.counterpartyName,
+      phoneNumber: r.counterpartyPhone,
+      type: r.category, // 'voice' | 'data'
+      bundleId: r.providerRef,
+      pin: r.voucherToken,
+      amountCents: r.amountCents,
+      receiptNo: r.externalRef,
+      status: r.status,
+      createdAt: r.createdAt,
+    }))
+  } catch {
+    // ignore
   }
+
+  return ok({
+    providers,
+    grouped,
+    minVoiceCents: MIN_VOICE_CENTS.toString(),
+    recent,
+  })
 }
 
-// POST - Purchase airtime or data
+// POST — purchase voice airtime or a data bundle
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { userId, phoneNumber, amountCents, bundleId, networkId, walletId } = body
+    const userId = await ensureConsumerUser(getUserId(request))
+    const body = await request.json().catch(() => ({} as Record<string, unknown>))
 
-    if (!userId || !phoneNumber) {
-      return NextResponse.json(
-        { success: false, error: 'User ID and phone number are required' },
-        { status: 400 }
-      )
+    const providerId = (body.providerId as string | undefined)?.trim()
+    const rawPhone = (body.phoneNumber as string | undefined)?.trim() ?? ''
+    const type = (body.type as string | undefined) as 'voice' | 'data' | undefined
+    const bundleId = (body.bundleId as string | undefined)?.trim() ?? ''
+
+    if (!providerId) return error('providerId is required')
+    if (!rawPhone) return error('phoneNumber is required')
+    if (type !== 'voice' && type !== 'data') {
+      return error("type must be 'voice' or 'data'", 400)
     }
 
-    // Detect or validate network
-    const detectedNetwork = detectNetwork(phoneNumber)
-    const network = networkId || detectedNetwork
+    const provider = findProvider(providerId)
+    if (!provider) return error(`Unknown airtime provider: ${providerId}`, 404)
 
-    if (!network || !NETWORKS[network as keyof typeof NETWORKS]) {
-      return NextResponse.json(
-        { success: false, error: 'Unable to determine network for this phone number' },
-        { status: 400 }
-      )
+    const phoneNumber = normalisePhone(rawPhone)
+    if (phoneNumber.length < 10) {
+      return error('Please enter a valid phone number (e.g. 082 123 4567).', 400)
     }
 
-    // Validate amount or bundle
-    if (!amountCents && !bundleId) {
-      return NextResponse.json(
-        { success: false, error: 'Amount or bundle selection is required' },
-        { status: 400 }
-      )
-    }
+    const receiptNo = generateReceiptNo('AT')
 
-    // Get bundle details if specified
-    let bundle = null
-    let finalAmountCents = amountCents
+    // Resolve the amount (in cents) and the bundle metadata
+    let amountCents: bigint
+    let bundle: DataBundle | undefined
+    let pin: string | null = null
 
-    if (bundleId) {
-      const networkData = NETWORKS[network as keyof typeof NETWORKS]
-      bundle = networkData.bundles.find(b => b.id === bundleId)
-      
-      if (!bundle) {
-        return NextResponse.json(
-          { success: false, error: 'Invalid bundle selected' },
-          { status: 400 }
-        )
+    if (type === 'data') {
+      if (!bundleId) {
+        return error('bundleId is required for data purchases', 400)
       }
-      
-      finalAmountCents = bundle.price
+      bundle = findBundle(provider, bundleId)
+      if (!bundle) {
+        return error(`Unknown data bundle for ${provider.name}: ${bundleId}`, 400)
+      }
+      amountCents = parseMoney(bundle.price * 100)
+    } else {
+      // Voice airtime — amount in Rands, sent as `amountCents` (or `amount` in cents)
+      const amountInput = body.amountCents ?? body.amount
+      if (amountInput === undefined || amountInput === null) {
+        return error('amount (cents) is required for voice airtime', 400)
+      }
+      amountCents = parseMoney(amountInput as string | number)
+      if (amountCents < MIN_VOICE_CENTS) {
+        return error(`Minimum voice airtime is R${Number(MIN_VOICE_CENTS) / 100}`, 400)
+      }
+      pin = generatePin(12)
     }
 
-    // Minimum amount check for airtime
-    if (!bundle && Number(finalAmountCents) < 200) { // R2 minimum for airtime
-      return NextResponse.json(
-        { success: false, error: 'Minimum airtime purchase is R2' },
-        { status: 400 }
-      )
+    const idempotencyKey =
+      (body.idempotencyKey as string | undefined) ||
+      `air-${provider.id}-${phoneNumber}-${type}-${bundleId || amountCents.toString()}-${Date.now()}`
+
+    const existing = await db.consumerTransaction.findUnique({ where: { idempotencyKey } })
+    if (existing) {
+      return ok({
+        success: true,
+        data: serialize(existing),
+        message: 'Airtime purchase already processed',
+      })
     }
 
-    // In production:
-    // 1. Check wallet balance
-    // 2. Create pending transaction
-    // 3. Call network API (via aggregator like DPO, PayGate)
-    // 4. Update transaction status
-    // 5. Send confirmation SMS
-
-    const purchase = {
-      id: `airtime-${Date.now()}`,
-      userId,
-      phoneNumber,
-      network: NETWORKS[network as keyof typeof NETWORKS].name,
-      type: bundle ? 'data' : 'airtime',
-      bundle: bundle?.name || 'Airtime',
-      dataAmount: bundle?.data || 'N/A',
-      amountCents: finalAmountCents,
-      status: 'processing',
-      reference: `AT${Date.now()}`,
-      createdAt: new Date(),
-      estimatedDelivery: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `${bundle ? 'Data bundle' : 'Airtime'} purchase initiated successfully`,
-      data: purchase
+    const tx = await db.consumerTransaction.create({
+      data: {
+        id: `tx-air-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        idempotencyKey,
+        userId,
+        transactionType: 'airtime',
+        direction: 'debit',
+        amountCents,
+        feeCents: BigInt(0),
+        netAmountCents: amountCents,
+        currency: provider.country === 'MW' ? 'MWK' : 'ZAR',
+        status: 'completed',
+        description:
+          type === 'data'
+            ? `${provider.name} Data Bundle - ${bundle!.name} - ${phoneNumber}`
+            : `${provider.name} Voice Airtime - ${phoneNumber}`,
+        reference: receiptNo,
+        category: type,
+        counterpartyId: provider.id,
+        counterpartyName: provider.name,
+        counterpartyPhone: phoneNumber,
+        counterpartyType: 'airtime_provider',
+        paymentMethod: 'wallet_balance',
+        voucherToken: pin, // null for data
+        voucherExpiry:
+          type === 'voice'
+            ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // 90 days
+            : null,
+        providerRef: bundle?.id ?? null,
+        externalRef: receiptNo,
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      },
     })
 
-  } catch (error) {
-    console.error('Airtime purchase error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to process airtime purchase' },
-      { status: 500 }
-    )
+    // Best-effort wallet debit
+    try {
+      const wallet = await db.consumerWallet.findUnique({ where: { userId } })
+      if (wallet && wallet.balanceCents >= amountCents) {
+        await db.consumerWallet.update({
+          where: { userId },
+          data: {
+            balanceCents: { decrement: amountCents },
+            totalSentCents: { increment: amountCents },
+            updatedAt: new Date(),
+          },
+        })
+      }
+    } catch {
+      // non-fatal
+    }
+
+    const response: Record<string, unknown> = {
+      success: true,
+      data: serialize(tx),
+      receiptNo,
+      amountCents: amountCents.toString(),
+      provider: {
+        id: provider.id,
+        name: provider.name,
+        country: provider.country,
+      },
+      phoneNumber,
+      type,
+    }
+
+    if (type === 'voice') {
+      response.pin = pin
+      response.voucherExpiry = tx.voucherExpiry
+      response.instructions = [
+        `Dial *100*${pin}# on your ${provider.name} handset to load the airtime.`,
+        'Alternatively, dial *100# and choose "Recharge with voucher".',
+        'The PIN is valid for 90 days from purchase.',
+      ]
+    } else {
+      response.directRecharge = true
+      response.bundle = bundle
+        ? { id: bundle.id, name: bundle.name, price: bundle.price, validity: bundle.validity }
+        : null
+      response.instructions = [
+        `R${bundle!.price} of ${bundle!.name} has been pushed directly to ${phoneNumber}.`,
+        `Data is valid for ${bundle!.validity}.`,
+        'You should receive an SMS confirmation from the network within 60 seconds.',
+      ]
+    }
+
+    return ok(response, 201)
+  } catch (err) {
+    console.error('Airtime purchase error:', err)
+    return error('Failed to process airtime purchase', 500)
   }
 }

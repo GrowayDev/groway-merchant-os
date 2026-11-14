@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import { apiGet, apiPost } from '@/components/wallet/lib/api'
 import {
@@ -21,7 +23,10 @@ import {
   ChevronRight,
   Plus,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Shield,
+  FileText,
+  Archive,
 } from 'lucide-react'
 
 interface LaybyeModalProps {
@@ -31,63 +36,76 @@ interface LaybyeModalProps {
 
 interface Laybye {
   id: string
+  merchant: string
   item: string
-  totalAmountCents: number | string
-  paidAmountCents: number | string
-  depositCents?: number | string
-  weeklyPaymentCents?: number | string
-  nextPaymentDate?: string
+  itemPrice: number
+  deposit: number
+  totalPaid: number
+  remainingBalance: number
+  instalmentAmount: number
+  instalmentsPaid: number
+  totalInstalments: number
+  nextDueDate: string | null
+  expiresAt: string | null
   status: string
-  weeksRemaining?: number
+  ncaProtected: boolean
+  progress: number
+  createdAt: string
 }
 
-const popularItems = [
-  'Samsung TV',
-  'iPhone 15',
-  'Nike Sneakers',
-  'HP Laptop',
-  'DSTV Decoder',
-  'Furniture',
-]
-
-function toRand(cents: number | string | undefined): number {
-  if (cents == null) return 0
-  const n = typeof cents === 'string' ? Number(cents) : cents
-  return Number(n) / 100
+interface LaybyeResult {
+  laybyeId: string
+  caseRef: string
+  receiptNo: string
+  merchant: string
+  merchantId: string | null
+  item: string
+  itemPrice: number
+  deposit: number
+  totalPaid: number
+  remainingBalance: number
+  instalmentAmount: number
+  instalmentsPaid: number
+  totalInstalments: number
+  lastInstalmentAmount: number
+  nextDueDate: string
+  expiresAt: string
+  status: string
+  ncaProtected: boolean
+  schedule: { number: number; amount: number; dueDate: string; status: string }[]
+  terms: string[]
+  message: string
 }
+
+type Step = 'list' | 'create' | 'review' | 'agreement'
 
 export function LaybyeModal({ open, onOpenChange }: LaybyeModalProps) {
-  const [activeView, setActiveView] = useState<'list' | 'detail' | 'new' | 'payment' | 'success'>('list')
-  const [selectedLaybye, setSelectedLaybye] = useState<string | null>(null)
-  const [newLaybyeStep, setNewLaybyeStep] = useState(1)
-  const [paymentAmount, setPaymentAmount] = useState<number>(0)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [step, setStep] = useState<Step>('list')
+  const [laybyes, setLaybyes] = useState<Laybye[]>([])
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [loadingList, setLoadingList] = useState(false)
-  const [activeLaybyes, setActiveLaybyes] = useState<Laybye[]>([])
-  const [completedLaybyes, setCompletedLaybyes] = useState<Laybye[]>([])
 
-  // Fetch active + completed laybyes via the transactions endpoint with a
-  // type filter. Falls back to an empty list if the API is unavailable.
+  const [merchantName, setMerchantName] = useState('')
+  const [merchantId, setMerchantId] = useState('')
+  const [itemName, setItemName] = useState('')
+  const [itemPrice, setItemPrice] = useState<number>(0)
+  const [depositAmount, setDepositAmount] = useState<number>(0)
+  const [instalmentAmount, setInstalmentAmount] = useState<number>(0)
+
+  const [result, setResult] = useState<LaybyeResult | null>(null)
+
   const loadLaybyes = useCallback(async () => {
-    setLoadingList(true)
+    setLoading(true)
     setError(null)
     try {
-      const res = await apiGet<{ success?: boolean; data?: { transactions?: Laybye[] } | Laybye[] }>('/transactions?type=laybye')
-      const raw = res?.data
-      const list: Laybye[] = Array.isArray(raw)
-        ? raw
-        : raw && Array.isArray((raw as any).transactions)
-        ? (raw as any).transactions
-        : []
-      const active = list.filter((l) => l.status === 'active' || l.status === 'pending')
-      const completed = list.filter((l) => l.status === 'completed')
-      setActiveLaybyes(active)
-      setCompletedLaybyes(completed)
+      const res = await apiGet<{ success?: boolean; data?: { laybyes?: Laybye[] } }>('/laybye')
+      const data = res?.data ?? {}
+      setLaybyes(Array.isArray(data.laybyes) ? data.laybyes : [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load laybyes')
     } finally {
-      setLoadingList(false)
+      setLoading(false)
     }
   }, [])
 
@@ -96,50 +114,64 @@ export function LaybyeModal({ open, onOpenChange }: LaybyeModalProps) {
     loadLaybyes()
   }, [open, loadLaybyes])
 
-  const handleNewPayment = useCallback(async () => {
-    if (!selectedLaybye || paymentAmount <= 0) return
-    setIsProcessing(true)
+  const remaining = useMemo(() => Math.max(0, itemPrice - depositAmount), [itemPrice, depositAmount])
+  const projectedInstalments = useMemo(
+    () => instalmentAmount > 0 ? Math.ceil(remaining / instalmentAmount) : 0,
+    [remaining, instalmentAmount],
+  )
+
+  const activeLaybyes = laybyes.filter((l) => l.status === 'active' || l.status === 'pending')
+  const completedLaybyes = laybyes.filter((l) => l.status === 'completed')
+
+  const handleClose = () => {
+    setStep('list')
+    setMerchantName('')
+    setMerchantId('')
+    setItemName('')
+    setItemPrice(0)
+    setDepositAmount(0)
+    setInstalmentAmount(0)
+    setResult(null)
+    setError(null)
+    onOpenChange(false)
+  }
+
+  const handleConfirm = useCallback(async () => {
+    if (!itemName.trim() || itemPrice <= 0 || depositAmount <= 0 || instalmentAmount <= 0) {
+      setError('Please complete all fields')
+      return
+    }
+    if (depositAmount > itemPrice) {
+      setError('Deposit cannot exceed item price')
+      return
+    }
+    setSaving(true)
     setError(null)
     try {
-      await apiPost('/transactions', {
-        type: 'laybye',
-        action: 'payment',
-        laybyeId: selectedLaybye,
-        amountCents: Math.round(paymentAmount * 100),
-        currency: 'ZAR',
+      const res = await apiPost<{ success?: boolean; data?: LaybyeResult; error?: string }>('/laybye', {
+        merchantId: merchantId || null,
+        merchantName: merchantName || undefined,
+        itemName: itemName.trim(),
+        itemPrice,
+        depositAmount,
+        instalmentAmount,
       })
-      setActiveView('success')
-      // Refresh list after the payment is recorded.
-      loadLaybyes()
+      if (res?.success === false) {
+        setError(res.error || 'Laybye creation failed')
+        return
+      }
+      setResult(res?.data ?? null)
+      setStep('agreement')
+      await loadLaybyes()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed')
+      setError(err instanceof Error ? err.message : 'Laybye creation failed')
     } finally {
-      setIsProcessing(false)
+      setSaving(false)
     }
-  }, [selectedLaybye, paymentAmount, loadLaybyes])
+  }, [itemName, itemPrice, depositAmount, instalmentAmount, merchantId, merchantName, loadLaybyes])
 
-  const handleStartLaybye = useCallback(async () => {
-    setIsProcessing(true)
-    setError(null)
-    try {
-      await apiPost('/transactions', {
-        type: 'laybye',
-        action: 'create',
-        item: 'Selected Item',
-        amountCents: 200000,
-        depositCents: 20000,
-        currency: 'ZAR',
-      })
-      setActiveView('success')
-      loadLaybyes()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start laybye')
-    } finally {
-      setIsProcessing(false)
-    }
-  }, [loadLaybyes])
-
-  const selectedLaybyeData = activeLaybyes.find((l) => l.id === selectedLaybye)
+  const pctFor = (l: Laybye) =>
+    l.itemPrice > 0 ? Math.min(100, Math.round((l.totalPaid / l.itemPrice) * 100)) : 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -149,343 +181,307 @@ export function LaybyeModal({ open, onOpenChange }: LaybyeModalProps) {
             <ShoppingBag className="h-5 w-5 text-[#FF5722]" />
             Digital Laybye
           </DialogTitle>
+          <DialogDescription>
+            Pay off an item in instalments — NCA protected, with a digital agreement.
+          </DialogDescription>
         </DialogHeader>
 
-        {activeView === 'list' && (
-          <div className="space-y-4">
-            {/* Active Laybyes */}
-            <div>
-              <p className="text-sm font-medium text-[#1A1A1A] mb-2">Active Laybyes</p>
-              {loadingList ? (
-                <div className="flex items-center justify-center py-6 bg-gray-50 rounded-xl">
-                  <Loader2 className="h-5 w-5 text-[#00897B] animate-spin" />
-                </div>
-              ) : activeLaybyes.length === 0 ? (
-                <div className="text-center py-6 bg-gray-50 rounded-xl">
-                  <ShoppingBag className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-[#757575]">No active laybyes</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {activeLaybyes.map((laybye) => {
-                    const total = toRand(laybye.totalAmountCents)
-                    const paid = toRand(laybye.paidAmountCents)
-                    const pct = total > 0 ? (paid / total) * 100 : 0
-                    return (
-                      <button
-                        key={laybye.id}
-                        onClick={() => {
-                          setSelectedLaybye(laybye.id)
-                          setActiveView('detail')
-                        }}
-                        className="w-full p-3 bg-white rounded-xl border border-gray-200 text-left active:scale-[0.98] transition-transform"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-[#1A1A1A]">{laybye.item}</span>
-                          <Badge className="bg-green-100 text-green-700 border-0 text-xs">
-                            Active
-                          </Badge>
-                        </div>
-                        <Progress value={pct} className="h-2 mb-1" />
-                        <div className="flex justify-between text-xs text-[#757575]">
-                          <span>R {paid.toLocaleString()} paid</span>
-                          <span>R {total.toLocaleString()} total</span>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-              {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg mt-2">
-                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Completed Laybyes */}
-            {completedLaybyes.length > 0 && (
-              <div>
-                <p className="text-sm font-medium text-[#1A1A1A] mb-2">Completed</p>
-                <div className="space-y-2">
-                  {completedLaybyes.map((laybye) => (
-                    <div
-                      key={laybye.id}
-                      className="p-3 bg-green-50 rounded-xl border border-green-200"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium text-[#1A1A1A]">{laybye.item}</span>
-                        </div>
-                        <span className="text-xs text-green-600">Completed</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <Button
-              onClick={() => setActiveView('new')}
-              className="w-full bg-[#FF5722] hover:bg-[#E64A19]"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Start New Laybye
-            </Button>
+        {error && (
+          <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
 
-        {activeView === 'detail' && selectedLaybyeData && (
+        {/* List — repository of laybyes */}
+        {step === 'list' && (
           <div className="space-y-4">
-            <button
-              onClick={() => setActiveView('list')}
-              className="text-sm text-[#00897B]"
-            >
-              ← Back to Laybyes
-            </button>
-
-            <Card className="bg-gradient-to-r from-[#FF5722] to-[#E64A19] text-white">
-              <CardContent className="p-4">
-                <p className="text-white/70 text-xs mb-1">{selectedLaybyeData.item}</p>
-                <p className="text-2xl font-bold mb-2">R {toRand(selectedLaybyeData.totalAmountCents).toLocaleString()}</p>
-                <Progress
-                  value={toRand(selectedLaybyeData.totalAmountCents) > 0 ? (toRand(selectedLaybyeData.paidAmountCents) / toRand(selectedLaybyeData.totalAmountCents)) * 100 : 0}
-                  className="h-3 bg-white/30"
-                />
-                <div className="flex justify-between text-sm text-white/80 mt-1">
-                  <span>R {toRand(selectedLaybyeData.paidAmountCents).toLocaleString()} paid</span>
-                  <span>R {(toRand(selectedLaybyeData.totalAmountCents) - toRand(selectedLaybyeData.paidAmountCents)).toLocaleString()} remaining</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Card>
-                <CardContent className="p-3">
-                  <p className="text-xs text-[#757575]">Weekly Payment</p>
-                  <p className="text-lg font-bold text-[#1A1A1A]">R {toRand(selectedLaybyeData.weeklyPaymentCents)}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3">
-                  <p className="text-xs text-[#757575]">Weeks Left</p>
-                  <p className="text-lg font-bold text-[#1A1A1A]">{selectedLaybyeData.weeksRemaining ?? '—'}</p>
-                </CardContent>
-              </Card>
+            <div className="flex items-center gap-2 text-xs text-[#757575]">
+              <Archive className="h-3 w-3" />
+              <span>Your laybye repository — all agreements in one place.</span>
             </div>
 
-            {selectedLaybyeData.nextPaymentDate && (
-              <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg">
-                <Calendar className="h-4 w-4 text-yellow-600" />
-                <p className="text-sm text-yellow-700">
-                  Next payment: {new Date(selectedLaybyeData.nextPaymentDate).toLocaleDateString('en-ZA')}
-                </p>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 text-[#FF5722] animate-spin" />
               </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                onClick={() => setActiveView('payment')}
-                className="bg-[#00897B] hover:bg-[#00695C]"
-              >
-                Make Payment
-              </Button>
-              <Button variant="outline">
-                View Schedule
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {activeView === 'new' && (
-          <div className="space-y-4">
-            <button
-              onClick={() => setActiveView('list')}
-              className="text-sm text-[#00897B]"
-            >
-              ← Back
-            </button>
-
-            {newLaybyeStep === 1 && (
+            ) : (
               <>
-                <p className="text-sm font-medium text-[#1A1A1A]">Step 1: Select Item</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {popularItems.map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setNewLaybyeStep(2)}
-                      className="p-3 bg-white rounded-xl border border-gray-200 text-left active:scale-95 transition-transform"
-                    >
-                      <span className="text-sm text-[#1A1A1A]">{item}</span>
-                    </button>
-                  ))}
-                </div>
-                <Button variant="outline" className="w-full" onClick={() => setNewLaybyeStep(2)}>
-                  Custom Item
-                </Button>
-              </>
-            )}
-
-            {newLaybyeStep === 2 && (
-              <>
-                <p className="text-sm font-medium text-[#1A1A1A]">Step 2: Set Deposit</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {[10, 15, 20, 25].map((percent) => (
-                    <button
-                      key={percent}
-                      onClick={() => setNewLaybyeStep(3)}
-                      className="p-3 bg-white rounded-xl border border-gray-200 text-center active:scale-95 transition-transform"
-                    >
-                      <span className="text-lg font-bold text-[#00897B]">{percent}%</span>
-                      <p className="text-xs text-[#757575]">deposit</p>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {newLaybyeStep === 3 && (
-              <>
-                <p className="text-sm font-medium text-[#1A1A1A]">Step 3: Payment Schedule</p>
-                <div className="space-y-2">
-                  {['weekly', 'biweekly', 'monthly'].map((freq) => (
-                    <button
-                      key={freq}
-                      onClick={() => setNewLaybyeStep(4)}
-                      className="w-full p-3 bg-white rounded-xl border border-gray-200 text-left flex justify-between items-center active:scale-[0.98] transition-transform"
-                    >
-                      <span className="text-sm text-[#1A1A1A] capitalize">{freq}</span>
-                      <ChevronRight className="h-4 w-4 text-[#757575]" />
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {newLaybyeStep === 4 && (
-              <>
-                <p className="text-sm font-medium text-[#1A1A1A]">Step 4: Confirm</p>
-                <Card className="bg-[#E0F2F1] border-[#00897B]">
-                  <CardContent className="p-4">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-[#757575]">Item</span>
-                        <span className="font-medium">Selected Item</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[#757575]">Total Amount</span>
-                        <span className="font-medium">R 2,000</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[#757575]">Deposit</span>
-                        <span className="font-medium">R 200</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[#757575]">Weekly Payment</span>
-                        <span className="font-medium">R 90</span>
-                      </div>
+                <div>
+                  <p className="text-xs font-semibold text-[#1A1A1A] mb-2">Active Laybyes</p>
+                  {activeLaybyes.length === 0 ? (
+                    <div className="text-center py-6 bg-gray-50 rounded-xl">
+                      <ShoppingBag className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-xs text-[#757575]">No active laybyes</p>
                     </div>
-                  </CardContent>
-                </Card>
-                <Button
-                  onClick={handleStartLaybye}
-                  disabled={isProcessing}
-                  className="w-full bg-[#00897B] hover:bg-[#00695C]"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
                   ) : (
-                    'Start Laybye'
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {activeLaybyes.map((l) => (
+                        <div
+                          key={l.id}
+                          className="p-3 bg-white rounded-xl border border-gray-200"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-[#1A1A1A]">{l.item}</span>
+                            <Badge className="bg-orange-100 text-orange-700 border-0 text-[10px] capitalize">
+                              {l.status}
+                            </Badge>
+                          </div>
+                          <p className="text-[10px] text-[#757575] mb-2">{l.merchant}</p>
+                          <Progress value={pctFor(l)} className="h-2 mb-1" />
+                          <div className="flex justify-between text-[10px] text-[#757575]">
+                            <span>R {l.totalPaid.toFixed(0)} / R {l.itemPrice.toFixed(0)}</span>
+                            <span>{l.instalmentsPaid}/{l.totalInstalments} paid</span>
+                          </div>
+                          {l.nextDueDate && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Calendar className="h-3 w-3 text-[#FF5722]" />
+                              <span className="text-[10px] text-[#FF5722]">
+                                Next: {new Date(l.nextDueDate).toLocaleDateString('en-ZA')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </Button>
+                </div>
 
-                {error && (
-                  <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
-                    <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                    <p className="text-sm text-red-600">{error}</p>
+                {completedLaybyes.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#1A1A1A] mb-2">Completed</p>
+                    <div className="space-y-1">
+                      {completedLaybyes.map((l) => (
+                        <div
+                          key={l.id}
+                          className="p-2 bg-green-50 rounded-lg border border-green-200 flex items-center gap-2"
+                        >
+                          <CheckCircle2 className="h-3 w-3 text-green-600" />
+                          <span className="text-xs text-[#1A1A1A]">{l.item}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </>
             )}
+
+            <Button onClick={() => { setStep('create') }} className="w-full bg-[#FF5722] hover:bg-[#E64A19]">
+              <Plus className="h-4 w-4 mr-2" /> Start New Laybye
+            </Button>
           </div>
         )}
 
-        {activeView === 'payment' && (
+        {/* Create */}
+        {step === 'create' && (
           <div className="space-y-4">
-            <button
-              onClick={() => setActiveView('detail')}
-              className="text-sm text-[#00897B]"
-            >
-              ← Back
+            <button onClick={() => setStep('list')} className="text-xs text-[#00897B]">
+              ← Back to laybyes
             </button>
 
-            <p className="text-sm font-medium text-[#1A1A1A]">Make a Payment</p>
-
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-bold text-[#757575]">R</span>
-              <Input
-                type="number"
-                value={paymentAmount || ''}
-                onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                placeholder="0.00"
-                className="h-14 pl-8 text-2xl font-bold text-center"
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="lb-item">Item Name</Label>
+                <Input id="lb-item" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Samsung TV" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="lb-price">Item Price (R)</Label>
+                <Input id="lb-price" type="number" min={1} value={itemPrice || ''} onChange={(e) => setItemPrice(Number(e.target.value) || 0)} placeholder="2000" />
+              </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              {[100, 200, 500].map((amount) => (
-                <Button
-                  key={amount}
-                  variant={paymentAmount === amount ? 'default' : 'outline'}
-                  onClick={() => setPaymentAmount(amount)}
-                  className={paymentAmount === amount ? 'bg-[#00897B] hover:bg-[#00695C]' : ''}
-                >
-                  R {amount}
-                </Button>
-              ))}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="lb-deposit">Deposit (R)</Label>
+                <Input id="lb-deposit" type="number" min={1} value={depositAmount || ''} onChange={(e) => setDepositAmount(Number(e.target.value) || 0)} placeholder="200" />
+                {itemPrice > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {[10, 15, 20, 25].map((pct) => (
+                      <Button
+                        key={pct}
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => setDepositAmount(Math.round(itemPrice * pct / 100))}
+                      >
+                        {pct}%
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="lb-inst">Instalment (R)</Label>
+                <Input id="lb-inst" type="number" min={1} value={instalmentAmount || ''} onChange={(e) => setInstalmentAmount(Number(e.target.value) || 0)} placeholder="100" />
+              </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="lb-merchant">Merchant ID (optional)</Label>
+                <Input id="lb-merchant" value={merchantId} onChange={(e) => setMerchantId(e.target.value)} placeholder="mrc-xxx" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="lb-mname">Merchant Name</Label>
+                <Input id="lb-mname" value={merchantName} onChange={(e) => setMerchantName(e.target.value)} placeholder="Edgars / Ackermans" />
+              </div>
+            </div>
+
+            {/* Live summary */}
+            {itemPrice > 0 && depositAmount > 0 && instalmentAmount > 0 && (
+              <Card className="bg-gray-50 border-gray-200">
+                <CardContent className="p-3 text-xs space-y-1">
+                  <Row label="Item Price" value={`R ${itemPrice.toFixed(2)}`} />
+                  <Row label="Deposit" value={`R ${depositAmount.toFixed(2)}`} />
+                  <Row label="Remaining" value={`R ${remaining.toFixed(2)}`} />
+                  <Row label="Instalments" value={`${projectedInstalments} × R ${instalmentAmount.toFixed(2)}/week`} bold />
+                </CardContent>
+              </Card>
+            )}
 
             <Button
-              onClick={handleNewPayment}
-              disabled={paymentAmount <= 0 || isProcessing}
-              className="w-full bg-[#00897B] hover:bg-[#00695C]"
+              onClick={() => setStep('review')}
+              disabled={!itemName.trim() || itemPrice <= 0 || depositAmount <= 0 || instalmentAmount <= 0 || depositAmount > itemPrice}
+              className="w-full bg-[#FF5722] hover:bg-[#E64A19]"
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                'Pay Now'
-              )}
+              Review Agreement <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
-
-            {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
-                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
           </div>
         )}
 
-        {activeView === 'success' && (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
+        {/* Review + NCA Terms */}
+        {step === 'review' && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-[#1A1A1A]">Review Agreement</h3>
+
+            <Card className="bg-gray-50 border-gray-200">
+              <CardContent className="p-4 space-y-2 text-sm">
+                <Row label="Item" value={itemName} bold />
+                {merchantName && <Row label="Merchant" value={merchantName} />}
+                <Row label="Item Price" value={`R ${itemPrice.toFixed(2)}`} />
+                <Row label="Deposit" value={`R ${depositAmount.toFixed(2)}`} />
+                <div className="border-t border-gray-100 my-2" />
+                <Row label="Remaining Balance" value={`R ${remaining.toFixed(2)}`} bold />
+                <Row label="Weekly Instalment" value={`R ${instalmentAmount.toFixed(2)}`} />
+                <Row label="Total Instalments" value={`${projectedInstalments} weeks`} />
+              </CardContent>
+            </Card>
+
+            <Card className="bg-amber-50 border-amber-200">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Shield className="h-4 w-4 text-amber-600" />
+                  <p className="text-xs font-semibold text-amber-800">NCA Protected Laybye</p>
+                </div>
+                <ul className="text-[10px] text-amber-700 space-y-1 list-disc list-inside">
+                  <li>Cancel within 48 hours for a full refund.</li>
+                  <li>Up to 1% cancellation fee thereafter.</li>
+                  <li>Item held for up to 6 months.</li>
+                  <li>Merchant must release item once fully paid.</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setStep('create')} className="flex-1">Back</Button>
+              <Button
+                onClick={handleConfirm}
+                disabled={saving}
+                className="flex-1 bg-[#FF5722] hover:bg-[#E64A19]"
+              >
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                Create Laybye
+              </Button>
             </div>
-            <h3 className="text-lg font-bold text-[#1A1A1A] mb-2">Success!</h3>
-            <p className="text-sm text-[#757575]">
-              Your action was completed successfully
-            </p>
+          </div>
+        )}
+
+        {/* Agreement */}
+        {step === 'agreement' && result && (
+          <div className="space-y-4">
+            <div className="text-center py-3">
+              <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-2">
+                <CheckCircle2 className="h-7 w-7 text-green-600" />
+              </div>
+              <h3 className="text-base font-bold text-[#1A1A1A]">Laybye Agreement Created</h3>
+              <p className="text-xs text-[#757575]">{result.message}</p>
+            </div>
+
+            <Card className="bg-white border-gray-200">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-[#FF5722]" />
+                  <span className="text-sm font-bold text-[#1A1A1A]">Agreement</span>
+                  <Badge className="bg-green-100 text-green-700 border-0 text-[10px] ml-auto capitalize">
+                    {result.status}
+                  </Badge>
+                </div>
+
+                <div className="space-y-1.5 text-xs">
+                  <Row label="Agreement ID" value={result.laybyeId} mono bold />
+                  <Row label="Reference" value={result.caseRef} mono />
+                  <Row label="Receipt No" value={result.receiptNo} mono />
+                  <div className="border-t border-gray-100 my-2" />
+                  <Row label="Item" value={result.item} />
+                  <Row label="Merchant" value={result.merchant} />
+                  <Row label="Item Price" value={`R ${result.itemPrice.toFixed(2)}`} />
+                  <Row label="Deposit Paid" value={`R ${result.deposit.toFixed(2)}`} bold />
+                  <Row label="Remaining" value={`R ${result.remainingBalance.toFixed(2)}`} />
+                  <Row label="Instalments" value={`${result.totalInstalments} × R ${result.instalmentAmount.toFixed(2)}`} />
+                  <Row label="Next Due" value={new Date(result.nextDueDate).toLocaleDateString('en-ZA')} />
+                  <Row label="Expires" value={new Date(result.expiresAt).toLocaleDateString('en-ZA')} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <div>
+              <p className="text-xs font-semibold text-[#1A1A1A] mb-2">Instalment Schedule</p>
+              <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                {result.schedule.map((i) => (
+                  <div
+                    key={i.number}
+                    className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-3 w-3 text-[#757575]" />
+                      <span className="text-xs text-[#1A1A1A]">
+                        #{i.number} — {new Date(i.dueDate).toLocaleDateString('en-ZA')}
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-[#1A1A1A]">R {i.amount.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Card className="bg-[#E0F2F1] border-[#00897B]">
+              <CardContent className="p-3">
+                <p className="text-[10px] font-semibold text-[#00897B] mb-1">Terms & Conditions</p>
+                <ul className="text-[10px] text-[#1A1A1A] space-y-1 list-disc list-inside max-h-32 overflow-y-auto">
+                  {result.terms.map((t, i) => (
+                    <li key={i}>{t}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Button onClick={handleClose} className="w-full bg-[#FF5722] hover:bg-[#E64A19]">
+              Done
+            </Button>
           </div>
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+function Row({ label, value, bold, mono }: { label: string; value: string; bold?: boolean; mono?: boolean }) {
+  return (
+    <div className="flex justify-between gap-2">
+      <span className="text-[#757575] flex-shrink-0">{label}</span>
+      <span className={`${bold ? 'font-bold' : 'font-medium'} text-[#1A1A1A] ${mono ? 'font-mono text-[11px]' : ''} text-right`}>
+        {value}
+      </span>
+    </div>
   )
 }

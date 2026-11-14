@@ -1,22 +1,44 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { apiGet, apiPost } from '@/components/wallet/lib/api'
+import { Card, CardContent } from '@/components/ui/card'
 import {
-  X,
-  Check,
-  Loader2,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { apiGet, apiPost, formatMoney } from '@/components/wallet/lib/api'
+import {
   Shield,
+  ShieldCheck,
   Heart,
   Car,
-  User,
-  ChevronRight,
+  Home,
+  Building,
+  Plane,
+  Stethoscope,
+  Briefcase,
+  Ribbon,
+  Check,
+  Loader2,
+  AlertCircle,
   Star,
-  Umbrella,
-  AlertCircle
+  FileText,
+  Phone,
+  ChevronRight,
 } from 'lucide-react'
 
 interface InsuranceModalProps {
@@ -24,365 +46,464 @@ interface InsuranceModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-type Step = 'types' | 'quote' | 'compare' | 'apply' | 'success'
-
-interface InsuranceType {
-  id: string
-  name: string
-  icon: typeof Heart
-  color: string
-  bg: string
-  description: string
+interface Category {
+  value: string
+  label: string
+  icon: string
+  desc: string
+  requiresMedical: boolean
 }
 
-interface InsuranceProvider {
+interface Provider {
   id: string
   name: string
-  logo: string
-  monthlyPremium: number
-  rating: number
-  features: string[]
+  categories: string[]
+  phone: string
 }
 
-const insuranceTypes: InsuranceType[] = [
-  { id: 'funeral', name: 'Funeral Cover', icon: Heart, color: '#9C27B0', bg: '#F3E5F5', description: 'From R30/month' },
-  { id: 'life', name: 'Life Insurance', icon: Shield, color: '#00897B', bg: '#E0F2F1', description: 'From R100/month' },
-  { id: 'health', name: 'Health Cover', icon: Heart, color: '#E91E63', bg: '#FCE4EC', description: 'From R250/month' },
-  { id: 'vehicle', name: 'Vehicle Insurance', icon: Car, color: '#2196F3', bg: '#E3F2FD', description: 'From R300/month' },
-]
+interface PolicyResult {
+  policyNo: string
+  caseRef: string
+  receiptNo: string
+  category: string
+  categoryLabel: string
+  categoryIcon: string
+  provider: string
+  providerId: string
+  providerPhone: string
+  coverAmount: string
+  premium: string
+  nextPaymentDate: string
+  startDate: string
+  status: string
+  beneficiaries: unknown[]
+  requiresMedical: boolean
+  terms: string[]
+  message: string
+}
 
-const providers: InsuranceProvider[] = [
-  { id: '1', name: 'Hollard', logo: 'H', monthlyPremium: 150, rating: 4.5, features: ['Fast claims', '24/7 support'] },
-  { id: '2', name: 'Old Mutual', logo: 'O', monthlyPremium: 165, rating: 4.7, features: ['Trusted brand', 'Flexible cover'] },
-  { id: '3', name: 'Sanlam', logo: 'S', monthlyPremium: 145, rating: 4.6, features: ['Low premiums', 'Quick payout'] },
-  { id: '4', name: 'Metropolitan', logo: 'M', monthlyPremium: 140, rating: 4.4, features: ['Affordable', 'Easy claims'] },
-]
+type Step = 'browse' | 'details' | 'review' | 'policy'
+
+const CATEGORY_ICONS: Record<string, typeof Heart> = {
+  funeral: Heart,
+  life: ShieldCheck,
+  health: Stethoscope,
+  vehicle: Car,
+  home: Home,
+  business: Building,
+  travel: Plane,
+  gap: Stethoscope,
+  income_protection: Briefcase,
+  dread_disease: Ribbon,
+}
+
+// Crude premium calculator — ~0.5% to ~3% of cover per month, varies by category.
+function estimatePremium(coverRand: number, category: string): number {
+  if (coverRand <= 0) return 0
+  const rateMap: Record<string, number> = {
+    funeral: 0.012,
+    life: 0.018,
+    health: 0.025,
+    vehicle: 0.028,
+    home: 0.008,
+    business: 0.015,
+    travel: 0.05,
+    gap: 0.04,
+    income_protection: 0.022,
+    dread_disease: 0.030,
+  }
+  const rate = rateMap[category] ?? 0.015
+  return Math.max(50, Math.round(coverRand * rate))
+}
 
 export function InsuranceModal({ open, onOpenChange }: InsuranceModalProps) {
-  const [step, setStep] = useState<Step>('types')
-  const [selectedType, setSelectedType] = useState<InsuranceType | null>(null)
-  const [selectedProvider, setSelectedProvider] = useState<InsuranceProvider | null>(null)
-  const [coverAmount, setCoverAmount] = useState<number>(50000)
-  const [isLoading, setIsLoading] = useState(false)
-  const [providersList, setProvidersList] = useState<InsuranceProvider[]>(providers)
-  const [providersLoading, setProvidersLoading] = useState(false)
+  const [step, setStep] = useState<Step>('browse')
+  const [categories, setCategories] = useState<Category[]>([])
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [explainer, setExplainer] = useState<string>('')
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [reference, setReference] = useState<string>('')
 
-  // Load insurance products when the modal opens or when a type is chosen.
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('')
+  const [coverRand, setCoverRand] = useState<number>(50000)
+  const [monthlyPremium, setMonthlyPremium] = useState<number>(0)
+  const [fullName, setFullName] = useState('')
+  const [idNumber, setIdNumber] = useState('')
+
+  const [policy, setPolicy] = useState<PolicyResult | null>(null)
+
+  const loadCatalog = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await apiGet<{ success?: boolean; data?: { categories?: Category[]; providers?: Provider[]; explainer?: string } }>('/insurance')
+      const data = res?.data ?? {}
+      setCategories(Array.isArray(data.categories) ? data.categories : [])
+      setProviders(Array.isArray(data.providers) ? data.providers : [])
+      setExplainer(data.explainer ?? '')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load insurance catalog')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (!open) return
-    let cancelled = false
-    async function loadProducts() {
-      setProvidersLoading(true)
-      try {
-        const res = await apiGet<{ success?: boolean; data?: { products?: InsuranceProvider[] } | InsuranceProvider[] }>('/insurance')
-        if (cancelled) return
-        const raw = res?.data
-        const list: InsuranceProvider[] = Array.isArray(raw)
-          ? raw
-          : raw && Array.isArray((raw as any).products)
-          ? (raw as any).products
-          : []
-        if (list.length > 0) setProvidersList(list)
-      } catch {
-        // keep fallback
-      } finally {
-        if (!cancelled) setProvidersLoading(false)
-      }
-    }
-    loadProducts()
-    return () => {
-      cancelled = true
-    }
-  }, [open])
+    loadCatalog()
+  }, [open, loadCatalog])
 
-  const handleGetQuote = useCallback(async () => {
-    if (!selectedType) return
-    setIsLoading(true)
+  // Premium is auto-calculated unless the user overrides it.
+  const computedPremium = useMemo(
+    () => estimatePremium(coverRand, selectedCategory),
+    [coverRand, selectedCategory],
+  )
+
+  useEffect(() => {
+    setMonthlyPremium(computedPremium)
+  }, [computedPremium])
+
+  const filteredProviders = useMemo(
+    () => providers.filter((p) => p.categories.includes(selectedCategory as never)),
+    [providers, selectedCategory],
+  )
+
+  const selectedCategoryMeta = categories.find((c) => c.value === selectedCategory)
+  const selectedProvider = providers.find((p) => p.id === selectedProviderId)
+
+  const handleClose = () => {
+    setStep('browse')
+    setSelectedCategory('')
+    setSelectedProviderId('')
+    setCoverRand(50000)
+    setMonthlyPremium(0)
+    setFullName('')
+    setIdNumber('')
+    setPolicy(null)
     setError(null)
-    try {
-      // Optional: ask backend for a quote. Even if it returns nothing useful,
-      // we move to the compare step using the static provider list.
-      await apiGet(`/insurance?category=${selectedType.id}`)
-      setStep('compare')
-    } catch {
-      // Continue to compare with fallback providers if quote endpoint fails.
-      setStep('compare')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [selectedType])
+    onOpenChange(false)
+  }
 
   const handleApply = useCallback(async () => {
-    if (!selectedProvider || !selectedType) return
-    setIsLoading(true)
+    if (!selectedCategory || !selectedProviderId) return
+    if (coverRand <= 0) {
+      setError('Cover amount must be greater than 0')
+      return
+    }
+    setSaving(true)
     setError(null)
     try {
-      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown>; error?: string }>('/insurance', {
-        productId: selectedProvider.id,
-        providerName: selectedProvider.name,
-        category: selectedType.id,
-        coverAmount,
-        monthlyPremiumCents: Math.round(selectedProvider.monthlyPremium * 100),
+      const res = await apiPost<{ success?: boolean; data?: PolicyResult; error?: string }>('/insurance', {
+        category: selectedCategory,
+        providerId: selectedProviderId,
+        coverAmount: Math.round(coverRand * 100),
+        monthlyPremium: Math.round(monthlyPremium * 100),
+        details: {
+          fullName,
+          idNumber,
+        },
       })
       if (res?.success === false) {
         setError(res.error || 'Application failed')
         return
       }
-      const data = (res?.data ?? {}) as Record<string, unknown>
-      setReference(String(data.reference || data.id || `INS${Date.now().toString(36).toUpperCase()}`))
-      setStep('success')
+      setPolicy(res?.data ?? null)
+      setStep('policy')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Application failed')
     } finally {
-      setIsLoading(false)
+      setSaving(false)
     }
-  }, [selectedProvider, selectedType, coverAmount])
-
-  const handleClose = useCallback(() => {
-    setStep('types')
-    setSelectedType(null)
-    setSelectedProvider(null)
-    setError(null)
-    setReference('')
-    onOpenChange(false)
-  }, [onOpenChange])
-
-  if (!open) return null
+  }, [selectedCategory, selectedProviderId, coverRand, monthlyPremium, fullName, idNumber])
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom duration-300">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-[#1A1A1A]">Insurance</h2>
-          <button onClick={handleClose} className="p-1 rounded-full hover:bg-gray-100">
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-[#00897B]" />
+            Insurance
+          </DialogTitle>
+          <DialogDescription>
+            Cover for every stage of life — funeral, life, health, vehicle, home and more.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {step === 'types' && (
-            <div className="space-y-4">
-              <p className="text-sm text-[#757575]">Choose insurance type</p>
+        {explainer && (
+          <div className="flex items-start gap-2 p-3 bg-[#E0F2F1] rounded-lg">
+            <ShieldCheck className="h-4 w-4 text-[#00897B] flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-[#1A1A1A]">{explainer}</p>
+          </div>
+        )}
 
-              <div className="grid grid-cols-2 gap-3">
-                {insuranceTypes.map((type) => {
-                  const Icon = type.icon
-                  return (
-                    <button
-                      key={type.id}
-                      onClick={() => {
-                        setSelectedType(type)
-                        setStep('quote')
-                      }}
-                      className="p-4 rounded-xl border border-gray-200 hover:border-[#00897B] transition-all text-left"
-                    >
-                      <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center mb-2"
-                        style={{ backgroundColor: type.bg }}
+        {error && (
+          <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {/* Browse categories */}
+        {step === 'browse' && (
+          <div className="space-y-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 text-[#00897B] animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  {categories.map((cat) => {
+                    const Icon = CATEGORY_ICONS[cat.value] ?? Shield
+                    return (
+                      <button
+                        key={cat.value}
+                        onClick={() => {
+                          setSelectedCategory(cat.value)
+                          setSelectedProviderId('')
+                          setStep('details')
+                        }}
+                        className="p-3 rounded-xl border border-gray-200 hover:border-[#00897B] text-left transition-all"
                       >
-                        <Icon className="h-6 w-6" style={{ color: type.color }} />
-                      </div>
-                      <p className="text-sm font-bold text-[#1A1A1A]">{type.name}</p>
-                      <p className="text-xs text-[#757575]">{type.description}</p>
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="bg-[#E0F2F1] rounded-xl p-4 mt-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Umbrella className="h-5 w-5 text-[#00897B]" />
-                  <span className="text-sm font-bold text-[#1A1A1A]">Already covered?</span>
-                </div>
-                <p className="text-xs text-[#757575]">View and manage your active policies</p>
-              </div>
-            </div>
-          )}
-
-          {step === 'quote' && selectedType && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center"
-                  style={{ backgroundColor: selectedType.bg }}
-                >
-                  <selectedType.icon className="h-6 w-6" style={{ color: selectedType.color }} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-[#1A1A1A]">{selectedType.name}</p>
-                  <p className="text-xs text-[#757575]">Get a personalized quote</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-[#1A1A1A]">Cover Amount</label>
-                  <div className="relative mt-1">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">R</span>
-                    <Input
-                      type="number"
-                      value={coverAmount}
-                      onChange={(e) => setCoverAmount(parseInt(e.target.value) || 0)}
-                      className="pl-8 h-12"
-                    />
-                  </div>
-                </div>
-
-                <Input placeholder="Your age" type="number" className="h-12" />
-                <Input placeholder="Your income" type="number" className="h-12" />
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep('types')} className="flex-1">
-                  Back
-                </Button>
-                <Button
-                  onClick={handleGetQuote}
-                  disabled={isLoading}
-                  className="flex-1 bg-[#00897B] hover:bg-[#00695C]"
-                >
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Get Quote'}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {step === 'compare' && selectedType && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-[#757575]">Cover Amount</p>
-                <p className="text-xl font-bold text-[#1A1A1A]">R {coverAmount.toLocaleString()}</p>
-              </div>
-
-              <h3 className="text-sm font-semibold text-[#1A1A1A]">Compare Providers</h3>
-
-              <div className="space-y-3">
-                {providersLoading && (
-                  <div className="flex items-center justify-center py-6">
-                    <Loader2 className="h-5 w-5 text-[#00897B] animate-spin" />
-                  </div>
-                )}
-                {!providersLoading && providersList.map((provider) => (
-                  <button
-                    key={provider.id}
-                    onClick={() => setSelectedProvider(provider)}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                      selectedProvider?.id === provider.id
-                        ? 'border-[#00897B] bg-[#E0F2F1]'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                        <span className="text-sm font-bold text-[#00897B]">{provider.logo}</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-[#1A1A1A]">{provider.name}</p>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                          <span className="text-xs text-[#757575]">{provider.rating}</span>
+                        <div className="w-10 h-10 rounded-lg bg-[#E0F2F1] flex items-center justify-center mb-2">
+                          <Icon className="h-5 w-5 text-[#00897B]" />
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-[#00897B]">R{provider.monthlyPremium}</p>
-                        <p className="text-xs text-[#757575]">/month</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-1 mt-2">
-                      {provider.features.map((feature, i) => (
-                        <Badge key={i} variant="outline" className="text-[10px]">
-                          {feature}
-                        </Badge>
-                      ))}
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep('quote')} className="flex-1">
-                  Back
-                </Button>
-                <Button
-                  onClick={() => setStep('apply')}
-                  disabled={!selectedProvider}
-                  className="flex-1 bg-[#00897B] hover:bg-[#00695C]"
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {step === 'apply' && selectedType && selectedProvider && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-[#1A1A1A]">Apply for {selectedType.name}</h3>
-
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Provider</span>
-                  <span className="text-sm font-medium text-[#1A1A1A]">{selectedProvider.name}</span>
+                        <p className="text-sm font-medium text-[#1A1A1A]">{cat.label}</p>
+                        <p className="text-[10px] text-[#757575] mt-0.5 line-clamp-2">{cat.desc}</p>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Cover</span>
-                  <span className="text-sm font-medium text-[#1A1A1A]">R {coverAmount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-[#757575]">Monthly Premium</span>
-                  <span className="text-sm font-bold text-[#00897B]">R {selectedProvider.monthlyPremium}</span>
-                </div>
-              </div>
+              </>
+            )}
+          </div>
+        )}
 
-              <div className="space-y-3">
-                <Input placeholder="Full name" className="h-12" />
-                <Input placeholder="ID Number" className="h-12" />
-                <Input placeholder="Phone number" type="tel" className="h-12" />
-              </div>
+        {/* Enter details */}
+        {step === 'details' && selectedCategoryMeta && (
+          <div className="space-y-4">
+            <button onClick={() => setStep('browse')} className="text-xs text-[#00897B]">
+              ← Back to categories
+            </button>
 
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep('compare')} className="flex-1">
-                  Back
-                </Button>
-                <Button
-                  onClick={handleApply}
-                  disabled={isLoading}
-                  className="flex-1 bg-[#00897B] hover:bg-[#00695C]"
-                >
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                </Button>
-              </div>
-
-              {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                  <p className="text-sm text-red-600">{error}</p>
+            <Card className="bg-[#E0F2F1] border-[#00897B]">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{selectedCategoryMeta.icon}</span>
+                  <div>
+                    <p className="text-sm font-bold text-[#1A1A1A]">{selectedCategoryMeta.label}</p>
+                    <p className="text-[10px] text-[#757575]">{selectedCategoryMeta.desc}</p>
+                  </div>
                 </div>
+                {selectedCategoryMeta.requiresMedical && (
+                  <p className="text-[10px] text-[#FF5722] mt-2">
+                    This cover may require a medical questionnaire or exam.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="space-y-2">
+              <Label>Provider</Label>
+              <Select
+                value={selectedProviderId}
+                onValueChange={setSelectedProviderId}
+              >
+                <SelectTrigger><SelectValue placeholder="Select insurer" /></SelectTrigger>
+                <SelectContent>
+                  {filteredProviders.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {filteredProviders.length === 0 && (
+                <p className="text-xs text-[#FF5722]">No providers offer this category.</p>
               )}
             </div>
-          )}
 
-          {step === 'success' && selectedType && selectedProvider && (
-            <div className="text-center py-6">
-              <div className="w-20 h-20 rounded-full bg-[#4CAF50]/10 flex items-center justify-center mx-auto mb-4">
-                <Check className="h-10 w-10 text-[#4CAF50]" />
+            <div className="space-y-2">
+              <Label htmlFor="ins-cover">Cover Amount (R)</Label>
+              <Input
+                id="ins-cover"
+                type="number"
+                min={1000}
+                step={1000}
+                value={coverRand || ''}
+                onChange={(e) => setCoverRand(Number(e.target.value) || 0)}
+              />
+              <div className="flex gap-2 flex-wrap">
+                {[10000, 50000, 100000, 250000].map((amt) => (
+                  <Button
+                    key={amt}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCoverRand(amt)}
+                    className={coverRand === amt ? 'border-[#00897B] bg-[#E0F2F1]' : ''}
+                  >
+                    R{amt.toLocaleString()}
+                  </Button>
+                ))}
               </div>
-              <h3 className="text-xl font-bold text-[#1A1A1A] mb-2">Application Submitted!</h3>
-              <p className="text-sm text-[#757575] mb-4">
-                Your {selectedType.name} application with {selectedProvider.name} is being processed
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ins-premium">Monthly Premium (R) — auto-calculated</Label>
+              <Input
+                id="ins-premium"
+                type="number"
+                min={1}
+                value={monthlyPremium || ''}
+                onChange={(e) => setMonthlyPremium(Number(e.target.value) || 0)}
+              />
+              <p className="text-[10px] text-[#757575]">
+                Based on cover amount and category. You can override if you have a quoted premium.
               </p>
-              <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                <p className="text-xs text-[#757575] mb-1">Reference</p>
-                <p className="text-sm font-mono font-medium text-[#1A1A1A]">{reference}</p>
-              </div>
-              <Button onClick={handleClose} className="w-full bg-[#00897B] hover:bg-[#00695C]">
-                Done
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ins-name">Full Name</Label>
+              <Input id="ins-name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Mokoena" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ins-id">ID Number</Label>
+              <Input id="ins-id" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder="9001015000088" />
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setStep('browse')} className="flex-1">Back</Button>
+              <Button
+                onClick={() => setStep('review')}
+                disabled={!selectedProviderId || coverRand <= 0 || monthlyPremium <= 0}
+                className="flex-1 bg-[#00897B] hover:bg-[#00695C]"
+              >
+                Review <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
+
+        {/* Review + confirm */}
+        {step === 'review' && selectedCategoryMeta && selectedProvider && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-[#1A1A1A]">Review Your Application</h3>
+
+            <Card className="bg-gray-50 border-gray-200">
+              <CardContent className="p-4 space-y-2 text-sm">
+                <Row label="Cover" value={selectedCategoryMeta.label} />
+                <Row label="Provider" value={selectedProvider.name} />
+                <Row label="Cover Amount" value={formatMoney(Math.round(coverRand * 100))} />
+                <Row label="Monthly Premium" value={formatMoney(Math.round(monthlyPremium * 100))} bold />
+                <Row label="Applicant" value={fullName || '—'} />
+                <Row label="ID Number" value={idNumber || '—'} />
+              </CardContent>
+            </Card>
+
+            <div className="bg-amber-50 rounded-lg p-3">
+              <p className="text-xs font-semibold text-amber-800 mb-1">No credit check required</p>
+              <p className="text-[11px] text-amber-700">
+                Insurance premiums are based on cover amount, age and risk profile — not your credit history.
+                You can subscribe regardless of your credit score.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setStep('details')} className="flex-1">Back</Button>
+              <Button
+                onClick={handleApply}
+                disabled={saving}
+                className="flex-1 bg-[#00897B] hover:bg-[#00695C]"
+              >
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                Apply Now
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Policy document */}
+        {step === 'policy' && policy && (
+          <div className="space-y-4">
+            <div className="text-center py-3">
+              <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-2">
+                <Check className="h-7 w-7 text-green-600" />
+              </div>
+              <h3 className="text-base font-bold text-[#1A1A1A]">Policy Submitted</h3>
+              <p className="text-xs text-[#757575]">{policy.message}</p>
+            </div>
+
+            <Card className="bg-white border-gray-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-[#00897B]" />
+                    <span className="text-sm font-bold text-[#1A1A1A]">Policy Schedule</span>
+                  </div>
+                  <Badge className="bg-amber-100 text-amber-700 border-0 capitalize">
+                    {policy.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+
+                <div className="space-y-1.5 text-xs">
+                  <Row label="Policy No" value={policy.policyNo} bold mono />
+                  <Row label="Reference" value={policy.caseRef} mono />
+                  <Row label="Receipt No" value={policy.receiptNo} mono />
+                  <div className="border-t border-gray-100 my-2" />
+                  <Row label="Cover" value={`${policy.categoryIcon} ${policy.categoryLabel}`} />
+                  <Row label="Provider" value={policy.provider} />
+                  <Row label="Cover Amount" value={formatMoney(policy.coverAmount)} bold />
+                  <Row label="Monthly Premium" value={formatMoney(policy.premium)} bold />
+                  <Row label="Start Date" value={policy.startDate} />
+                  <Row label="Next Premium" value={policy.nextPaymentDate} />
+                  {policy.requiresMedical && (
+                    <p className="text-[10px] text-[#FF5722] mt-1">
+                      Medical questionnaire may be required before activation.
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <p className="text-[10px] text-[#757575] mb-1">Provider Contact</p>
+                  <div className="flex items-center gap-1">
+                    <Phone className="h-3 w-3 text-[#757575]" />
+                    <span className="text-xs text-[#1A1A1A]">{policy.providerPhone}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-amber-50 border-amber-200">
+              <CardContent className="p-3">
+                <p className="text-xs font-semibold text-amber-800 mb-1">Terms & Conditions</p>
+                <ul className="text-[10px] text-amber-700 space-y-1 list-disc list-inside max-h-32 overflow-y-auto">
+                  {policy.terms.map((t, i) => (
+                    <li key={i}>{t}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Button onClick={handleClose} className="w-full bg-[#00897B] hover:bg-[#00695C]">
+              Done
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function Row({ label, value, bold, mono }: { label: string; value: string; bold?: boolean; mono?: boolean }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-[#757575]">{label}</span>
+      <span className={`${bold ? 'font-bold' : 'font-medium'} text-[#1A1A1A] ${mono ? 'font-mono' : ''}`}>
+        {value}
+      </span>
     </div>
   )
 }

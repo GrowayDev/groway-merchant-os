@@ -46,6 +46,8 @@ interface ServicesTabProps {
   onOpenEvents: () => void
   onOpenRemittance: () => void
   onOpenPayShap: () => void
+  onOpenSavings: () => void
+  onOpenGrantPlus: () => void
 }
 
 export function ServicesTab({
@@ -63,17 +65,20 @@ export function ServicesTab({
   onOpenTrain,
   onOpenEvents,
   onOpenRemittance,
-  onOpenPayShap
+  onOpenPayShap,
+  onOpenSavings,
+  onOpenGrantPlus,
 }: ServicesTabProps) {
   const [selectedService, setSelectedService] = useState<string | null>(null)
 
   const financialServices = [
     { id: 'credit', name: 'Credit', icon: CreditCard, color: '#00897B', onClick: onOpenCredit },
-    { id: 'savings', name: 'Savings', icon: PiggyBank, color: '#4CAF50', onClick: () => {} },
+    { id: 'savings', name: 'Savings', icon: PiggyBank, color: '#4CAF50', onClick: onOpenSavings },
     { id: 'insurance', name: 'Insurance', icon: Shield, color: '#2196F3', onClick: onOpenInsurance },
     { id: 'bnpl', name: 'BNPL', icon: Calendar, color: '#9C27B0', onClick: onOpenBNPL },
     { id: 'laybye', name: 'Laybye', icon: ShoppingBag, color: '#FF5722', onClick: onOpenLaybye },
     { id: 'payplus', name: 'Pay+', icon: Zap, color: '#FFC107', onClick: onOpenPayPlus },
+    { id: 'grantplus', name: 'Grant+', icon: Users, color: '#FF9800', onClick: onOpenGrantPlus },
   ]
 
   const billsUtilities = [
