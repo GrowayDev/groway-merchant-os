@@ -35,6 +35,19 @@ export async function apiPut<T = any>(path: string, body?: unknown): Promise<T> 
   return res.json()
 }
 
+export async function apiPatch<T = any>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(err.error || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
 export async function apiDelete<T = any>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { method: 'DELETE' })
   if (!res.ok) {

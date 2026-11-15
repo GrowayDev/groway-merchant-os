@@ -28,6 +28,7 @@ import { SecurityModal } from '@/components/wallet/modals/SecurityModal'
 import { HelpModal } from '@/components/wallet/modals/HelpModal'
 import { CardModal } from '@/components/wallet/modals/CardModal'
 import { SavingsModal } from '@/components/wallet/modals/SavingsModal'
+import { MobileMoneyModal } from '@/components/wallet/modals/MobileMoneyModal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -115,6 +116,7 @@ export default function ConsumerWalletPage() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [cardOpen, setCardOpen] = useState(false)
   const [groaiOpen, setGroaiOpen] = useState(false)
+  const [mobileMoneyOpen, setMobileMoneyOpen] = useState(false)
 
   // Fetch the user's primary card on mount
   useEffect(() => {
@@ -216,6 +218,7 @@ export default function ConsumerWalletPage() {
               onOpenVouchers={() => setVouchersOpen(true)}
               onOpenRemittance={() => setRemittanceOpen(true)}
               onOpenCards={() => setCardOpen(true)}
+              onOpenMobileMoney={() => setMobileMoneyOpen(true)}
             />
           )}
           {activeTab === 'services' && (
@@ -490,6 +493,7 @@ export default function ConsumerWalletPage() {
       <SecurityModal open={securityOpen} onOpenChange={setSecurityOpen} />
       <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
       <CardModal open={cardOpen} onOpenChange={setCardOpen} />
+      <MobileMoneyModal open={mobileMoneyOpen} onOpenChange={setMobileMoneyOpen} />
       <SavingsModal open={savingsOpen} onOpenChange={setSavingsOpen} />
     </div>
   )

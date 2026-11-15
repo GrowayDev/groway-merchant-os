@@ -37,6 +37,8 @@ export function QRPayModal({ open, onOpenChange }: QRPayModalProps) {
   const [error, setError] = useState<string | null>(null)
   const [myQrPayload, setMyQrPayload] = useState<string | null>(null)
   const [qrLoading, setQrLoading] = useState(false)
+  const [customAmount, setCustomAmount] = useState('')
+  const [dynamicQr, setDynamicQr] = useState<string | null>(null)
 
   const growayId = 'GW-THABO-8472'
 
@@ -123,8 +125,50 @@ export function QRPayModal({ open, onOpenChange }: QRPayModalProps) {
     setScannedMerchant('Merchant')
     setTransactionId('')
     setError(null)
+    setDynamicQr(null)
+    setCustomAmount('')
     onOpenChange(false)
   }, [onOpenChange])
+
+  const handleShare = useCallback(async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'My Groway QR',
+          text: `Pay me via Groway Wallet: ${growayId}`,
+        })
+      } catch (err) {
+        // User canceled the share sheet — this is not an error
+        if (err instanceof Error && err.name === 'AbortError') return
+      }
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(`Pay me via Groway Wallet: ${growayId}`)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [growayId])
+
+  const handleGenerateDynamicQR = useCallback(async () => {
+    const amt = parseFloat(customAmount)
+    if (!amt || amt <= 0) {
+      setError('Enter a valid amount')
+      return
+    }
+    setError(null)
+    try {
+      const res = await apiPost<{ success?: boolean; data?: Record<string, unknown> }>('/payments/qr', {
+        action: 'generate',
+        amountCents: Math.round(amt * 100),
+        currency: 'ZAR',
+      })
+      const data = (res?.data ?? {}) as Record<string, unknown>
+      setDynamicQr(String(data.payload || data.qrPayload || JSON.stringify({ growayId, amount: amt, currency: 'ZAR' })))
+    } catch {
+      // Fallback: generate locally
+      setDynamicQr(JSON.stringify({ growayId, amount: amt, currency: 'ZAR', timestamp: Date.now() }))
+    }
+  }, [customAmount, growayId])
 
   if (!open) return null
 
@@ -303,22 +347,16 @@ export function QRPayModal({ open, onOpenChange }: QRPayModalProps) {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => {
-                    if (navigator.share) {
-                      navigator.share({
-                        title: 'My Groway QR',
-                        text: `Pay me via Groway Wallet: ${growayId}`,
-                      })
-                    }
-                  }}
+                  onClick={handleShare}
                 >
-                  <Share2 className="h-4 w-4 mr-2" /> Share QR Code
+                  <Share2 className="h-4 w-4 mr-2" /> {copied ? 'Copied!' : 'Share QR Code'}
                 </Button>
               </div>
 
               {/* Generate Dynamic QR */}
               <div className="w-full mt-6 pt-6 border-t border-gray-100">
                 <p className="text-sm font-medium text-[#1A1A1A] mb-3">Request Specific Amount</p>
+                {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R</span>
@@ -326,12 +364,23 @@ export function QRPayModal({ open, onOpenChange }: QRPayModalProps) {
                       type="number"
                       placeholder="0.00"
                       className="pl-8"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
                     />
                   </div>
-                  <Button className="bg-[#00897B] hover:bg-[#00695C]">
+                  <Button className="bg-[#00897B] hover:bg-[#00695C]" onClick={handleGenerateDynamicQR}>
                     Generate
                   </Button>
                 </div>
+                {dynamicQr && (
+                  <div className="mt-4 p-4 bg-[#E0F2F1] rounded-xl text-center">
+                    <div className="w-32 h-32 bg-white rounded-xl mx-auto mb-3 flex items-center justify-center border-2 border-[#00897B]/20">
+                      <QrCode className="h-20 w-20 text-[#00897B]" />
+                    </div>
+                    <p className="text-sm font-medium text-[#00897B]">R {parseFloat(customAmount).toFixed(2)} QR Generated</p>
+                    <p className="text-xs text-gray-500 mt-1">Show this code to receive payment</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

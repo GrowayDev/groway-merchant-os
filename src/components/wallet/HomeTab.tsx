@@ -44,6 +44,7 @@ interface HomeTabProps {
   onOpenVouchers: () => void
   onOpenRemittance: () => void
   onOpenCards: () => void
+  onOpenMobileMoney: () => void
 }
 
 interface RecentTransaction {
@@ -68,6 +69,7 @@ export function HomeTab({
   onOpenVouchers,
   onOpenRemittance,
   onOpenCards,
+  onOpenMobileMoney,
 }: HomeTabProps) {
   const [userName] = useState('Thabo')
   const [balanceCents, setBalanceCents] = useState<string | null>(null)
@@ -280,7 +282,7 @@ export function HomeTab({
                 <span className="text-[10px] text-[#1A1A1A]">Send</span>
               </button>
               <button
-                onClick={onOpenMTNMoMo}
+                onClick={onOpenMobileMoney}
                 className="flex flex-col items-center p-2 rounded-lg hover:bg-[#E0F2F1] active:scale-95 transition-all"
               >
                 <div className="w-9 h-9 rounded-lg bg-[#FFCC00] flex items-center justify-center mb-1">

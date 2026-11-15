@@ -13,7 +13,7 @@ import {
   Apple, Smartphone, Wifi, CheckCircle2, Lock, ChevronRight, Sparkles,
   Copy, Check, Clock, AlertCircle, Fingerprint, RotateCw,
 } from 'lucide-react'
-import { apiGet, apiPost, apiPut, formatMoney } from '@/components/wallet/lib/api'
+import { apiGet, apiPost, apiPatch, formatMoney } from '@/components/wallet/lib/api'
 import {
   CARD_TIERS, TIER_ORDER, getTierForPoints, getNextTier, getTierProgress,
   CardTier,
@@ -82,8 +82,7 @@ function FlipCardShell({ flipped, front, back, reducedMotion }: FlipCardShellPro
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
           }}
-          aria-hidden={flipped}
-          inert={flipped ? '' : undefined}
+          {...(flipped ? { 'aria-hidden': true, inert: true } : {})}
         >
           {front}
         </div>
@@ -96,8 +95,7 @@ function FlipCardShell({ flipped, front, back, reducedMotion }: FlipCardShellPro
             WebkitBackfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
           }}
-          aria-hidden={!flipped}
-          inert={!flipped ? '' : undefined}
+          {...(!flipped ? { 'aria-hidden': true, inert: true } : {})}
         >
           {back}
         </div>
@@ -387,7 +385,7 @@ export function CardModal({ open, onOpenChange }: Props) {
   const toggleFreeze = async () => {
     if (!selectedCard) return
     try {
-      await apiPut('/cards', { cardId: selectedCard.id, action: 'freeze' })
+      await apiPatch('/cards', { cardId: selectedCard.id, action: 'freeze' })
       await load()
     } catch {}
   }
@@ -418,19 +416,30 @@ export function CardModal({ open, onOpenChange }: Props) {
 
   const handleIssue = () => {
     // Step-up auth gate: require OTP before issuance
+    setError('')
     setAuthStep('otp')
+    // In production, this would call the SMS gateway to send an OTP
+    // For demo, accept any 4-digit code
   }
 
   const verifyOtp = () => {
     if (otpCode.length < 4) {
-      setError('Enter a valid OTP code')
+      setError('Enter a valid 4-digit OTP code')
       return
     }
+    setError('')
     setAuthStep('verifying')
+    // Simulate OTP verification (in production, this calls the auth API)
     setTimeout(() => {
       setAuthStep('verified')
       issueCard()
-    }, 1000)
+    }, 1500)
+  }
+
+  const resendOtp = () => {
+    // In production, this would re-send the OTP via SMS
+    setError('')
+    setOtpCode('')
   }
 
   const addToApplePay = () => setApplePayAdded(true)
@@ -618,19 +627,19 @@ export function CardModal({ open, onOpenChange }: Props) {
                 <p className="text-sm font-semibold">Card Settings</p>
                 <div className="flex items-center justify-between">
                   <Label className="text-sm flex items-center gap-2"><CreditCard className="h-4 w-4 text-gray-400" /> Online payments</Label>
-                  <Switch checked={selectedCard.onlineEnabled} onCheckedChange={async (v) => { await apiPut('/cards', { cardId: selectedCard.id, action: 'updateSettings', onlineEnabled: v }); await load() }} />
+                  <Switch checked={selectedCard.onlineEnabled} onCheckedChange={async (v) => { await apiPatch('/cards', { cardId: selectedCard.id, action: 'updateSettings', onlineEnabled: v }); await load() }} />
                 </div>
                 <div className="flex items-center justify-between">
                   <Label className="text-sm flex items-center gap-2"><Wifi className="h-4 w-4 text-gray-400" /> Contactless (NFC)</Label>
-                  <Switch checked={selectedCard.contactlessEnabled} onCheckedChange={async (v) => { await apiPut('/cards', { cardId: selectedCard.id, action: 'updateSettings', contactlessEnabled: v }); await load() }} />
+                  <Switch checked={selectedCard.contactlessEnabled} onCheckedChange={async (v) => { await apiPatch('/cards', { cardId: selectedCard.id, action: 'updateSettings', contactlessEnabled: v }); await load() }} />
                 </div>
                 <div className="flex items-center justify-between">
                   <Label className="text-sm flex items-center gap-2"><Lock className="h-4 w-4 text-gray-400" /> ATM withdrawals</Label>
-                  <Switch checked={selectedCard.atmEnabled} onCheckedChange={async (v) => { await apiPut('/cards', { cardId: selectedCard.id, action: 'updateSettings', atmEnabled: v }); await load() }} />
+                  <Switch checked={selectedCard.atmEnabled} onCheckedChange={async (v) => { await apiPatch('/cards', { cardId: selectedCard.id, action: 'updateSettings', atmEnabled: v }); await load() }} />
                 </div>
                 <div className="flex items-center justify-between">
                   <Label className="text-sm flex items-center gap-2"><TrendingUp className="h-4 w-4 text-gray-400" /> International</Label>
-                  <Switch checked={selectedCard.internationalEnabled} onCheckedChange={async (v) => { await apiPut('/cards', { cardId: selectedCard.id, action: 'updateSettings', internationalEnabled: v }); await load() }} />
+                  <Switch checked={selectedCard.internationalEnabled} onCheckedChange={async (v) => { await apiPatch('/cards', { cardId: selectedCard.id, action: 'updateSettings', internationalEnabled: v }); await load() }} />
                 </div>
               </CardContent>
             </Card>
@@ -732,6 +741,14 @@ export function CardModal({ open, onOpenChange }: Props) {
                   </button>
                 ))}
               </div>
+              {expiryPreset === 'custom' && (
+                <Input
+                  type="date"
+                  className="mt-2"
+                  onChange={(e) => setExpiryPreset(e.target.value || 'custom')}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              )}
             </div>
 
             {/* Step-up authentication */}
@@ -749,16 +766,22 @@ export function CardModal({ open, onOpenChange }: Props) {
                     <>
                       <Input
                         type="text"
+                        inputMode="numeric"
                         maxLength={6}
-                        placeholder="Enter 4-6 digit OTP"
+                        placeholder="Enter 4-digit OTP"
                         value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, '')); setError('') }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp() }}
                         className="text-center text-lg tracking-widest"
+                        autoFocus
                       />
                       {error && <p className="text-xs text-red-500">{error}</p>}
-                      <Button className="w-full bg-amber-600 hover:bg-amber-700" onClick={verifyOtp}>
+                      <Button className="w-full bg-amber-600 hover:bg-amber-700" onClick={verifyOtp} disabled={otpCode.length < 4}>
                         Verify & Issue Card
                       </Button>
+                      <button className="text-xs text-amber-600 hover:underline w-full text-center" onClick={resendOtp}>
+                        Resend OTP
+                      </button>
                     </>
                   )}
                   {authStep === 'verifying' && (
