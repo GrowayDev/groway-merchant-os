@@ -209,7 +209,7 @@ export function BNPLModal({ open, onOpenChange }: BNPLModalProps) {
                         <p className="text-[10px] text-[#757575]">{p.desc}</p>
                       </div>
                       <Badge variant="outline" className="text-[10px]">
-                        Max R{p.maxAmount.toLocaleString()}
+                        Max R{p.maxAmount.toLocaleString('en-ZA')}
                       </Badge>
                     </div>
                     <div className="flex gap-1 mt-2">
@@ -246,7 +246,7 @@ export function BNPLModal({ open, onOpenChange }: BNPLModalProps) {
               </Select>
               {selectedProvider && (
                 <p className="text-[10px] text-[#757575]">
-                  Max R{selectedProvider.maxAmount.toLocaleString()} • {selectedProvider.terms.join(' or ')} instalments
+                  Max R{selectedProvider.maxAmount.toLocaleString('en-ZA')} • {selectedProvider.terms.join(' or ')} instalments
                 </p>
               )}
             </div>
@@ -272,7 +272,7 @@ export function BNPLModal({ open, onOpenChange }: BNPLModalProps) {
               />
               {selectedProvider && purchaseAmount > selectedProvider.maxAmount && (
                 <p className="text-xs text-[#FF5722]">
-                  Exceeds {selectedProvider.name} max of R{selectedProvider.maxAmount.toLocaleString()}.
+                  Exceeds {selectedProvider.name} max of R{selectedProvider.maxAmount.toLocaleString('en-ZA')}.
                 </p>
               )}
             </div>
@@ -332,12 +332,12 @@ export function BNPLModal({ open, onOpenChange }: BNPLModalProps) {
               <CardContent className="p-4 space-y-2 text-sm">
                 <Row label="Provider" value={selectedProvider.name} />
                 <Row label="Item" value={itemDescription || 'BNPL purchase'} />
-                <Row label="Purchase Amount" value={`R ${purchaseAmount.toLocaleString()}`} bold />
+                <Row label="Purchase Amount" value={`R ${purchaseAmount.toLocaleString('en-ZA')}`} bold />
                 {merchantName && <Row label="Merchant" value={merchantName} />}
                 <div className="border-t border-gray-100 my-2" />
                 <Row label="Instalments" value={`${term} × R ${instalmentPreview.toFixed(2)}`} />
                 <Row label="Interest" value="0%" />
-                <Row label="Total Repayable" value={`R ${purchaseAmount.toLocaleString()}`} bold />
+                <Row label="Total Repayable" value={`R ${purchaseAmount.toLocaleString('en-ZA')}`} bold />
               </CardContent>
             </Card>
 
@@ -382,7 +382,7 @@ export function BNPLModal({ open, onOpenChange }: BNPLModalProps) {
                   <Row label="Provider" value={plan.provider} />
                   <Row label="Item" value={plan.itemDescription} />
                   {plan.merchant && <Row label="Merchant" value={plan.merchant} />}
-                  <Row label="Purchase" value={`R ${plan.purchaseAmount.toLocaleString()}`} bold />
+                  <Row label="Purchase" value={`R ${plan.purchaseAmount.toLocaleString('en-ZA')}`} bold />
                   <Row label="Next Due" value={plan.nextDueDate ? new Date(plan.nextDueDate).toLocaleDateString('en-ZA') : '—'} />
                 </div>
               </CardContent>

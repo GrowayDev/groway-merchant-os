@@ -656,7 +656,7 @@ export function CardModal({ open, onOpenChange }: Props) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-white font-bold text-lg">{loyaltyPoints.toLocaleString()}</p>
+                    <p className="text-white font-bold text-lg">{loyaltyPoints.toLocaleString('en-ZA')}</p>
                     <p className="text-white/70 text-[10px]">points</p>
                   </div>
                 </div>

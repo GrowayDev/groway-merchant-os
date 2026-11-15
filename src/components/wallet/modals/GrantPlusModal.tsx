@@ -203,7 +203,7 @@ export function GrantPlusModal({ open, onOpenChange }: GrantPlusModalProps) {
                       <p className="text-[10px] text-[#757575]">{g.desc}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-[#FF9800]">R{g.amount.toLocaleString()}</p>
+                      <p className="text-sm font-bold text-[#FF9800]">R{g.amount.toLocaleString('en-ZA')}</p>
                       <p className="text-[9px] text-[#757575]">/{g.frequency}</p>
                     </div>
                   </button>
@@ -284,7 +284,7 @@ export function GrantPlusModal({ open, onOpenChange }: GrantPlusModalProps) {
               <CardContent className="p-3 text-xs space-y-1">
                 <div className="flex justify-between">
                   <span className="text-[#757575]">Estimated Amount</span>
-                  <span className="font-bold text-[#1A1A1A]">R {estimatedAmount.toLocaleString()}/month</span>
+                  <span className="font-bold text-[#1A1A1A]">R {estimatedAmount.toLocaleString('en-ZA')}/month</span>
                 </div>
                 {selectedGrant.perChild && (
                   <div className="flex justify-between">
@@ -319,7 +319,7 @@ export function GrantPlusModal({ open, onOpenChange }: GrantPlusModalProps) {
                 <Row label="ID Number" value={idNumber} mono />
                 {selectedGrant.perChild && <Row label="Children" value={String(children)} />}
                 <div className="border-t border-gray-100 my-2" />
-                <Row label="Estimated Amount" value={`R ${estimatedAmount.toLocaleString()}/mo`} bold />
+                <Row label="Estimated Amount" value={`R ${estimatedAmount.toLocaleString('en-ZA')}/mo`} bold />
               </CardContent>
             </Card>
 
@@ -369,7 +369,7 @@ export function GrantPlusModal({ open, onOpenChange }: GrantPlusModalProps) {
                   <Row label="Receipt No" value={result.receiptNo} mono />
                   <div className="border-t border-gray-100 my-2" />
                   <Row label="Grant" value={result.grantName} />
-                  <Row label="Estimated Amount" value={`R ${result.estimatedAmount.toLocaleString()}/mo`} bold />
+                  <Row label="Estimated Amount" value={`R ${result.estimatedAmount.toLocaleString('en-ZA')}/mo`} bold />
                   <Row label="Beneficiaries" value={String(result.beneficiaries)} />
                   <Row label="Processing" value={`~${result.processingDays} days`} />
                   <div className="border-t border-gray-100 my-2" />

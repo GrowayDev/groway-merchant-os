@@ -212,7 +212,7 @@ export function PayPlusModal({ open, onOpenChange }: PayPlusModalProps) {
                         <p className="text-[10px] text-[#757575]">{p.bank} • NCR {p.ncrReg}</p>
                       </div>
                       <Badge variant="outline" className="text-[10px]">
-                        Max R{p.maxAmount.toLocaleString()}
+                        Max R{p.maxAmount.toLocaleString('en-ZA')}
                       </Badge>
                     </div>
                     <p className="text-[10px] text-[#FFC107]">Flat fee: R{p.serviceFee.toFixed(2)}</p>
@@ -243,7 +243,7 @@ export function PayPlusModal({ open, onOpenChange }: PayPlusModalProps) {
               </Select>
               {selectedProvider && (
                 <p className="text-[10px] text-[#757575]">
-                  Max R{selectedProvider.maxAmount.toLocaleString()} • Flat fee R{selectedProvider.serviceFee.toFixed(2)} • NCR {selectedProvider.ncrReg}
+                  Max R{selectedProvider.maxAmount.toLocaleString('en-ZA')} • Flat fee R{selectedProvider.serviceFee.toFixed(2)} • NCR {selectedProvider.ncrReg}
                 </p>
               )}
             </div>
@@ -260,7 +260,7 @@ export function PayPlusModal({ open, onOpenChange }: PayPlusModalProps) {
               />
               {selectedProvider && amount > selectedProvider.maxAmount && (
                 <p className="text-xs text-[#FF5722]">
-                  Exceeds max of R{selectedProvider.maxAmount.toLocaleString()}.
+                  Exceeds max of R{selectedProvider.maxAmount.toLocaleString('en-ZA')}.
                 </p>
               )}
               <div className="flex gap-2 flex-wrap">

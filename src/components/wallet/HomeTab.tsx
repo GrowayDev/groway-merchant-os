@@ -491,8 +491,8 @@ export function HomeTab({
                   className="h-2 mb-1"
                 />
                 <div className="flex justify-between text-xs text-[#757575]">
-                  <span>R {pocket.current.toLocaleString()}</span>
-                  <span>R {pocket.target.toLocaleString()}</span>
+                  <span>R {pocket.current.toLocaleString('en-ZA')}</span>
+                  <span>R {pocket.target.toLocaleString('en-ZA')}</span>
                 </div>
               </CardContent>
             </Card>

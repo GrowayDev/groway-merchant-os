@@ -344,7 +344,7 @@ export function InsuranceModal({ open, onOpenChange }: InsuranceModalProps) {
                     onClick={() => setCoverRand(amt)}
                     className={coverRand === amt ? 'border-[#00897B] bg-[#E0F2F1]' : ''}
                   >
-                    R{amt.toLocaleString()}
+                    R{amt.toLocaleString('en-ZA')}
                   </Button>
                 ))}
               </div>

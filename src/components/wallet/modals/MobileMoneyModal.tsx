@@ -12,6 +12,7 @@ import {
   Clock, RefreshCw, ChevronRight, Loader2, Shield,
 } from 'lucide-react'
 import { apiGet, apiPost } from '@/components/wallet/lib/api'
+import { PROVIDERS, MobileMoneyProvider } from '@/lib/consumer-wallet/mobile-money-orchestrator'
 
 interface Props {
   open: boolean
@@ -21,6 +22,17 @@ interface Props {
 
 type Step = 'amount' | 'phone' | 'confirm' | 'processing' | 'success' | 'failed'
 
+// Static fallback providers (used if API hasn't loaded)
+const FALLBACK_PROVIDERS = Object.values(PROVIDERS).filter(p => p.enabled)
+
+// Provider prefix routing table
+const PREFIXES: Record<string, string[]> = {
+  'tnm_mpamba': ['+26599', '+2659', '+2651', '+26519', '+26518'],
+  'airtel_money_mw': ['+26588', '+26598', '+26599', '+2651'],
+  'mpesa_tz': ['+2557', '+2556', '+25575', '+25576', '+25577', '+25578', '+25565', '+25568'],
+  'mtc_maris': ['+2648', '+26481', '+26482', '+26483', '+26485'],
+}
+
 export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }: Props) {
   const [step, setStep] = useState<Step>('amount')
   const [type, setType] = useState<'deposit' | 'payout'>(defaultType)
@@ -28,7 +40,7 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
   const [msisdn, setMsisdn] = useState('')
   const [detectedProvider, setDetectedProvider] = useState<string | null>(null)
   const [manualProvider, setManualProvider] = useState<string>('')
-  const [providers, setProviders] = useState<any[]>([])
+  const [apiProviders, setApiProviders] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<any>(null)
@@ -36,10 +48,13 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
 
   useEffect(() => {
     if (open) {
+      // Try to fetch providers from API, but use fallback if it fails
       apiGet('/mobile-money/providers').then(res => {
         const data = res?.data || res
-        setProviders(data?.providers || [])
-      }).catch(() => {})
+        setApiProviders(data?.providers || [])
+      }).catch(() => {
+        setApiProviders(FALLBACK_PROVIDERS)
+      })
       setStep('amount')
       setError('')
       setResult(null)
@@ -51,25 +66,24 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
     }
   }, [open, defaultType])
 
-  // Detect provider from phone number
+  // Use API providers if loaded, otherwise fallback
+  const providers = apiProviders.length > 0 ? apiProviders : FALLBACK_PROVIDERS
+
   const handlePhoneChange = (value: string) => {
     setMsisdn(value)
     setError('')
-    // Auto-detect on 6+ digits
-    if (value.replace(/\D/g, '').length >= 6) {
-      // Call the API to detect, or use a local lookup
-      const normalized = value.startsWith('+') ? value : '+' + value.replace(/\D/g, '')
-      const provider = providers.find(p => {
-        // Simple prefix matching for UI
-        const prefixes: Record<string, string[]> = {
-          'tnm_mpamba': ['+26599', '+2659', '+2651'],
-          'airtel_money_mw': ['+26588', '+26599', '+2651'],
-          'mpesa_tz': ['+2557', '+2556'],
-          'mtc_maris': ['+2648'],
+    const digits = value.replace(/\D/g, '')
+    if (digits.length >= 4) {
+      const normalized = value.startsWith('+') ? value : '+' + digits
+      let found: string | null = null
+      for (const [providerId, prefs] of Object.entries(PREFIXES)) {
+        if (prefs.some(prefix => normalized.startsWith(prefix))) {
+          found = providerId
+          break
         }
-        return (prefixes[p.id] || []).some(prefix => normalized.startsWith(prefix))
-      })
-      setDetectedProvider(provider?.id || null)
+      }
+      setDetectedProvider(found)
+      if (found) setManualProvider('')
     } else {
       setDetectedProvider(null)
     }
@@ -95,7 +109,6 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
 
       setResult(data)
 
-      // Start polling for status (simulated)
       if (data?.providerTransactionId) {
         pollStatus(data.providerTransactionId)
       }
@@ -125,12 +138,20 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
         }
       } catch {}
     }
-    // Timeout — still processing
     setResult(prev => ({ ...prev, status: 'PENDING' }))
     setStep('success')
   }
 
-  const selectedProvider = providers.find(p => p.id === (manualProvider || detectedProvider))
+  const selectedProvider = providers.find(p => p.id === (manualProvider || detectedProvider)) || 
+    FALLBACK_PROVIDERS.find(p => p.id === (manualProvider || detectedProvider))
+
+  const formatAmount = (val: number) => {
+    return val.toLocaleString('en-ZA')
+  }
+
+  const currencySymbol = selectedProvider?.currency === 'MWK' ? 'K' : 
+    selectedProvider?.currency === 'TZS' ? 'TSh' : 
+    selectedProvider?.currency === 'NAD' ? 'N$' : 'R'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -164,9 +185,7 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
             <div>
               <Label>Amount</Label>
               <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">
-                  {selectedProvider?.currency === 'MWK' ? 'K' : selectedProvider?.currency === 'TZS' ? 'TSh' : selectedProvider?.currency === 'NAD' ? 'N$' : 'R'}
-                </span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">{currencySymbol}</span>
                 <Input
                   type="number"
                   placeholder="0.00"
@@ -174,8 +193,14 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && parseFloat(amount) > 0) setStep('phone') }}
+                  autoFocus
                 />
               </div>
+              {selectedProvider && (
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Min: {currencySymbol} {formatAmount(selectedProvider.minAmount)} · Max: {currencySymbol} {formatAmount(selectedProvider.maxAmount)}
+                </p>
+              )}
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
             <Button
@@ -204,19 +229,23 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
                 className="text-lg"
                 autoFocus
               />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Enter your number with country code (e.g. +265 for Malawi, +255 for Tanzania)
+              </p>
             </div>
 
             {/* Detected provider */}
-            {detectedProvider && (
+            {detectedProvider && selectedProvider && (
               <Card className="bg-[#00897B]/5 border-[#00897B]/20">
                 <CardContent className="py-3 flex items-center gap-2">
-                  <span className="text-2xl">{selectedProvider?.logo}</span>
+                  <span className="text-2xl">{selectedProvider.logo}</span>
                   <div>
-                    <p className="text-sm font-medium">{selectedProvider?.name}</p>
+                    <p className="text-sm font-medium">{selectedProvider.name}</p>
                     <p className="text-xs text-gray-500">
-                      Fee: {selectedProvider?.feePercent}% · Settles in {selectedProvider?.averageSettlementTime}
+                      Fee: {selectedProvider.feePercent}% · Settles in {selectedProvider.averageSettlementTime}
                     </p>
                   </div>
+                  <Badge className="ml-auto bg-[#00897B] text-white border-0 text-[9px]">Detected</Badge>
                 </CardContent>
               </Card>
             )}
@@ -230,7 +259,7 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
                     <button
                       key={p.id}
                       onClick={() => setManualProvider(p.id)}
-                      className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${manualProvider === p.id ? 'border-[#00897B] bg-[#00897B]/5' : 'border-gray-200'}`}
+                      className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${manualProvider === p.id ? 'border-[#00897B] bg-[#00897B]/5' : 'border-gray-200 hover:border-gray-300'}`}
                     >
                       <span className="text-xl">{p.logo}</span>
                       <div className="text-left">
@@ -249,8 +278,14 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
               <Button variant="outline" className="flex-1" onClick={() => setStep('amount')}>Back</Button>
               <Button
                 className="flex-1 bg-[#00897B] hover:bg-[#00897B]/90"
-                disabled={!msisdn || (!detectedProvider && !manualProvider)}
-                onClick={() => setStep('confirm')}
+                disabled={!msisdn || msisdn.replace(/\D/g, '').length < 4}
+                onClick={() => {
+                  if (!detectedProvider && !manualProvider) {
+                    setError('Please select a provider or enter a valid phone number with country code')
+                    return
+                  }
+                  setStep('confirm')
+                }}
               >
                 Continue <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
@@ -259,34 +294,30 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
         )}
 
         {/* Step: Confirm */}
-        {step === 'confirm' && (
+        {step === 'confirm' && selectedProvider && (
           <div className="space-y-4">
             <Card>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">{type === 'deposit' ? 'Top-up amount' : 'Withdrawal amount'}</span>
-                  <span className="text-lg font-bold">
-                    {selectedProvider?.currency === 'MWK' ? 'K' : selectedProvider?.currency === 'TZS' ? 'TSh' : selectedProvider?.currency === 'NAD' ? 'N$' : 'R'} {parseFloat(amount).toLocaleString()}
-                  </span>
+                  <span className="text-lg font-bold">{currencySymbol} {formatAmount(parseFloat(amount))}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Provider</span>
-                  <span className="font-medium">{selectedProvider?.logo} {selectedProvider?.name}</span>
+                  <span className="font-medium">{selectedProvider.logo} {selectedProvider.name}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Phone</span>
                   <span className="font-medium">{msisdn}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Fee ({selectedProvider?.feePercent}%)</span>
-                  <span className="font-medium">
-                    {selectedProvider?.currency === 'MWK' ? 'K' : selectedProvider?.currency === 'TZS' ? 'TSh' : selectedProvider?.currency === 'NAD' ? 'N$' : 'R'} {Math.round(parseFloat(amount) * (selectedProvider?.feePercent || 0) / 100).toLocaleString()}
-                  </span>
+                  <span className="text-gray-500">Fee ({selectedProvider.feePercent}%)</span>
+                  <span className="font-medium">{currencySymbol} {formatAmount(Math.round(parseFloat(amount) * selectedProvider.feePercent / 100))}</span>
                 </div>
                 <div className="border-t pt-3 flex items-center justify-between">
                   <span className="text-sm font-medium">{type === 'deposit' ? 'You receive' : 'You pay total'}</span>
                   <span className="text-lg font-bold text-[#00897B]">
-                    {selectedProvider?.currency === 'MWK' ? 'K' : selectedProvider?.currency === 'TZS' ? 'TSh' : selectedProvider?.currency === 'NAD' ? 'N$' : 'R'} {(parseFloat(amount) - Math.round(parseFloat(amount) * (selectedProvider?.feePercent || 0) / 100)).toLocaleString()}
+                    {currencySymbol} {formatAmount(parseFloat(amount) - Math.round(parseFloat(amount) * selectedProvider.feePercent / 100))}
                   </span>
                 </div>
               </CardContent>
@@ -295,7 +326,7 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
             <div className="flex items-start gap-2 text-xs text-gray-500">
               <Shield className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <p>
-                You'll receive a prompt on your phone. Enter your {selectedProvider?.name} PIN to approve.
+                You'll receive a prompt on your phone. Enter your {selectedProvider.name} PIN to approve.
                 This transaction is protected by idempotency — retrying won't double-charge.
               </p>
             </div>
@@ -318,7 +349,7 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
             <div>
               <p className="text-lg font-bold">Check Your Phone</p>
               <p className="text-sm text-gray-500 mt-1">
-                Enter your {selectedProvider?.name} PIN to approve the {type === 'deposit' ? 'top-up' : 'withdrawal'}.
+                Enter your {selectedProvider?.name || 'mobile money'} PIN to approve the {type === 'deposit' ? 'top-up' : 'withdrawal'}.
               </p>
             </div>
             {result?.instruction && (
@@ -352,7 +383,7 @@ export function MobileMoneyModal({ open, onOpenChange, defaultType = 'deposit' }
               <p className="text-sm text-gray-500 mt-1">
                 {result.status === 'PENDING'
                   ? 'Your transaction is still being processed. We\'ll notify you when it completes.'
-                  : `${type === 'deposit' ? 'Top-up' : 'Withdrawal'} of ${result.amount} ${result.currency} was successful.`
+                  : `${type === 'deposit' ? 'Top-up' : 'Withdrawal'} of ${currencySymbol} ${formatAmount(result.amount)} was successful.`
                 }
               </p>
             </div>

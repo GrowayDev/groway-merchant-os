@@ -252,7 +252,7 @@ export function SecurityTab({ onBack }: SecurityTabProps) {
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span>Daily Limit</span>
-                <span className="font-medium">R {dailyLimit.toLocaleString()}</span>
+                <span className="font-medium">R {dailyLimit.toLocaleString('en-ZA')}</span>
               </div>
               <Slider
                 value={[dailyLimit]}
@@ -270,7 +270,7 @@ export function SecurityTab({ onBack }: SecurityTabProps) {
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span>Monthly Limit</span>
-                <span className="font-medium">R {monthlyLimit.toLocaleString()}</span>
+                <span className="font-medium">R {monthlyLimit.toLocaleString('en-ZA')}</span>
               </div>
               <Slider
                 value={[monthlyLimit]}
@@ -324,7 +324,7 @@ export function SecurityTab({ onBack }: SecurityTabProps) {
                     <div>
                       <p className="text-sm font-medium">{session.deviceName || 'Unknown Device'}</p>
                       <p className="text-xs text-gray-400">
-                        {session.ipAddress} • {new Date(session.lastActive).toLocaleString()}
+                        {session.ipAddress} • {new Date(session.lastActive).toLocaleString('en-ZA')}
                       </p>
                     </div>
                   </div>
@@ -429,7 +429,7 @@ export function SecurityTab({ onBack }: SecurityTabProps) {
                   <div className="flex-1">
                     <p className="text-sm font-medium">{alert.description}</p>
                     <p className="text-xs text-gray-400">
-                      {new Date(alert.createdAt).toLocaleString()}
+                      {new Date(alert.createdAt).toLocaleString('en-ZA')}
                     </p>
                   </div>
                   <Badge className={alert.status === 'resolved' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}>

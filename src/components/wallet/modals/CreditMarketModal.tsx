@@ -183,7 +183,7 @@ export function CreditMarketModal({ open, onOpenChange }: Props) {
               <CardContent className="py-4">
                 <p className="text-xs opacity-70">Case Reference Number</p>
                 <p className="text-lg font-bold font-mono">{result.caseRef}</p>
-                <p className="text-xs opacity-70 mt-1">Submitted: {new Date(result.submittedAt).toLocaleString()}</p>
+                <p className="text-xs opacity-70 mt-1">Submitted: {new Date(result.submittedAt).toLocaleString('en-ZA')}</p>
               </CardContent>
             </Card>
 
