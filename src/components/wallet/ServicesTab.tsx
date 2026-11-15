@@ -35,6 +35,7 @@ interface ServicesTabProps {
   onOpenLaybye: () => void
   onOpenBNPL: () => void
   onOpenMTNMoMo: () => void
+  onOpenMobileMoney?: () => void
   onOpenCredit: () => void
   onOpenInsurance: () => void
   onOpenBills: () => void
@@ -55,6 +56,7 @@ export function ServicesTab({
   onOpenLaybye,
   onOpenBNPL,
   onOpenMTNMoMo,
+  onOpenMobileMoney,
   onOpenCredit,
   onOpenInsurance,
   onOpenBills,
@@ -92,7 +94,7 @@ export function ServicesTab({
 
   const airtimeData = [
     { id: 'vodacom', name: 'Vodacom', icon: Smartphone, color: '#E60000', onClick: onOpenAirtime },
-    { id: 'mtn', name: 'MTN', icon: Smartphone, color: '#FFCC00', onClick: onOpenMTNMoMo },
+    { id: 'mtn', name: 'Mobile Money', icon: Smartphone, color: '#FFCC00', onClick: onOpenMobileMoney || onOpenMTNMoMo },
     { id: 'cellc', name: 'Cell C', icon: Smartphone, color: '#0066B3', onClick: onOpenAirtime },
     { id: 'telkom', name: 'Telkom', icon: Smartphone, color: '#0066FF', onClick: onOpenAirtime },
   ]

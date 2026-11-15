@@ -422,11 +422,11 @@ export function HomeTab({
             <span className="text-[10px] text-[#00897B]">Laybye</span>
           </button>
           <button
-            onClick={onOpenMTNMoMo}
+            onClick={onOpenMobileMoney}
             className="flex flex-col items-center p-2 rounded-xl bg-[#FFF8E1] active:scale-95 transition-transform"
           >
             <Smartphone className="h-5 w-5 text-[#FF9800] mb-1" />
-            <span className="text-[10px] text-[#FF9800]">MTN MoMo</span>
+            <span className="text-[10px] text-[#FF9800]">Mobile Money</span>
           </button>
           <button
             onClick={onOpenPayShap}

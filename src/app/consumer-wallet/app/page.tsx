@@ -227,6 +227,7 @@ export default function ConsumerWalletPage() {
               onOpenLaybye={() => setLaybyeOpen(true)}
               onOpenBNPL={() => setBnplOpen(true)}
               onOpenMTNMoMo={() => setMtnMomoOpen(true)}
+              onOpenMobileMoney={() => setMobileMoneyOpen(true)}
               onOpenCredit={() => setCreditMarketOpen(true)}
               onOpenInsurance={() => setInsuranceOpen(true)}
               onOpenBills={() => setBillsOpen(true)}
