@@ -7244,3 +7244,240 @@ model GroCoreDevicePayment {
   @@unique([tenantId, idempotencyKey])
   @@index([contractId])
 }
+
+// ============================================
+// TICKETING MODULE — Events, Cinema, Performances
+// Per Groway Ticketing Build Architecture spec
+// ============================================
+
+model TicketingOrganiser {
+  id              String   @id @default(cuid())
+  countryCode     String   @default("ZA")
+  name            String
+  email           String?
+  phone           String?
+  settlementMode  String   @default("PLATFORM") // PLATFORM | ORGANISER
+  paymentConfig   String?  // JSON: gateway credentials reference
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  events          TicketingEvent[]
+
+  @@index([countryCode, status])
+}
+
+model TicketingVenue {
+  id              String   @id @default(cuid())
+  name            String
+  address         String?
+  city            String?
+  countryCode     String   @default("ZA")
+  capacity        Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  events          TicketingEvent[]
+}
+
+model TicketingEvent {
+  id              String   @id @default(cuid())
+  organiserId     String
+  venueId         String?
+  countryCode     String   @default("ZA")
+  title           String
+  description      String?
+  category        String   // music, sports, movies, comedy, theatre, festival
+  image           String?
+  status          String   @default("draft") // draft, published, cancelled, completed
+  startDate       DateTime
+  endDate         DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organiser       TicketingOrganiser @relation(fields: [organiserId], references: [id])
+  venue           TicketingVenue?    @relation(fields: [venueId], references: [id])
+  performances    TicketingPerformance[]
+  ticketTypes     TicketingTicketType[]
+
+  @@index([countryCode, status, startDate])
+  @@index([category, status])
+}
+
+model TicketingPerformance {
+  id              String   @id @default(cuid())
+  eventId         String
+  startTime       DateTime
+  endTime         DateTime?
+  status          String   @default("scheduled") // scheduled, on_sale, sold_out, cancelled, completed
+  seatsTotal      Int      @default(0)
+  seatsAvailable  Int      @default(0)
+  seatsHeld       Int      @default(0)
+  seatsSold       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  event           TicketingEvent @relation(fields: [eventId], references: [id])
+  seats           TicketingSeat[]
+  bookings        TicketingBooking[]
+
+  @@index([eventId, status, startTime])
+}
+
+model TicketingSeat {
+  id              String   @id @default(cuid())
+  performanceId   String
+  label           String   // e.g. "A1", "GA-001"
+  section         String?
+  row             String?
+  seatNumber      String?
+  seatType        String   @default("SEATED") // SEATED, GENERAL_ADMISSION, TABLE
+  state           String   @default("AVAILABLE") // AVAILABLE, HELD, SOLD, BLOCKED
+  heldUntil       DateTime?
+  heldByBookingId String?
+  priceCents      BigInt
+  currency        String   @default("ZAR")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  performance     TicketingPerformance @relation(fields: [performanceId], references: [id])
+
+  @@unique([performanceId, label])
+  @@index([performanceId, state])
+  @@index([state, heldUntil])
+}
+
+model TicketingTicketType {
+  id              String   @id @default(cuid())
+  eventId         String
+  name            String   // Regular, VIP, Early Bird
+  priceCents      BigInt
+  currency        String   @default("ZAR")
+  multiplier      Float    @default(1.0) // for VIP etc
+  totalQuantity   Int
+  soldQuantity    Int      @default(0)
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  event           TicketingEvent @relation(fields: [eventId], references: [id])
+}
+
+model TicketingBooking {
+  id              String   @id @default(cuid())
+  performanceId   String
+  userId          String
+  countryCode     String   @default("ZA")
+  state           String   @default("INITIATED")
+  // INITIATED -> SEATS_HELD -> PENDING_PAYMENT -> AWAITING_CONFIRMATION
+  // -> CONFIRMED | EXPIRED
+  // CONFIRMED -> REFUNDED
+  ticketType      String?
+  quantity        Int      @default(1)
+  seatLabels      String?  // JSON array of seat labels
+  faceValueCents  BigInt
+  platformFeeCents BigInt  @default(0)
+  bookingFeeCents BigInt   @default(0)
+  processingFeeCents BigInt @default(0)
+  totalCents      BigInt
+  currency        String   @default("ZAR")
+  settlementMode  String   @default("PLATFORM")
+  paymentRef      String?
+  paymentRail     String?  // payshap, card, mobile_money
+  expiresAt       DateTime?
+  confirmedAt     DateTime?
+  refundedAt      DateTime?
+  idempotencyKey  String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  performance     TicketingPerformance @relation(fields: [performanceId], references: [id])
+  transitions    TicketingBookingTransition[]
+  tickets         TicketingTicket[]
+
+  @@index([performanceId, state])
+  @@index([userId, createdAt])
+  @@index([state, expiresAt])
+}
+
+model TicketingBookingTransition {
+  id              String   @id @default(cuid())
+  bookingId       String
+  fromState       String
+  toState         String
+  trigger         String   // user_select, payment_initiated, webhook, timeout, refund
+  idempotencyKey  String
+  metadata        String?  // JSON
+  createdAt       DateTime @default(now())
+
+  booking         TicketingBooking @relation(fields: [bookingId], references: [id])
+
+  @@unique([bookingId, toState, idempotencyKey])
+  @@index([bookingId, createdAt])
+}
+
+model TicketingTicket {
+  id              String   @id @default(cuid())
+  bookingId       String
+  seatLabel       String?
+  ticketTypeId    String?
+  holderName      String?
+  holderMsisdn     String?
+  qrPayload       String?  // HMAC-signed QR
+  qrSecret        String?  // secret used for HMAC
+  status          String   @default("issued") // issued, checked_in, voided
+  checkedInAt     DateTime?
+  checkedInBy     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  booking         TicketingBooking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([status])
+}
+
+model TicketingFeeSchedule {
+  id              String   @id @default(cuid())
+  countryCode     String
+  settlementMode  String   // PLATFORM | ORGANISER
+  platformFeePct  Float    @default(1.5)
+  bookingFeeMinor  BigInt   @default(200)
+  processingPassThrough Boolean @default(true)
+  validFrom       DateTime @default(now())
+  validTo         DateTime?
+
+  @@unique([countryCode, settlementMode])
+}
+
+// Postgres SKIP LOCKED job queue (SQLite-compatible for dev)
+model TicketingJob {
+  id              String   @id @default(cuid())
+  queue           String   // payment, seat_expiry, reconciliation, notification
+  payload         String   // JSON
+  runAt           DateTime @default(now())
+  lockedAt        DateTime?
+  lockedBy        String?
+  attempts        Int      @default(0)
+  maxAttempts     Int      @default(5)
+  status          String   @default("pending") // pending, locked, done, failed, dead_letter
+  error           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([queue, status, runAt])
+}
+
+// Outbox for at-least-once event delivery
+model TicketingOutbox {
+  id              String   @id @default(cuid())
+  eventType       String   // booking.confirmed, seat.released, payment.awaiting
+  aggregateId     String   // bookingId, seatId, etc
+  payload         String   // JSON
+  processed       Boolean  @default(false)
+  processedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([processed, createdAt])
+  @@index([eventType, aggregateId])
+}

@@ -1,0 +1,600 @@
+The architecture is now fully constrained by your decisions. Below is the complete build architecture and implementation guide, written as the document you can hand to a development team. It resolves the remaining open questions (PayShap mechanics, settlement flow, RDS model) and lays out the build in executable phases.
+
+---
+
+# Groway Ticketing: Build Architecture & Implementation Guide
+
+**Scope:** A multi-country ticketing platform for cinema and events, built as a new module inside the existing Next.js modular monolith, running on AWS RDS PostgreSQL in af-south-1 (Cape Town), with a Mac-based staging environment and a phased migration to AWS.
+
+**Locked decisions:**
+
+| Decision | Choice |
+|---|---|
+| Markets | South Africa (Phase 1), Malawi (Phase 2) |
+| Customer types | Cinema chains **and** event organisers from day one |
+| Settlement | **Both** platform-settled and organiser-settled |
+| Country routing | Path prefix (`/za/`, `/mw/`) |
+| Database | AWS RDS PostgreSQL, af-south-1 |
+| Orchestration | Postgres-backed state machine + `SKIP LOCKED` job queue (Redis-free in Phase 0) |
+| Primary SA rail | **PayShap first**, via Peach Payments |
+| Fee model | Hybrid: 1.5% platform fee + R2.00 per paid ticket |
+| First pilot | Event organiser |
+| Staging | Mac behind Cloudflare tunnel, launchd-managed workers |
+
+---
+
+## 1. Target architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Cloudflare Tunnel                                                           │
+│  za.groway...  /za/*  ──┐                                                   │
+│  mw.groway...  /mw/*  ──┼──► Next.js 16 app (Bun)                           │
+│                         │     ├─ src/middleware.ts     (path → country)      │
+│                         │     ├─ src/modules/ticketing/        ← NEW         │
+│                         │     ├─ src/modules/consumer-wallet/ (existing)     │
+│                         │     ├─ src/modules/grocore/          (existing)     │
+│                         │     └─ src/modules/catalog/          (existing)     │
+│                         │                                                    │
+│                         │     Worker process (separate `bun run worker`)     │
+│                         │     ├─ job poller (SKIP LOCKED)                    │
+│                         │     ├─ booking state machine executor              │
+│                         │     ├─ seat-hold expiry cron                       │
+│                         │     └─ notification dispatcher                     │
+└─────────────────────────┼────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  AWS RDS PostgreSQL  (af-south-1, db.t3.medium, Single-AZ, gp3)             │
+│  • 309 existing Prisma models + country column + RLS                         │
+│  • ticketing tables (Event, Performance, SeatMap, Seat, Booking, Ticket)     │
+│  • booking_transitions (audit + replay source)                               │
+│  • jobs (queue) + outbox (event relay)                                       │
+│  • GroCore ledger, multi-currency, per-currency accounts                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Payment rails (per country registry)                                        │
+│  ZA: PayShap (Peach) → PayFast → Ozow → Yoco                                 │
+│  MW: TNM Mpamba → Airtel Money → PayChangu (Phase 2)                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+**What is deliberately absent in Phase 0:** Redis, Kafka/Pub-Sub, Kubernetes, Temporal, multi-region, read replicas. Each is deferred with a defined trigger for adoption (§11).
+
+---
+
+## 2. Module design inside the monolith
+
+Ticketing follows the existing module-boundary convention: its own Prisma models, API routes, and UI components, sharing one database and one process.
+
+```
+src/modules/ticketing/
+├── catalog/          Event, Performance, SeatMap, Venue
+├── inventory/        Seat state, holds, release sweeps
+├── booking/          State machine, transitions, outbox emission
+├── ticketing/        Ticket issuance, HMAC-signed QR, check-in
+├── org/              Organisers, fee schedule, settlement mode
+├── payments/         Rail registry + adapters (moved from consumer-wallet)
+└── api/              Route handlers
+```
+
+**Movement of existing code:** The `MobileMoneyOrchestrator` class and its payment routes move into `src/modules/ticketing/payments/` without changing their public method signatures (`deposit`, `payout`, `getStatus`, `refund`). The `setTimeout` bodies are replaced by job enqueues. Existing call sites require no change.
+
+**What stays where it is:** CatalogProduct/POSLayout remain the box-office and on-site sales interface; they call ticketing inventory APIs rather than duplicating seat logic. GroSupply is untouched.
+
+---
+
+## 3. Data model (key entities)
+
+```prisma
+// Country context — read by every tenant-scoped query
+model Country {
+  code            String   @id        // "ZA" | "MW"
+  currency        String               // "ZAR" | "MWK"
+  currencyExponent Int                 // 2
+  vatRate         Decimal
+  dataProtection  String               // "POPIA" | "MW_DPA_2024"
+  enabledRails    PaymentRail[]
+}
+
+model PaymentRail {
+  id          String  @id @default(cuid())
+  countryCode String
+  rail        String  // "PAYSHAP" | "PAYFAST" | "TNM_MPAMBA" | ...
+  priority    Int
+  enabled     Boolean @default(false)
+  config      Json    // credentials, merchant refs — encrypted at rest
+}
+
+// Ticketing core
+model Event {
+  id          String  @id
+  countryCode String
+  eventType   String  // "MOVIE" | "CONCERT" | "FESTIVAL"
+  organiserId String
+  title       String
+  performances Performance[]
+}
+
+model Performance {
+  id         String @id
+  eventId    String
+  startsAt   DateTime
+  seatMapId  String
+}
+
+model SeatMap {
+  id         String @id
+  layoutType String // "GRID" | "SECTIONS" | "GENERAL_ADMISSION" | "TABLES"
+  layout     Json   // rows/cols, sections, GA capacity
+}
+
+model Seat {
+  id            String @id
+  performanceId String
+  seatMapId     String
+  label         String  // "A12", "GA"
+  state         String  // "AVAILABLE" | "HELD" | "SOLD"
+  heldUntil     DateTime?
+  bookingId     String?
+  @@unique([performanceId, label])
+}
+
+// Booking state machine
+model Booking {
+  id            String @id
+  countryCode   String
+  performanceId String
+  organiserId   String
+  state         String // SEATS_HELD | PENDING_PAYMENT | AWAITING_CONFIRMATION | CONFIRMED | FAILED | EXPIRED | REFUNDED
+  totalMinor    BigInt // integer minor units (cents/tambala)
+  currency      String
+  settlementMode String // "PLATFORM" | "ORGANISER"
+}
+
+model BookingTransition {
+  id            String @id
+  bookingId     String
+  fromState     String
+  toState       String
+  idempotencyKey String
+  payload       Json
+  createdAt     DateTime @default(now())
+  @@unique([bookingId, toState, idempotencyKey])
+}
+
+// Queue and outbox
+model Job {
+  id          String   @id
+  queue       String   // "booking" | "payment" | "notification"
+  payload     Json
+  runAt       DateTime
+  attempts    Int      @default(0)
+  lockedAt    DateTime?
+  lockedBy    String?
+}
+
+model Outbox {
+  id          String   @id
+  topic       String   // "booking.confirmed", "seat.released"
+  countryCode String
+  payload     Json
+  publishedAt DateTime?
+}
+```
+
+**RLS enforcement:** every tenant-scoped table has a `countryCode` column and a PostgreSQL row-level security policy matching `current_setting('app.country')`. A Prisma extension sets that session variable on every request and worker job from the request context or job payload.
+
+---
+
+## 4. Orchestration: state machine, not workflow engine
+
+You do not need Temporal, Argo, or BullMQ. The combination of an explicit state machine table and a Postgres queue gives durable retries, idempotency, and replay-equivalent recovery without new infrastructure.
+
+### 4.1 Booking state machine
+
+| From | To | Trigger | Side effects |
+|---|---|---|---|
+| — | `SEATS_HELD` | User selects seats | Postgres `UPDATE seats … WHERE state='AVAILABLE' RETURNING`; insert transition; enqueue `payment` job |
+| `SEATS_HELD` | `PENDING_PAYMENT` | Payment initiated | Outbox `booking.pending`; rail adapter returns redirect/request reference |
+| `PENDING_PAYMENT` | `AWAITING_CONFIRMATION` | Timeout or async rail | Outbox `payment.awaiting` |
+| `PENDING_PAYMENT` / `AWAITING_CONFIRMATION` | `CONFIRMED` | Webhook or reconciliation success | Outbox `booking.confirmed`; ledger postings; ticket issuance |
+| `PENDING_PAYMENT` | `EXPIRED` | Hold sweep | Seats released; outbox `seat.released` |
+| `CONFIRMED` | `REFUNDED` | Organiser or system action | Reverse ledger postings; void ticket |
+
+Every transition is written to `booking_transitions` with a unique `(bookingId, toState, idempotencyKey)`. Re-delivering a webhook is a no-op because the idempotency key already exists. **Replay = re-driving the state machine from the transitions table** by querying the rail's status API and posting the resulting event; there is no workflow DAG to re-run.
+
+### 4.2 Job queue with `SKIP LOCKED`
+
+```sql
+UPDATE jobs
+SET locked_at = now(), locked_by = $workerId, attempts = attempts + 1
+WHERE id = (
+  SELECT id FROM jobs
+  WHERE queue = $queue AND run_at <= now() AND locked_at IS NULL
+  ORDER BY run_at
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+)
+RETURNING *;
+```
+
+Retries use exponential backoff written back to `run_at`. Failed jobs after N attempts move to a dead-letter state and emit an outbox alert event. This is the entire queueing system — no Redis, no BullMQ, no ioredis/Bun compatibility risk.
+
+### 4.3 Seat locking without Redis
+
+```sql
+UPDATE seats SET state='HELD', held_until = now() + interval '10 minutes'
+WHERE performance_id = $1 AND label = ANY($2) AND state='AVAILABLE'
+RETURNING label;
+```
+
+If fewer rows are returned than requested, release the held ones in the same transaction and return `SEATS_UNAVAILABLE`. The hold expiry worker runs every 60 seconds:
+
+```sql
+UPDATE seats SET state='AVAILABLE', held_until = NULL
+WHERE state='HELD' AND held_until < now()
+RETURNING id;
+```
+
+Redis becomes an **additive contention filter** in Phase 3 (`SET seat:{id} NX PX 600000` before the Postgres write) and does not change the authority model.
+
+---
+
+## 5. Payments: PayShap-first adapter design
+
+### 5.1 Uniform adapter contract
+
+```typescript
+interface PaymentAdapter {
+  country(): CountryCode;
+  rail(): RailCode;
+  authorise(req: PaymentRequest): Promise<PaymentResult>;  // idempotent on req.id
+  capture(ref: ProviderRef): Promise<PaymentResult>;
+  refund(ref: ProviderRef, amountMinor: bigint): Promise<RefundResult>;
+  parseWebhook(payload: unknown): WebhookEvent;
+  supportedMethods(): Set<PaymentMethod>;
+}
+```
+
+The webhook route at `/api/consumer/mobile-money/webhook/[provider]` becomes: **parse → verify signature → write outbox event → return 200**. Nothing happens synchronously. The worker consumes the outbox event and drives the state machine.
+
+### 5.2 PayShap via Peach Payments
+
+Peach Payments offers PayShap at **R1.50 + R1.50 per transaction on the SME package**, with instant settlement and lower fraud risk than card. PayShap Request (request-to-pay) is available through Peach and other infrastructure providers such as Stitch and Electrum, where the payer approves the request in their own banking app.
+
+**Integration path for Phase 1:**
+
+1. **Merchant onboarding:** Open a Peach Payments SME account. Confirm in writing whether PayShap can be configured for **direct-to-organiser settlement** (funds land in the organiser's bank account, not Groway's). This is the single most important commercial question before Phase 1 payment work begins.
+2. **Request-to-pay flow:** If direct-to-organiser is supported, the adapter creates a PayShap request against the organiser's merchant reference; the buyer approves in their banking app; Peach sends a webhook; the worker confirms the booking. Groway's ledger records only the **fee transaction**, not the ticket revenue.
+3. **If direct-to-organiser is not supported by Peach:** the adapter falls back to platform-settled mode for PayShap, with an immediate payout step to the organiser. This is operationally heavier and should be treated as a Phase 1.5 enhancement, not the default.
+
+**Rail priority for South Africa:**
+
+| Priority | Rail | Adapter status | Settlement support |
+|---|---|---|---|
+| 1 | **PayShap (Peach)** | Phase 1 | Organiser-direct (pending Peach confirmation) |
+| 2 | **PayFast** | Phase 1 | Organiser-direct |
+| 3 | **Ozow** | Phase 1 | Organiser-direct |
+| 4 | **Yoco** | Phase 2 | Organiser-direct |
+
+### 5.3 What not to build
+
+- Do not register M-Pesa or MTC Maris against South Africa or Malawi. M-Pesa operates in Kenya, Tanzania, Mozambique, DRC, and Lesotho; MTC Maris operates in Namibia. They belong in the registry only when those countries are enabled.
+- Do not mark up PayShap processing. Pass it through at R3.00 total (R1.50 + R1.50) and let its low cost be the commercial wedge.
+
+---
+
+## 6. Dual settlement ledger
+
+Your existing `ConsumerWallet` and GroCore ledger become the settlement authority for **platform-settled** bookings. For **organiser-settled** bookings, Groway never holds ticket revenue — it records only the fee.
+
+### 6.1 Ledger changes (Phase 0)
+
+| Change | Detail |
+|---|---|
+| **Currency on every account** | `Account` gains `currency` and `exponent`. ZAR = 2, MWK = 2. |
+| **Integer minor units** | All money columns are `BigInt`; no floats anywhere in the money path. ZAR cents, MWK tambala. |
+| **Per-currency fee accounts** | `platform_fee_revenue:ZAR`, `platform_fee_revenue:MWK`. |
+| **Single-currency constraint** | `CHECK` constraint on every double-entry transaction: debits and credits must share a currency. No cross-currency postings in v1. |
+
+### 6.2 Posting rules by settlement mode
+
+**Platform-settled (organiser wants Groway to collect and pay out):**
+
+| Event | Debit | Credit |
+|---|---|---|
+| Booking confirmed | `gateway_clearing` (gross) | `organiser_payable` (net) + `platform_fee_revenue` (fee) |
+| Payout to organiser | `organiser_payable` | `organiser_wallet` / bank |
+| Refund | Reverse all three proportionally | |
+
+**Organiser-settled (organiser uses their own PayShap/PayFast account; Groway never holds revenue):**
+
+| Event | Debit | Credit |
+|---|---|---|
+| Booking confirmed | `organiser_receivable` (fee only) | `platform_fee_revenue` (fee) |
+| Monthly invoice settlement | Bank / cash | `organiser_receivable` |
+| Refund (organiser refunds buyer via their own rail) | Reverse fee receivable per contract | `platform_fee_revenue` |
+
+The same booking state machine drives both modes; only the ledger posting step branches on `settlementMode`. **Both rule sets ship in Phase 0, tested against simulated rails.** Live PayShap wiring is Phase 1.
+
+### 6.3 Why organiser-settled is the commercially critical mode in SA
+
+The SA ticketing market has a zero-platform-fee challenger (TKKT, R0 platform fee, funds land in the organiser's own gateway) and an incumbent with a published transparent rate (Quicket at 4.9% ex VAT combined plus R7.50 per ticket). Larger event organisers and cinema chains already have their own gateway relationships and will expect organiser-settled as the default. Platform-settled is the Malawi default and the SA small-organiser default. **Do not treat organiser-settled as the afterthought** — it is the mode most likely to win your first serious SA customer.
+
+---
+
+## 7. Fee engine
+
+### 7.1 Fee schedule model
+
+```prisma
+model FeeSchedule {
+  id                  String  @id
+  countryCode         String
+  settlementMode      String  // "PLATFORM" | "ORGANISER"
+  platformFeePct      Decimal // 1.5
+  bookingFeeMinor     BigInt  // 200 (R2.00)
+  processingPassThrough Boolean @default(true)
+  validFrom           DateTime
+  validTo             DateTime?
+}
+```
+
+One schedule per country per settlement mode. Editable without code deploy.
+
+### 7.2 Worked example (SA event, R200 ticket, PayShap)
+
+| Component | Amount (minor) | Amount (ZAR) |
+|---|---|---|
+| Ticket face value | 20 000 | 200.00 |
+| Platform fee (1.5%) | 300 | 3.00 |
+| Booking fee (per paid ticket) | 200 | 2.00 |
+| PayShap processing (Peach SME) | 300 | 3.00 |
+| **Total organiser cost** | **800** | **8.00** |
+| **Organiser net payout (platform-settled)** | **19 200** | **192.00** |
+
+On Quicket, the equivalent organiser + buyer cost is 4.9% + R7.50 = **R17.30** on a R200 ticket, though the R7.50 is typically buyer-paid. On a comparable organiser-paid basis, Groway is roughly **half the cost**.
+
+### 7.3 Launch-partner rate (commercial fallback)
+
+If the pilot organiser pushes back against 1.5%, offer **0.75% + R1.00 for the first 6 months or first 1,000 tickets**, then standard. This preserves the hybrid structure and tests willingness to pay without permanently giving away the model.
+
+### 7.4 Deferred: subscription tier
+
+A "Pro" tier (R499/month + 1.0% + R1.50 per ticket) is a Phase 2 decision, once three or more organisers are selling monthly. Phase 1 is event-organiser pilot only; a subscription adds a billing relationship before product-market fit.
+
+---
+
+## 8. Country isolation and path-prefix routing
+
+### 8.1 Routing middleware
+
+```
+/za/*  → rewrite to /*, set x-country: ZA
+/mw/*  → rewrite to /*, set x-country: MW
+/api/* → no rewrite; country from authenticated session, admin override only
+```
+
+Public URLs carry the prefix (`/za/events/...`) for SEO and sharing. API routes never move. A `buildUrl(path, country)` helper is enforced by lint rule — raw internal links fail CI.
+
+### 8.2 Three enforcement layers
+
+| Layer | Mechanism |
+|---|---|
+| **Routing** | Middleware rejects requests where `x-country` disagrees with the session `countryCode` (admin excepted). |
+| **Application** | Prisma extension injects `countryCode` into every tenant-scoped query and sets `app.country` for RLS. |
+| **Database** | RLS policy on every tenant-scoped table. A missing filter fails at the DB level, not silently. |
+
+### 8.3 Data isolation
+
+Single RDS cluster in af-south-1 (closest region to both markets; no Malawi region exists). `countryCode` on every tenant-scoped model; no cross-country foreign keys. Redis (Phase 3) uses `{country}:` key prefixes. Outbox events carry `countryCode`; workers route to country-scoped queues.
+
+**Latency note:** Malawi users will see ~40–60 ms RTT to af-south-1 permanently. Design for short write paths, no N+1 queries, and aggressive catalog caching at the edge. Measure from a Blantyre vantage point in Phase 2, not from Cape Town.
+
+---
+
+## 9. Deployment architecture
+
+### 9.1 RDS configuration
+
+| Parameter | Value | Rationale |
+|---|---|---|
+| **Instance class** | `db.t3.medium` | 2 vCPU, 4 GiB RAM. Burstable is correct for spiky ticketing traffic. |
+| **AZ** | Single-AZ | Multi-AZ doubles cost for failover you do not need yet. |
+| **Storage** | gp3, 100 GB | Autoscaling enabled above 100 GB. |
+| **Region** | af-south-1 (Cape Town) | Closest to both markets. |
+| **Backups** | Automated, 7-day retention | Non-negotiable. |
+| **Performance Insights** | Enabled (free tier) | See top SQL and lock waits during first on-sale. |
+| **Log retention** | 7 days | Verbose logging is a silent cost explosion. |
+| **RDS Proxy** | **Not enabled** | Long-lived app + worker processes; use standard pooling. |
+
+**Cost:** `db.t3.medium` in af-south-1 is **$0.093/hour = $67.89/month** for Single-AZ on-demand. Multi-AZ is $0.186/hour ($136/month). Storage at gp3 rates adds a small amount. This is the correct starting size for a startup with one pilot organiser.
+
+**Connection pooling:** cap Prisma pools at 8 connections for the app and 5 for the worker (total ≤13, well under `max_connections` for `db.t3.medium`). If you run multiple app instances later, add **PgBouncer** in front — cheaper and more predictable than RDS Proxy at this scale.
+
+### 9.2 Mac staging environment
+
+| Component | Configuration |
+|---|---|
+| **App** | `bun run dev` on port 3000, launchd `KeepAlive=true`. |
+| **Worker** | `bun run worker` as a separate launchd service, `KeepAlive=true`. |
+| **Sleep prevention** | `caffeinate -s` in the launchd wrapper. |
+| **Tunnel** | Cloudflare tunnel exposes **only** the app port. Worker has no inbound route; it dials out to RDS. |
+| **RDS security group** | Must allow the Mac's egress IP. Use a security group referencing a dynamic DNS record or run through a bastion — a static IP will break within a week. |
+| **Health check** | `/health` route reports queue depth and worker heartbeat. |
+
+### 9.3 Worker separation
+
+The worker **must not** run inside Next.js API routes. A separate entrypoint (`bun run worker`) in its own process from day one. CI should reject any import of worker code into `src/app/api/`. When you later move the app to AWS, the worker becomes its own container or ECS service; the app can remain on Vercel or move to ECS independently.
+
+---
+
+## 10. Phased build plan
+
+### Phase 0 — Foundations (exit: one country books end-to-end on Postgres + worker, both settlement modes recorded)
+
+**Track A — Infrastructure & data**
+
+| ID | Ticket | Depends |
+|---|---|---|
+| A1 | Provision RDS `db.t3.medium` Single-AZ af-south-1; gp3 100 GB; automated backups 7-day | — |
+| A2 | Prisma migrate SQLite → Postgres; all 309 models; seed scripts run | A1 |
+| A3 | Country registry: `Country`, `CountryPolicy`, `PaymentRail`, `SettlementMode` + seed ZA/MW (correct rail matrix; M-Pesa/MTC Maris excluded) | A2 |
+| A4 | `countryCode` column + RLS on tenant-scoped models + Prisma extension enforcement | A3 |
+| A5 | Outbox table + relay worker (at-least-once, ≤2s pickup) | A2 |
+
+**Track B — Routing**
+
+| ID | Ticket | Depends |
+|---|---|---|
+| B1 | Path-prefix middleware + `x-country` header + session fallback for APIs | A3 |
+| B2 | `buildUrl(path, country)` helper + lint rule banning raw internal links | B1 |
+| B3 | Canonical + `hreflang` tags; cross-country access rejected for non-admin | B1, A4 |
+
+**Track C — Orchestration**
+
+| ID | Ticket | Depends |
+|---|---|---|
+| C1 | Worker entrypoint + launchd `KeepAlive` + `caffeinate` + tunnel config exposing app only | A2 |
+| C2 | Postgres job queue (`SKIP LOCKED`) with retries, backoff, dead-letter | A2, C1 |
+| C3 | Booking state machine + `booking_transitions` + idempotency keys | A2 |
+| C4 | Reimplement `MobileMoneyOrchestrator` on state machine + queue, signatures unchanged | C2, C3 |
+| C5 | Webhook route: parse → verify → outbox → 200; no synchronous processing | C4, A5 |
+
+**Track D — Money**
+
+| ID | Ticket | Depends |
+|---|---|---|
+| D1 | Integer minor-units migration across GroCore ledger; no floats in money path | A2 |
+| D2 | `currency` on `Account` + per-currency fee accounts + single-currency `CHECK` constraint | D1 |
+| D3 | Dual posting rules branching on `SettlementMode`, tested against simulated rails | D2, C3 |
+| D4 | `SettlementMode` on Organiser + `organiser_receivable` / `organiser_payable` accounts | D3 |
+
+**Track E — Ticketing minimal**
+
+| ID | Ticket | Depends |
+|---|---|---|
+| E1 | `src/modules/ticketing/` skeleton + Event/Performance/SeatMap models + layout JSON schema (all 4 types defined; GRID and GENERAL_ADMISSION implemented) | A2 |
+| E2 | Inventory + holds using Postgres-only locking; concurrent-hold test (exactly one succeeds) | E1, C2 |
+| E3 | Booking flow end-to-end through state machine for **both** settlement modes; net payout assertion on R200 PayShap ticket = R192.00 | E2, C3, D3 |
+| E4 | Ticket issuance + HMAC-signed QR + offline verification | E3 |
+| E5 | Seat-hold expiry cron (release within 90s; `seat.released` outbox event) | E2, C2 |
+
+**Track F — Notifications**
+
+| ID | Ticket | Depends |
+|---|---|---|
+| F1 | Notification worker + email channel wired to `NotificationQueue`, with retry | C1, C2, E3 |
+
+**Critical path:** A1 → A2 → A3 → {A4, A5, C1} → C2 → C3 → {C4, D1} → D3 → E3 → E4. Tracks B and F run in parallel once A3 lands. **22 tickets total.**
+
+---
+
+### Phase 1 — Live South Africa (exit: real event sells and checks in with PayShap live)
+
+**Track G — PayShap and fees**
+
+| ID | Ticket | Depends |
+|---|---|---|
+| G1 | Fee schedule model + seed ZA default (1.5% + R2.00) | D3, D4 |
+| G2 | Fee calculation in booking flow, integer minor units; 1,000-ticket rounding test | G1, D1 |
+| G3 | Organiser-facing fee preview at event creation (matches worked example) | G1 |
+| G4 | Peach Payments merchant onboarding; **confirm direct-to-organiser PayShap settlement in writing** | — |
+| G5 | PayShap adapter live wiring (request-to-pay if direct settlement confirmed; otherwise platform-settled fallback) | G4, C5, G2 |
+| G6 | Reconciliation worker: query rail status for `PENDING_PAYMENT` older than 2 min; drive state machine | C3, G5 |
+| G7 | PayFast and Ozow adapters live (organiser-settled first) | G5 |
+
+**Track H — RDS operations**
+
+| ID | Ticket | Depends |
+|---|---|---|
+| H1 | Performance Insights dashboard + CloudWatch log retention 7 days | A1 |
+| H2 | Connection pool caps (app ≤8, worker ≤5); document headroom | A1 |
+| H3 | Alerts: `CPUCreditBalance` low, connections >70%, storage <20 GB | H1 |
+| H4 | Backup restore test into scratch instance | A1 |
+
+**Track I — Compliance (SA)**
+
+| ID | Ticket | Depends |
+|---|---|---|
+| I1 | POPIA consent capture at checkout and registration | B1 |
+| I2 | Data-subject-request workflow (one workflow, parameterised by regime) | A4 |
+| I3 | Retention policy cron (job queue) | A4 |
+
+**Phase 1 critical path:** G4 → G5 → G6 → E3 (live). H and I run in parallel.
+
+---
+
+### Phase 2 — Malawi (exit: Malawian event sells via mobile money and checks in offline)
+
+1. TNM Mpamba and Airtel Money adapters live (using existing env vars).
+2. Tambala minor-unit arithmetic end-to-end; E.164 phone normalisation.
+3. USSD-friendly checkout fallback.
+4. Malawi DPA 2024: lawful basis, purpose notices, DSR workflow.
+5. Offline ticket verification stress-tested at a venue with no connectivity.
+6. Payouts via mobile-money disbursement (platform-settled default).
+
+---
+
+### Phase 3 — Scale hardening (trigger: 5,000-seat on-sale)
+
+| Trigger | Addition |
+|---|---|
+| Contention > X% of hold attempts fail on Postgres alone | Add Redis `SET NX` as contention filter **in front of** Postgres |
+| Queue polling load on RDS measurable | Add Redis or move to a dedicated queue (BullMQ or SQS) |
+| Catalog read QPS high | Add Redis catalog cache; Cloudflare edge caching for event pages |
+| Waiting room needed for flash sales | Redis ZSET + batched admission cron |
+| Table scan cost on `bookings`/`outbox` | Partition by `(countryCode, month)` |
+
+**Redis does not replace the Postgres lock or queue; it only filters contention and caches reads.** The authority model remains Postgres.
+
+---
+
+## 11. Operational runbook
+
+| Scenario | Action |
+|---|---|
+| **Worker heartbeat missed >60s** | Alert; check launchd status; restart worker; queue is durable so no jobs are lost. |
+| **RDS CPU credits exhausted** | Move to `db.m5.large` or `db.r6g.large`. Monitor `CPUCreditBalance`; this is a resize, not a redesign. |
+| **PayShap webhook lost** | Reconciliation worker queries Peach status API; posts resulting event; state machine confirms or fails. |
+| **Seat lock split-brain (Phase 3)** | Postgres is authority; Redis lock overwritten by expiry sweep. |
+| **Cross-country access attempt** | Middleware 403; log as security event; CI test authenticates as MW user and hits all `/za/` routes expecting 403. |
+| **Mac sleeps despite `caffeinate`** | launchd `KeepAlive` restarts processes; job queue holds work; alert on heartbeat gap. |
+| **Ledger imbalance** | Nightly invariant job: debits = credits per currency per day. Alert on drift. |
+
+---
+
+## 12. Risk register
+
+| Risk | Severity | Mitigation |
+|---|---|---|
+| **Dual settlement + cinema + events + path prefix + RDS all in Phase 0** | High | Protect D3/D4 (dual ledger) above all — the only item expensive to retrofit. Slip seat-map types (`SECTIONS`/`TABLES`) before slipping the ledger. |
+| **Peach does not support direct-to-organiser PayShap** | High | Confirm in writing before G5. Fallback: platform-settled PayShap with immediate payout; treat direct settlement as Phase 1.5. |
+| **Path prefix + RLS + 309 models = three enforcement layers** | Medium | B3 cross-country test in CI; explicit 403 assertion for every `/za/` route as MW user. |
+| **Malawi RTT to af-south-1 (~40–60ms permanent)** | Medium | Short write paths, no N+1, edge caching. Measure from Blantyre in Phase 2. |
+| **Organiser-settled refund semantics differ per rail** | Medium | Contract: organiser refunds buyer via their own rail; Groway reverses fee receivable only. Encode in `CountryPolicy`. |
+| **TKKT's R0 platform fee undercuts your 1.5%** | Commercial | Differentiate on PayShap-first checkout and dual settlement mode (TKKT only does organiser-settled). Offer launch-partner rate if needed. |
+
+---
+
+## 13. Open decisions before Phase 1 execution
+
+1. **Peach Payments PayShap direct-to-organiser settlement** — the single highest-priority commercial confirmation. If Peach cannot support it, the PayShap adapter's settlement design changes, and the Phase 1 critical path gains a payout step.
+2. **Pilot organiser's settlement preference** — if they already have a PayFast/Yoco account and insist on organiser-settled, PayShap direct settlement becomes even more critical (otherwise PayShap cannot be offered to that organiser in their preferred mode).
+3. **PayFast/Ozow merchant onboarding lead time** — start both in parallel with Peach; do not serialise gateway onboarding.
+4. **Malawi fee denomination** — default to the same 1.5% platform fee with a MWK-denominated per-ticket fee set when a Malawi pilot organiser is identified.
+
+---
+
+## 14. Summary: what makes this architecture correct for Groway
+
+1. **It uses what you have.** The modular monolith, GroCore ledger, wallet, and existing route tree are preserved. Ticketing is a new module, not a new platform.
+2. **It adds no infrastructure you do not need yet.** Postgres does locking, queueing, and orchestration in Phase 0. Redis, brokers, and workflow engines arrive only when a measured trigger demands them.
+3. **It treats the ledger as the hardest thing to retrofit.** Dual settlement and integer minor units ship in Phase 0, before any live money moves.
+4. **It is shaped by the SA market, not imported from elsewhere.** PayShap-first, hybrid fee below Quicket, organiser-settled supported from day one, and a zero-fee challenger acknowledged as the competitive reference point.
+5. **It is operationally honest about the staging environment.** Mac + launchd + Cloudflare tunnel + RDS is a real staging setup if the worker is separated and the queue is durable. It does not pretend to be production; it is the correct stepping stone to it.
+
+The next concrete action is **G4 (Peach PayShap onboarding and settlement confirmation)**, because its outcome determines whether the Phase 1 PayShap adapter is a two-party or three-party money flow — and that determines the Phase 1 critical path.
