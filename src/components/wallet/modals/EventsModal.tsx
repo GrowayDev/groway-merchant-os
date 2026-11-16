@@ -190,13 +190,14 @@ export function EventsModal({ open, onOpenChange }: EventsModalProps) {
     onOpenChange(false)
   }, [onOpenChange])
 
-  if (!open) return null
 
   const selectedTicketType = ticketTypes.find((t) => t.value === ticketType)
   const unitPriceCents = useMemo(() => {
     if (!selectedEvent || !selectedTicketType) return BigInt(0)
     return BigInt(Math.round(Number(selectedEvent.basePriceCents) * selectedTicketType.multiplier))
   }, [selectedEvent, selectedTicketType])
+
+  if (!open) return null
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
